@@ -2,7 +2,8 @@
 %processed_CTD_data folder:
 
 addpath /Users/kristenhunter-cevera/MVCO_light_at_depth/seawater_ver3_2/
-pathname='/Volumes/Lab_data/MVCO/processed_CTD_casts/';
+pathname='\\sosiknas1\Lab_data\MVCO\processed_CTD_casts_20171206\';
+% pathname='/Volumes/Lab_data/MVCO/processed_CTD_casts/';
 %pathname = '/Volumes/TaylorF/from_Samwise/data/MVCO/SurveyCruises/'; %once maddie is mounted
 %pathname = '/Volumes/J_data/MVCO/SurveyCruises/';
 
@@ -11,9 +12,12 @@ filenames=extractfield(filelist,'name'); %cell array of folder names
 temp=regexp(filenames,'\.cnv'); %find only the .cnv files
 ii=find(cellfun('isempty',temp)==0);
 filenames=filenames(ii)';
+temp=regexp(filenames,'\w*docktest\w*'); %find "docktest" files that are junk
+ii=find(cellfun('isempty',maybe)==1); %remove docktest files from filenames list
+filenames=filenames(ii);
 
-%% find the Tioga folders:
-% ii=find(cellfun('isempty',strfind(folder_names','Tioga'))==0);
+%find the Tioga folders:
+%ii=find(cellfun('isempty',strfind(folder_names','Tioga'))==0);
 load(fullfile(pathname,'list_and_location_of_raw_ctd_files.mat'))
 
 CTD=struct('cast_name',{},'file_location',{},'lat',{},'lon',{},'UTC',{},'upload_time',{},'col_headers',{},'data',{});
@@ -26,6 +30,9 @@ for q=1:length(filenames)
     
     jj=find(cellfun('isempty',regexp(datafiles,filenames{q}(1:end-4)))==0);
     CTD(q).file_location=datafiles{jj};
+    
+    if regexp(filenames{q},'\w*handcast\w*')
+        lat = 41.345; lon = 
     
     [lat,lon, UTC_time,upload_time,header,data]=import_cnvfile([pathname filenames{q}]);
     
@@ -65,7 +72,7 @@ end
 %% How many files don't have lat/lon?
 
 ii=find(cellfun('isempty',{CTD(:).lat}')==1);
-{CTD(ii).cast_name}'
+{CTD(ii).cast_name}';
 %Okay, only about 8 or so actual cruises where we are missing this data...
 
 
