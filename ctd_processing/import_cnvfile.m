@@ -33,10 +33,10 @@ if ~isempty(ii)
     if ~isempty(regexp(UTC_time,'[A-Z][a-z]{2}')) %meaning that the value captured is an acutal time (and not a lat or lon - as sometimes happens)
         UTC_time=datenum(UTC_time);
     else
-        UTC_time=[];
+        UTC_time=NaN;
     end
 else
-    UTC_time=[];
+    UTC_time=NaN;
 end
 
 %locate latitude:
@@ -44,7 +44,7 @@ ind=strfind(info,'Latitude');
 ii=find(cellfun('isempty',ind)==0);
 if ~isempty(ii)
     test=info{ii};
-    lat=regexp(test,'(?<deg>\d{2,3})(\s)(?<min>\d{1,2})\.(?<sec>\d{2})','names');
+    lat=regexp(test,'(?<deg>\d{2,3})(\s)(?<min>\d{1,2}\.\d{2})','names');
 else
     lat=[];
 end
@@ -54,7 +54,7 @@ ind=strfind(info,'Longitude');
 ii= find(cellfun('isempty',ind)==0);
 if ~isempty(ii)
     test=info{ii};
-    lon=regexp(test,'(?<deg>\d{2,3})(\s)(?<min>\d{1,2})\.(?<sec>\d{2})','names');
+    lon=regexp(test,'(?<deg>\d{2,3})(\s)(?<min>\d{1,2}\.\d{2})','names');
 else
     lon=[];
 end
@@ -70,7 +70,7 @@ if ~isempty(strfind(lat.deg,'70'))
     
      %now find latitude and time:  
     for w=1:length(j2)
-        test=regexp(info{j2(w)},'(?<deg>\d{2,3})(\s)(?<min>\d{1,2})\.(?<sec>\d{2})\sN','names');
+        test=regexp(info{j2(w)},'(?<deg>\d{2,3})(\s)(?<min>\d{1,2}\.\d{2})\sN','names');
         test2=regexp(info{j2(w)},'[A-Z]{1}[a-z]{2}(\s)*\d{2}(\s*)\d{4}');
 
         if ~isempty(test)
@@ -85,6 +85,7 @@ if ~isempty(strfind(lat.deg,'70'))
     end
 end
 end
+
 %locate header names:
 ind=strfind(info,'# name');
 ii= cellfun('isempty',ind)==0;

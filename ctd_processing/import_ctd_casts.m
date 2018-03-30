@@ -1,10 +1,17 @@
 %script to import all the Tioga processed CTD data (.cnv files) from the
 %processed_CTD_data folder:
 
+%if processing on Kristen's machine:
 addpath /Users/kristenhunter-cevera/MVCO_light_at_depth/seawater_ver3_2/
 pathname='/Volumes/Lab_data/MVCO/processed_CTD_casts/';
-%pathname = '/Volumes/TaylorF/from_Samwise/data/MVCO/SurveyCruises/'; %once maddie is mounted
-%pathname = '/Volumes/J_data/MVCO/SurveyCruises/';
+
+load /Users/kristenhunter-cevera/MVCO_light_at_depth/mixed_layer_depth_src/MVCO_bottle_events_forSteve.mat %check for missing lat lon based on time stamp...
+% the bottle log has indiv bottles, and we just want the event they came from:
+[~,iu]=unique(MVCO_bottle_events(:,1));
+MVCO_bottle_events_unq=MVCO_bottle_events(iu,:);
+
+%convert to matlab time:
+MVCO_event_time=datenum(cell2mat([ MVCO_bottle_events_unq(:,3) cellstr(repmat(', ',size(MVCO_bottle_events_unq,1),1)) MVCO_bottle_events_unq(:,4) ]));
 
 filelist=dir(pathname);
 filenames=extractfield(filelist,'name'); %cell array of folder names
@@ -16,7 +23,7 @@ filenames=filenames(ii)';
 % ii=find(cellfun('isempty',strfind(folder_names','Tioga'))==0);
 load(fullfile(pathname,'list_and_location_of_raw_ctd_files.mat'))
 
-CTD=struct('cast_name',{},'file_location',{},'lat',{},'lon',{},'UTC',{},'upload_time',{},'col_headers',{},'data',{});
+CTD=struct('cast_name',{},'file_location',{},'lat',{},'lon',{},'UTC',{},'upload_time',{},'data_hdr',{},'data',{},'notes',{});
 
 for q=1:length(filenames)
     
@@ -29,12 +36,31 @@ for q=1:length(filenames)
     
     [lat,lon, UTC_time,upload_time,header,data]=import_cnvfile([pathname filenames{q}]);
     
-    if ~isempty(lat) || ~isempty(lon)            
-        CTD(q).lat=[str2num(lat.deg)+str2num(lat.min)/60+str2num(lat.sec)/3600];
-        CTD(q).lon=-[str2num(lon.deg)+str2num(lon.min)/60+str2num(lon.sec)/3600];
-    else
-        CTD(q).lat=NaN;
-        CTD(q).lon=NaN;
+    if ~isempty(lat) || ~isempty(lon)
+        CTD(q).lat=[str2num(lat.deg)+str2num(lat.min)/60];
+        CTD(q).lon=-[str2num(lon.deg)+str2num(lon.min)/60];
+        
+    elseif ~isnan(upload_time) %if is empty, we can do a double check based on time stamp
+               
+        [mm, im]=min(abs(MVCO_event_time-upload_time));
+        disp(abs(MVCO_event_time(im)-upload_time))
+        
+        if abs(MVCO_event_time(im)-upload_time) > 0.5 %greater than half a day...
+            disp('Is this the correct time match for the file to the MVCO log?')
+            keyboard
+        end
+        
+        %Maybe just print out whether or not a multi-day event?
+        tt=find(floor(upload_time)==floor(MVCO_event_time));
+        if length(tt)==1
+            disp('Part of multi-day event at MVCO')
+        end
+        
+        %if found a match, use that lat and lon:
+        CTD(q).lat=MVCO_bottle_events_unq{im,5};
+        CTD(q).lon=MVCO_bottle_events_unq{im,6};
+        CTD(q).notes=['lat/lon matched from log; ' MVCO_bottle_events_unq{im,1}];
+        
     end
     
     CTD(q).UTC=UTC_time;
@@ -62,12 +88,11 @@ for q=1:length(filenames)
 end
 
 
-%% How many files don't have lat/lon?
+%% check to see what is missing:
 
-ii=find(cellfun('isempty',{CTD(:).lat}')==1);
+ii=find(cellfun(@(x) isnan(x),{CTD(:).lat}')==1);
 {CTD(ii).cast_name}'
-%Okay, only about 8 or so actual cruises where we are missing this data...
-
+%should be empty!
 
 %% find only trips to tower or node:
 
