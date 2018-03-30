@@ -87,6 +87,9 @@ for q=1:length(filenames)
     end
 end
 
+%% and to save...
+
+save(fullfile(pathname,'CTD_30Mar2018'),'CTD')
 
 %% check to see what is missing:
 
