@@ -11,7 +11,7 @@ lon = str2num(char(t.textdata(135:end,6)));
 temperature = t.textdata(135:end,72);%Met-RMY-Trans-SST5
 s = char(temperature);
 s = strmatch(' ', s(:,1));
-temperature(s) = 'NaN';
+temperature(s) = {'NaN'};
 temperature = str2num(char(temperature));
 
 for ii = 1:length(fcsmatch.mdate_start)
