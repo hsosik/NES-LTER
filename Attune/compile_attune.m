@@ -1,4 +1,5 @@
-fpath = 'C:\work\LTER\Attune\EN608\ExportedStats\';
+fpath = '\\sosiknas1\Lab_data\Attune\EN608\ExportedStats\';
+outpath = '\\sosiknas1\Lab_data\Attune\EN608\Summary\';
 filelist = dir([fpath 'NES*']);
 filelist = {filelist.name}';
 flistchar = char(filelist);
@@ -40,7 +41,7 @@ for count = 1:length(filelist)
     %FileSampleCount(count) = length(ii);
 end
 
-save compiled_stats fcsfile* SynConc EukConc
+save([outpath 'compiled_stats'], 'fcsfile*', 'SynConc', 'EukConc');
 
 %return
 figure
