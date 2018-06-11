@@ -14,6 +14,7 @@ EukConc = SynConc;
 fcsfile_syn = SynConc;
 fcsfile_euk = SynConc;
 for count = 1:length(filelist)
+    disp(filelist(count))
     itable = importfile([fpath filelist{count}]);
     ii = strmatch( 'Syn', itable.Gate);
     sample = itable.Sample(ii); 
