@@ -1,9 +1,18 @@
-load C:\work\LTER\Attune\code\FCSfileinfo  %from FCS_DateTimeList
-load C:\work\LTER\Attune\code\compiled_stats
+f = '\\sosiknas1\Lab_data\Attune\EN608\Summary\FCSfileinfo.mat'
+if exist(f,'file')
+    load(f)
+else
+   [ FCSfileinfo ] = FCS_DateTimeList( '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\' );
+   save(f, 'FCSfileinfo')
+end
+
+load \\sosiknas1\Lab_data\Attune\EN608\Summary\FCSfileinfo  %from FCS_DateTimeList
+load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats
 [~,a,b] = intersect(FCSfileinfo.filelist, fcsfile_syn);
 fcsmatch.mdate_start(b) = FCSfileinfo.matdate_start(a);
 
-t = importdata('C:\work\LTER\Attune\EN608\Data60Sec_Cruise_20180117-160100.csv', ',', 134);
+%t = importdata('C:\work\LTER\Attune\EN608\Data60Sec_Cruise_20180117-160100.csv', ',', 134);
+t = importdata('\\sosiknas1\Backup\LTER\20180131_EN608\underway\scs_GPS_met\proc\cruise\Data60Sec_Cruise_20180117-160100_time change.csv', ',', 134);
 yd = t.textdata(135:end,3);
 mdate = datenum('1-1-2018') + str2num(char(yd));
 lat = str2num(char(t.textdata(135:end,5)));
@@ -21,4 +30,4 @@ for ii = 1:length(fcsmatch.mdate_start)
     fcsmatch.temperature(ii) = temperature(a);
 end
 
-
+clear ii s lat lon temperature mdate yd t a b
