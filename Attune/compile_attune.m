@@ -10,8 +10,11 @@ mdate = datenum(dstr);
 filelist = filelist(s);
 
 SynConc = [];
-EukConc = SynConc;
+SynCount = [];
 SynYcv = [];
+EukConc = SynConc;
+EukCount = [];
+EukYcv = [];
 fcsfile_syn = SynConc;
 fcsfile_euk = SynConc;
 for count = 1:length(filelist)
@@ -22,6 +25,7 @@ for count = 1:length(filelist)
     a = ~isnan(sample);clc
     ii = ii(a);
     SynConc = [SynConc; itable.Concentration(ii)];
+    SynCount = [SynCount; itable.Count(ii)];
     SynYcv = [SynYcv; itable.YCV(ii)];
     exp = itable.Experiment(ii);
     sample = itable.Sample(ii); 
@@ -34,6 +38,8 @@ for count = 1:length(filelist)
     a = ~isnan(sample);
     ii = ii(a);
     EukConc = [EukConc; itable.Concentration(ii)]; 
+    EukCount = [EukCount; itable.Count(ii)];
+    EukYcv = [EukYcv; itable.YCV(ii)];
     exp = itable.Experiment(ii);
     sample = itable.Sample(ii); 
     temp = cellstr([char(exp) repmat('_Group_day0_Sample(', length(exp),1) num2str(sample) repmat(').fcs', length(exp),1)]);
@@ -44,7 +50,7 @@ for count = 1:length(filelist)
     %FileSampleCount(count) = length(ii);
 end
 
-save([outpath 'compiled_stats'], 'fcsfile*', 'SynConc', 'EukConc');
+save([outpath 'compiled_stats'], 'fcsfile*', 'SynConc', 'EukConc','SynCount','SynYcv', 'EukCount','EukYcv');
 
 %return
 figure
