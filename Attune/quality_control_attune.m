@@ -13,13 +13,23 @@
 
 %% Loading in statistical data created by compile_attune
 
-fpath = '\\sosiknas1\Lab_data\Attune\EN608\Summary\';
-outpath = '\\sosiknas1\Lab_data\Attune\EN608\Summary\';
-
 load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat;
 
 %write something to check for compiled_stats and to run compile_attune if
 %it is not found
+
+%% "Excessive Spike Check"
+
+spikeSyn = dataqc_spiketest(SynConc,.001)
+spikeEuk = dataqc_spiketest(EukConc,.0001)
+
+%% Unexpected CV and Count Ratios
+unexpcv = ones(length(SynConc),1);
+t_CV = 80;
+t_Count = 600;
+index_threshold = find(SynYcv >= t_CV & SynCount >= t_Count);
+unexpcv(index_threshold) = 0
+
 
 %% Plotting Concentration over time
 % figure
@@ -68,12 +78,7 @@ load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat;
 % plot(index_threshold,SynConc(index_threshold)*1000,'go','MarkerSize',5,'MarkerFaceColor',[.49 1 .63])
 % plot(index_threshold,EukConc(index_threshold)*1000,'go','MarkerSize',5,'MarkerFaceColor',[.49 1 .63])
 
-%% "Excessive Spike Check"
 
-open dataqc_spiketest.m
-
-spikeSyn = dataqc_spiketest(SynConc,.001)
-spikeEuk = dataqc_spiketest(EukConc,.0001)
 
 %% Plotting CV vs. Counts for Unexpected CV and Count Ratio 
 %plotting the Syn counts vs. %CV values
@@ -84,12 +89,6 @@ xlabel('%CV')
 ylabel('Count')
 title('Syn')
 
-%% Setting Threshold for CV and Count
-unexpcv = ones(length(SynConc),1);
-t_CV = 80;
-t_Count = 600;
-index_threshold = find(SynYcv >= t_CV & SynCount >= t_Count);
-unexpcv(index_threshold) = 0
 
 %%
 figure
