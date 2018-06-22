@@ -114,7 +114,7 @@ function out=dataqc_spiketest(varargin);
  end
 
  ll=length(dat);
- out=zeros(size(dat));
+ out=ones(size(dat));
 
  L2=(L-1)/2;
  i1=1+L2;
@@ -127,7 +127,7 @@ function out=dataqc_spiketest(varargin);
  R=max(tmpdat)-min(tmpdat);
  R=max([R acc]);
  if (N*R)>abs(dat(ii)-mean(tmpdat))
-out(ii)=1;
+out(ii)=0;
  end
  end
 
@@ -136,7 +136,7 @@ out(ii)=1;
  R=max(tmpdat)-min(tmpdat);
  R=max([R acc]);
  if (N*R)>abs(dat(ii)-mean(tmpdat))
-out(ii)=1;
+out(ii)=0;
  end
  end
 
@@ -145,7 +145,7 @@ out(ii)=1;
  R=max(tmpdat)-min(tmpdat);
  R=max([R acc]);
  if (N*R)>abs(dat(ii)-mean(tmpdat))
-out(ii)=1;
+out(ii)=0;
  end
  end
 

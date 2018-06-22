@@ -3,16 +3,16 @@
 %     Good
 %     Bad
 %     Questionable/Suspicious  
-QC1 = [];
 % 2.Secondary Level (provides justification for quality assesement with QC tests)
 %     Unexpected CV and count Ratio
-%     Excessive Spike Check
+%     Excessive Spike Check on Synecheccous Data
+%     Excessive Spike Check on 
 %     Expert Review
-QC2 = blanks(length(SynConc));
 % input SynConc EukConc SynYcv EukYcv SynCount EukCount
-% output QC1 QC2 spike exprev unexp   (same length as synConc, EukConc and CV value)
+% output  spike exprev unexp   (same length as synConc, EukConc and CV value)
 
 %% Loading in statistical data created by compile_attune
+cd C:\Users\mps48\Documents\GitHub\NES-LTER\Attune
 
 load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat;
 
@@ -25,14 +25,18 @@ load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat;
 
 %checking for spikes in the Syn Concentration Data
 %the second argument is the specificity of the test
-spikeSyn = dataqc_spiketest(SynConc,.0001)
+
+spikeSyn = dataqc_spiketest(SynConc,0)
 
 %checking for spikes in the Euk Concentration Data
 %the second argument is the specificity of the test
-spikeEuk = dataqc_spiketest(EukConc,.0001)
+spikeEuk = dataqc_spiketest(EukConc,0)
 
-index_spikeSyn = find(spikeSyn == 0)
-index_spikeEuk= find(spikeEuk == 0)
+index_spikeSyn = find(spikeSyn == 1)
+index_spikeEuk= find(spikeEuk == 1)
+
+%strcat(QC2(index_spikeSyn),'Excessive Spike')
+%QC2(index_spikeEuk) = 'Excessive Spike';
 
 %% Unexpected CV and Count Ratios for Syn Data
 % this creates a vector of ones the same length as the SynConc vector
@@ -49,7 +53,6 @@ index_threshold = find(SynYcv >= t_CV & SynCount >= t_Count);
 %have failed the test
 unexpcv(index_threshold) = 0
 
-
 %% "Expert Review"
 %Visually I was able to identify these suspicious data points
 index_visual = [512, 668, 1020, 1510, 1924, 2035, 2124, 2126, 2206, 2320, 2476, 2562];
@@ -57,12 +60,6 @@ index_visual= index_visual'
 
 expreview = ones(length(SynConc),1);
 expreview(index_visual)= 0
-
-%% Summary Plot and Final Output
-
-QC1 = unexpcv + spikeSyn + spikeEuk + expreview
-
-%QC2
 
 %% Summary Plot of Tests vs. Expert Review
 
@@ -76,6 +73,7 @@ xlabel('2-minute sample resolution, 31-Jan to 5-Feb 2018')
 lh = legend('\itSynechococcus', 'Small eukaryotes', 'location', 'northwest');
 title('onshore              \leftarrow                     offshore            \rightarrow                    onshore')
 set(lh, 'fontsize', 14)
+
 plot(index_visual,SynConc(index_visual)*1000,'md','MarkerSize',10)
 plot(index_visual, EukConc(index_visual)*1000, 'md','MarkerSize',10)
 plot(index_threshold,SynConc(index_threshold)*1000,'go','MarkerSize',5,'MarkerFaceColor',[.49 1 .63])
@@ -95,11 +93,14 @@ xlabel('%CV')
 ylabel('Count')
 title('CV vs. Count for Synchecoccus Data')
 
-
 %% Plotting Spikes and Spike Test Results
 figure
 plot(SynConc*1000, '.-')
 hold on
+plot(spikeSyn*25000,'r:')
+
+%%
+hold off
 plot(EukConc*1000, '.-')
 xlim([0 length(SynConc)])
 ylabel('Cell concentration (ml^{-1})')
@@ -107,5 +108,5 @@ xlabel('2-minute sample resolution, 31-Jan to 5-Feb 2018')
 lh = legend('\itSynechococcus', 'Small eukaryotes', 'location', 'northwest');
 title('Concentrations and Spike Test Results')
 set(lh, 'fontsize', 14)
-plot(spikeSyn*25000,'r:')
+
 plot(spikeEuk*25000, 'b:')
