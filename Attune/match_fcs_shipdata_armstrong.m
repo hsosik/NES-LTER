@@ -1,4 +1,18 @@
-fpath = '\\multiproc\data_on_memory\underway\proc\';
+fpath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\underway\proc\';
+%fpath = '\\sosiknas1\Backup\LTER\20180404_AR28\underway\proc\';
+
+f = '\\sosiknas1\Lab_data\Attune\EN608\Summary\FCSfileinfo.mat';  %FIX
+if exist(f,'file')
+    load(f)
+else
+   [ FCSfileinfo ] = FCS_DateTimeList( '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\' ); %FIX
+    save(f, 'FCSfileinfo')
+end
+
+load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats %FIX
+[~,a,b] = intersect(FCSfileinfo.filelist, fcsfile_syn);
+fcsmatch.mdate_start(b) = FCSfileinfo.matdate_start(a);
+
 
 flist = dir([fpath 'AR18*.csv']);
 flist = flist(3:end); %remove two days before cruise
@@ -22,4 +36,14 @@ for ii = 1:length(flist)
 end
 clear s s2 s3 t ii fpath flist
 
-save AR29_underway
+for ii = 1:length(fcsmatch.mdate_start)
+    [~,a] = min(abs(mdate-fcsmatch.mdate_start(ii)));
+    fcsmatch.lat(ii) = lat(a);
+    fcsmatch.lon(ii) = lon(a);
+    fcsmatch.sbe45T(ii) = sbe45T(a);
+    fcsmatch.sbe45S(ii) = sbe45S(a);
+    fcsmatch.flr(ii) = flr(a);
+end
+
+
+%save AR29_underway
