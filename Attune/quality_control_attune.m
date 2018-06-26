@@ -15,9 +15,8 @@ cd C:\Users\mps48\Documents\GitHub\NES-LTER\Attune
 % output  spike_syn spike_exp   (same length as synConc, EukConc and CV value)
 
 %% Loading in statistical data created by compile_attune
-
-if ~exist(compiled_stats.mat,'file')
-    run(compile_attune)
+if ~exist('\\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat','file')
+    open compile_attune
 else
 load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat;
 end
@@ -110,26 +109,27 @@ suptitle('Concentrations and Quality Control Test Results')
 
 filename_reviewlist = vertcat(fcsfile_syn(index_spikeSyn), fcsfile_syn(index_spikeEuk),fcsfile_syn(index_threshold));
 fcs_path = '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\'
-expreview = zeros(length(SynConc),1);
+exp = zeros(length(SynConc),1);
 
 for ii = 1:length(filename_reviewlist)
     [~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,filename_reviewlist(ii))));
-    index_x = 11;
-    index_y = 19;
-    figure
-    loglog(fcsdatscaled(:,11),fcsdatscaled(:,19),'.')
-    xlim([10^2  10^6])
-    ylim([10^2  10^6])
-    xlabel(fcshdr.par(11).name)
-    ylabel(fcshdr.par(19).name)
-    title(strcat('PE Signal for ', char(filename_reviewlist(ii))))
-    pause
-%     index_review = [];
-%     popup = uicontrol('Style', 'radiobutton','String', {'Bad','Good'},...
-%                'Position', [100 320 50 50],...
-%                'Callback', @input); 
+    fig = uifigure('Name','PE Signal','Position',[10 10 1000 800]);
+    ax = uiaxes(fig,'Position',[30 30 790 770]);
+    loglog(ax,fcsdatscaled(:,11),fcsdatscaled(:,19),'.')
+    ax.XLim = [10^2  10^6]
+    ax.YLim = [10^2  10^6]
+    ax.XLabel.String = 'FSC-H'
+    ax.YLabel.String  = 'GL1-H'
+    index = strmatch(char(filename_reviewlist(ii)),char(fcsfile_syn))
+    F = struct('exp',exp, 'index',index);
+    bg = uibuttongroup(fig,'Position',[850 400 100 100],'Title','Options','SelectionChangedFcn',@(bg,event) bselection(bg,event,F));
+        r1 = uiradiobutton(bg,'Text','Bad','Position',[10 60 150 15]);
+        r2 = uiradiobutton(bg,'Text','Concerning','Position',[10 38 150 15]);
+        r3 = uiradiobutton(bg,'Text','Good','Position',[10 15 150 15]);
+              bg.Visible = 'on';
+              pause
 end
-%    strmatch(char(filename_reviewlist(ii)),char(fcsfile_syn))%returns original index of filename
+  
 %% "Visual ID"
 %Visually I was able to identify these suspicious data points
 index_visual = [512, 668, 1020, 1510, 1924, 2035, 2124, 2126, 2206, 2320, 2476, 2562];
@@ -137,3 +137,23 @@ index_visual= index_visual';
 
 expreview = zeros(length(SynConc),1);
 expreview(index_visual)= 1;
+
+%%
+function [F] = bselection(bg,event,F)
+display(['Previous: ', event.OldValue.Text]);
+display(['Current: ', event.NewValue.Text]);
+switch event.NewValue.Text
+    case 'Bad'
+        exp(F.index) = 3;
+        display('index changed to 3');
+        display('------------------');
+    case 'Concerning'
+        exp(F.index) = 2;
+        display('index changed to 2');
+        display('------------------');
+    case 'Good'
+        exp(F.index) = 0 ;
+        display('index changed to 0');
+        display('------------------');
+end
+end

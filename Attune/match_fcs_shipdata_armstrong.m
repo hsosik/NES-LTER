@@ -5,7 +5,7 @@ f = '\\sosiknas1\Lab_data\Attune\EN608\Summary\FCSfileinfo.mat';  %FIX
 if exist(f,'file')
     load(f)
 else
-   [ FCSfileinfo ] = FCS_DateTimeList( '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\' ); %FIX
+   [ FCSfileinfo ] = FCS_DateTimeList( '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSexport' ); %FIX
     save(f, 'FCSfileinfo')
 end
 

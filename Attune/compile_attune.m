@@ -1,4 +1,6 @@
-fpath = '\\sosiknas1\Lab_data\Attune\EN608\ExportedStats\';
+% fpath = '\\sosiknas1\Lab_data\Attune\EN608\ExportedStats\';
+% outpath = '\\sosiknas1\Lab_data\Attune\EN608\Summary\';
+fpath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\proc';
 outpath = '\\sosiknas1\Lab_data\Attune\EN608\Summary\';
 filelist = dir([fpath 'NES*']);
 filelist = {filelist.name}';
