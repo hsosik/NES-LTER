@@ -1,15 +1,17 @@
 fpath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\underway\proc\';
 %fpath = '\\sosiknas1\Backup\LTER\20180404_AR28\underway\proc\';
 
-f = '\\sosiknas1\Lab_data\Attune\EN608\Summary\FCSfileinfo.mat';  %FIX
+%f = '\\sosiknas1\Lab_data\Attune\EN608\Summary\FCSfileinfo.mat';  %FIX
+f = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSfileinfo.mat';  %AR29 Cruise
 if exist(f,'file')
     load(f)
 else
    [ FCSfileinfo ] = FCS_DateTimeList( '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSexport' ); %FIX
+   %[ FCSfileinfo ] = FCS_DateTimeList( '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS' ); %FIX
     save(f, 'FCSfileinfo')
 end
 
-load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats %FIX
+load \\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\compiled_stats.mat %FIX
 [~,a,b] = intersect(FCSfileinfo.filelist, fcsfile_syn);
 fcsmatch.mdate_start(b) = FCSfileinfo.matdate_start(a);
 

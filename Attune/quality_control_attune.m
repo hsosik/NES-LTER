@@ -1,20 +1,8 @@
+%this sets the current directory to the file with the matlab scripts for
+%processing the attune data.
 cd C:\Users\mps48\Documents\GitHub\NES-LTER\Attune
 
-% There are two levels of quality control:
-% 1. Primary Level (asseses quality of the data)
-%     Good
-%     Bad
-%     Questionable/Suspicious  
-% 2.Secondary Level (provides justification for quality assesement with QC tests)
-%     Unexpected CV and count Ratio for Synchecoccus
-%     Excessive Spike Check on Synecheccous Data
-%     Excessive Spike Check on Small Eukaryotes Data
-%     Expert Review
-% input SynConc EukConc SynYcv EukYcv SynCount EukCount from compile_attune
-%
-% output  spike_syn spike_exp   (same length as synConc, EukConc and CV value)
-
-%% Loading in statistical data created by compile_attune
+%% Loading in statistical data created by compile_attune for EN608
 if ~exist('\\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat','file')
     open compile_attune
 else
@@ -23,6 +11,14 @@ end
 
 %write something to check for compiled_stats and to run compile_attune if
 %it is not found
+
+%% Loading in statistical data created by compile_attune for AR29
+if ~exist('\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\compiled_stats.mat','file')
+    open compile_attune
+else
+load \\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\compiled_stats.mat;
+end
+
 %% "Excessive Spike Check"
 %this returns a list of 0 for failing the spike test (spike present) and a
 %1 if the point passes the spike check (no spike)
@@ -42,6 +38,10 @@ index_spikeEuk= find(spikeEuk == 1);
 
 %% Unexpected CV and Count Ratios for Syn Data
 % this creates a vector of ones the same length as the SynConc vector
+
+% figure
+% plot(SynYcv, SynCount, 'r.')
+
 unexpcv = zeros(length(SynConc),1);
 
 %setting the threshold for expected Cv and Count values
@@ -108,8 +108,9 @@ suptitle('Concentrations and Quality Control Test Results')
 %% For Further Expert Review
 
 filename_reviewlist = vertcat(fcsfile_syn(index_spikeSyn), fcsfile_syn(index_spikeEuk),fcsfile_syn(index_threshold));
-fcs_path = '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\'
-exp = zeros(length(SynConc),1);
+%fcs_path = '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\'
+fcs_path = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSexport'
+exp = zeros(length(SynConc),1);x
 
 for ii = 1:length(filename_reviewlist)
     [~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,filename_reviewlist(ii))));
@@ -137,6 +138,10 @@ index_visual= index_visual';
 
 expreview = zeros(length(SynConc),1);
 expreview(index_visual)= 1;
+SynConc_plot = SynConc;
+
+%%
+final = expreview + unexpcv + spikeSyn
 
 %%
 function [F] = bselection(bg,event,F)

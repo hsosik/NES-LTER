@@ -1,11 +1,18 @@
-% fpath = '\\sosiknas1\Lab_data\Attune\EN608\ExportedStats\';
-% outpath = '\\sosiknas1\Lab_data\Attune\EN608\Summary\';
-fpath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\proc';
+%% EN608 CRUISE
+fpath = '\\sosiknas1\Lab_data\Attune\EN608\ExportedStats\';
 outpath = '\\sosiknas1\Lab_data\Attune\EN608\Summary\';
-filelist = dir([fpath 'NES*']);
+filelist = dir([fpath 'NES*']); %for EN608 Cruise
+
+%% AR29 CRUISE
+fpath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\proc\Exported_Stats\';
+outpath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\' ; %FIX';
+filelist = dir([fpath 'SFD*']);
+
+%%
 filelist = {filelist.name}';
 flistchar = char(filelist);
-dstr = flistchar(:,15:end-5);
+%dstr = flistchar(:,15:end-5);
+dstr = flistchar(:,10:end-5)
 mdate = datenum(dstr);
 [~,s] = sort(mdate);
 
@@ -61,7 +68,8 @@ hold on
 plot(EukConc*1000, '.-')
 xlim([0 2563])
 ylabel('Cell concentration (ml^{-1})')
-xlabel('2-minute sample resolution, 31-Jan to 5-Feb 2018')
+%xlabel('2-minute sample resolution, 31-Jan to 5-Feb 2018')
+xlabel('2-minute sample resolution, 16-Apr to 29-Apr 2018')
 lh = legend('\itSynechococcus', 'Small eukaryotes', 'location', 'northwest');
-title('onshore              \leftarrow                     offshore            \rightarrow                    onshore')
+%title('onshore              \leftarrow                     offshore            \rightarrow                    onshore')
 set(lh, 'fontsize', 14)
