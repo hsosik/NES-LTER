@@ -120,7 +120,7 @@ end
 
 %fid = fopen(filename,'r','ieee-be');
 fid = fopen(filename,'r','b');
-fcsheader_1stline   = fread(fid,64,'char');
+fcsheader_1stline = fread(fid,64,'char');
 fcsheader_type = char(fcsheader_1stline(1:6)');
 
 %% reading the header

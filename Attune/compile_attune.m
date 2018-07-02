@@ -12,11 +12,11 @@ filelist = dir([fpath 'SFD*']);
 filelist = {filelist.name}';
 flistchar = char(filelist);
 %dstr = flistchar(:,15:end-5);
-dstr = flistchar(:,10:end-5)
-mdate = datenum(dstr);
-[~,s] = sort(mdate);
-
-filelist = filelist(s);
+%dstr = flistchar(:,10:end-5)
+%mdate = datenum(dstr);
+%[~,s] = sort(mdate);
+%
+%filelist = filelist(s);
 
 SynConc = [];
 SynCount = [];

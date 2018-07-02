@@ -1,4 +1,5 @@
-fpath = '\\multiproc\data_on_memory\underway\proc\';
+%fpath = '\\multiproc\data_on_memory\underway\proc\';
+fpath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\underway\proc'
 
 flist = dir([fpath 'AR18*.csv']);
 flist = flist(3:end); %remove two days before cruise

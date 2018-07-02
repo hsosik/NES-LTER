@@ -1,23 +1,25 @@
-fpath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\underway\proc\';
+basepath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\';
+fpath = [basepath '\underway\proc\'];
 %fpath = '\\sosiknas1\Backup\LTER\20180404_AR28\underway\proc\';
 
-%f = '\\sosiknas1\Lab_data\Attune\EN608\Summary\FCSfileinfo.mat';  %FIX
-f = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSfileinfo.mat';  %AR29 Cruise
+f = [basepath 'Attune\Summary\FCSfileinfo.mat'];  %AR29 Cruise
 if exist(f,'file')
     load(f)
 else
-   [ FCSfileinfo ] = FCS_DateTimeList( '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSexport' ); %FIX
-   %[ FCSfileinfo ] = FCS_DateTimeList( '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS' ); %FIX
+   [FCSfileinfo] = FCS_DateTimeList([basepath '\Attune\FCSexport\']); %AR
     save(f, 'FCSfileinfo')
 end
 
-load \\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\compiled_stats.mat %FIX
+load([basepath '\Attune\Summary\compiled_stats.mat']) %AR29
 [~,a,b] = intersect(FCSfileinfo.filelist, fcsfile_syn);
 fcsmatch.mdate_start(b) = FCSfileinfo.matdate_start(a);
 
 
-flist = dir([fpath 'AR18*.csv']);
-flist = flist(3:end); %remove two days before cruise
+flist = dir([fpath 'AR*.csv']);
+temp = flist(1).name;
+if temp(1:4) == 'AR29' %change to is equal or strmatch if it doesn't work
+    flist = flist(3:end); %remove two days before cruise
+end;
 mdate = [];
 lat = [];
 lon = [];

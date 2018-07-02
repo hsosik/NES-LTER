@@ -1,11 +1,17 @@
-%% Counts
+%% EN608 Cruise
 if ~exist('\\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat','file')
     open compile_attune
 else
 load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat;
 end
+%% AR29 Cruise
+if ~exist('\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\compiled_stats.mat','file')
+    open compile_attune
+else
+load \\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\compiled_stats.mat;
+end
 %% Synchecoccus Graph
-fcs_path = '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\'
+fcs_path = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSexport\'
 [~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,fcsfile_syn(2076))));
 
 %this defines the edges of the rectange for synechecoccus
@@ -54,7 +60,7 @@ ssc_signal = fcsdatscaled(:,12);
 y_signal =fcsdatscaled(:,15);
 
 plot_xmin = 10^1;
-plot_xmax =  10 ^6;
+plot_xmax = 10 ^6;
 plot_ymin = 10^2;
 plot_ymax = 10^6;
 

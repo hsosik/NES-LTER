@@ -20,7 +20,7 @@ for ii = 1:length(fcslist)
     if ~rem(ii,10)
         disp([num2str(ii) ' of ' num2str(length(fcslist))])
     end
-    [~, fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii}));
+    [~,fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii}));
     FCSfileinfo.matdate_start(ii) = datenum([fcshdr.date ', ' fcshdr.starttime]);
     FCSfileinfo.matdate_stop(ii) = datenum([fcshdr.date ', ' fcshdr.stoptime]);
 end
