@@ -2,11 +2,11 @@ basepath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\';
 fpath = [basepath '\underway\proc\'];
 %fpath = '\\sosiknas1\Backup\LTER\20180404_AR28\underway\proc\';
 
-f = [basepath 'Attune\Summary\FCSfileinfo.mat'];  %AR29 Cruise
+f = [basepath '\Attune\Summary\FCSfileinfo.mat'];  %AR29 Cruise
 if exist(f,'file')
     load(f)
 else
-   [FCSfileinfo] = FCS_DateTimeList([basepath '\Attune\FCSexport\']); %AR
+   [FCSfileinfo] = FCS_DateTimeList([basepath '\Attune\ExportedFCS\']); %AR
     save(f, 'FCSfileinfo')
 end
 

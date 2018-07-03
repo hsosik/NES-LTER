@@ -12,6 +12,7 @@ load \\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\compiled_stats.mat;
 end
 %% Synchecoccus Graph
 fcs_path = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSexport\'
+fcs_path = 
 [~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,fcsfile_syn(2076))));
 
 %this defines the edges of the rectange for synechecoccus
