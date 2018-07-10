@@ -1,5 +1,5 @@
 # NES-LTER
-This repository contains code used for data analysis and interpretation associated with the Northeast US Shelf Long-Term Ecological Research (NES-LTER) project. 
+This repository contains code used for data analysis and interpretation associated with the Northeast U.S. Shelf Long-Term Ecological Research (NES-LTER) project. 
 
 More information about NES-LTER can be found here: 
 
