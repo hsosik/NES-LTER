@@ -34,9 +34,9 @@ for ii = 1:length(flist)
     mdate = [mdate; datenum([s s2 s3])];
     lat = [lat; t.data(:,1)];
     lon = [lon; t.data(:,2)];
-    sbe45S = [sbe45S; t.data(:,30)];
-    sbe45T = [sbe45T; t.data(:,31)];
-    flr = [flr; t.data(:,32)];
+    sbe45S = [sbe45S; t.data(:,6)];
+    sbe45T = [sbe45T; t.data(:,7)];
+    flr = [flr; t.data(:,5)];
 end
 clear s s2 s3 t ii fpath flist
 
@@ -48,6 +48,3 @@ for ii = 1:length(fcsmatch.mdate_start)
     fcsmatch.sbe45S(ii) = sbe45S(a);
     fcsmatch.flr(ii) = flr(a);
 end
-
-
-%save AR29_underway

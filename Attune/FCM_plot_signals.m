@@ -1,19 +1,19 @@
-%% EN608 Cruise
-if ~exist('\\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat','file')
+
+basepath = '\\sosiknas1\Lab_data\Attune\EN608';
+%basepath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\';
+index = 2076;
+
+%% Loading in data
+if ~exist([basepath '\Summary\compiled_stats.mat'],'file')
     open compile_attune
 else
-load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats.mat;
+load([basepath '\Summary\compiled_stats.mat'])
 end
-%% AR29 Cruise
-if ~exist('\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\compiled_stats.mat','file')
-    open compile_attune
-else
-load \\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\Summary\compiled_stats.mat;
-end
+fcs_path =  [basepath '\ExportedFCS\']
+
+
 %% Synchecoccus Graph
-fcs_path = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSexport\'
-fcs_path = 
-[~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,fcsfile_syn(2076))));
+[~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,fcsfile_syn(index))));
 
 %this defines the edges of the rectange for synechecoccus
 min = 10^2
@@ -32,7 +32,6 @@ xlim([min max])
 ylim([min max])
 hold on
 title('\itSynchecoccus')
-%title(['PE Signal for ',char(fullfile(fcs_path,fcsfile_syn(2076)))])
 in_syn = inpolygon(fcsdatscaled(:,11),fcsdatscaled(:,19),x_rect,y_rect);
 syn_count = length(find(in_syn==1));
 fsc_signal = fcsdatscaled(:,11);
@@ -56,7 +55,7 @@ title('FSC vs. Count');
 %set(gca,'yscale','log')
 
 %% Small Eukaryotes
-[~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,fcsfile_syn(2076))));
+[~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,fcsfile_syn(index))));
 ssc_signal = fcsdatscaled(:,12);
 y_signal =fcsdatscaled(:,15);
 

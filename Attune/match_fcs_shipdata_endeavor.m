@@ -1,12 +1,13 @@
-f = '\\sosiknas1\Lab_data\Attune\EN608\Summary\FCSfileinfo.mat';
+basepath = '\\sosiknas1\Lab_data\Attune\EN608\'
+f = [basepath 'Summary\FCSfileinfo.mat']
 if exist(f,'file')
     load(f)
 else
-   [ FCSfileinfo ] = FCS_DateTimeList( '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\' );
+   [ FCSfileinfo ] = FCS_DateTimeList( [basepath 'ExportedFCS\']);
    save(f, 'FCSfileinfo')
 end
 
-load \\sosiknas1\Lab_data\Attune\EN608\Summary\compiled_stats
+load([basepath 'Summary\compiled_stats'])
 [~,a,b] = intersect(FCSfileinfo.filelist, fcsfile_syn);
 fcsmatch.mdate_start(b) = FCSfileinfo.matdate_start(a);
 
