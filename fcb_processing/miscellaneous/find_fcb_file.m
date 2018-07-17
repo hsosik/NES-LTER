@@ -1,4 +1,4 @@
-function filelist = find_fcb_file(time1,time2,filetypes)
+function [filelist,timepath] = find_fcb_file(time1,time2,varargin)
 %given anytime window, find the corresponding files in either time, merged
 %or grouped steps....
 %should be able to handle either matlab time entry or string entry
@@ -30,6 +30,7 @@ else
     rootpath='/Volumes/Lab_data/MVCO/FCB/';
 end
 
+filetypes=varargin;
 for q=1:length(filetypes)
     type=filetypes{q};
     switch type
@@ -72,6 +73,8 @@ for q=1:length(filetypes)
             %to be completed....
         case 'grouped'
             %to be completed....
+        otherwise 
+            disp('that is not a recognized file type, please enter "time","merge" or "grouped"')
     end
     
 
