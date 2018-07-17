@@ -81,7 +81,7 @@ end;
 %analvol = analvol - 5.48e-5;  %older, corresponds to P2 speed for two syringe queries? July 2016
 
 
-% FIND VOLUME ANALYZED...turns out, not exactly straightforward...
+%% FIND VOLUME ANALYZED...turns out, not exactly straightforward...
 
 %Notes:
 %There are syringe movements not accounted for in the measurements, such
@@ -315,6 +315,44 @@ else %for rare case of only 1 syringe being processed...
     pumprate(P1)=160;
 end
 
+% So...now we need a metric to flag syringes or records that do not seem to
+% follow a constant syringe movement (i.e. a blocked syringe, sheath being
+% sucked into a partially clogged syringe, etc.
+
+%This is primarily done with looking at the acquisition time over time:
+
+%Maybe a plan would be to go through, keep a running average of the mean
+%acquisition time, then compare, syringe by syringe?
+
+%Hmm...maybe a simple test with median values...and then if more than 0.25
+%of the data is outside the expected acquisition time range, discard that
+%syringe...
+
+%% okay:
+flag2=flag; flag3=flag;
+for q=1:length(syrchangeinfo)
+    
+    %syrchangeinfo has the indexes per syringe at columns 3 and 4:
+    inds=syrchangeinfo(q,3):syrchangeinfo(q,4);
+    tempacq=acqtime(inds); %dataslices
+    tempflag=flag(inds);  
+    tf=find(tempflag==3); %only evaluate cell records (ask of these, should any records be removed?)
+    
+    %construct the quantiles from the last 5 syringes:
+    if q
+        
+    end
+    
+    Q=quantile(tempacq(tf),[0 0.05 0.5 0.95 1]);
+    qq=find(abs(tempacq(tf)- Q(3)) > 2*(Q(4)-Q(2))); %rough, rough metric
+    qq2=find(abs(tempacq(tf)-Q(3))./(Q(4)-Q(2)) > 2);
+    flag2(inds(tf(qq)))=60;
+    flag3(inds(tf(qq2)))=61;
+    
+    
+end
+
+%%
 %analvol(t) = (start(t)-stop(t))/maxpos*totalvol;
 %offset = steps/sec*(q+d time)*(totalvol/maxpos)
 offset = pumprate*querytime*(totalvol/maxpos);
@@ -323,6 +361,7 @@ analvol = analvol - offset;
 %keyboard
 %outmatrix = [1:length(totalstartsec) totalstartsec totalendsec acqtime medianinterval flag ];
 %outmatrix = [200*(1:length(totalstartsec))' totalstartsec totalendsec acqtime analvol flag];
+%%
 outmatrix = [100*(1:length(totalstartsec))' totalstartsec totalendsec acqtime analvol flag];  %2/24/05 heidi, 100 event records for 12 channels
 
 clear acqtime flag t ind analvol maxpos start stop totalvol
