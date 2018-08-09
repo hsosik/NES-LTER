@@ -150,79 +150,56 @@ if length(unique(syrpumpinfo(:,5))) > 1
     
     %calculate average syringe time:
     syrchangeinfo=[syrchangeinfo (1/60)*(syrchangeinfo(:,2)-syrchangeinfo(:,1))];
-    %%
+    
     %keyboard
-    %%
+    
     %find the slope of syringe numbers over time:
     celli=find(syrchangeinfo(:,6)==3); %use only the cell syringes for more reliable slopes
     ii=find(diff(syrchangeinfo(celli,5))<0);
     ro1=celli(ii); %rollover indexes
     ro2=celli(ii+1); %start of new cell syringe
     
-    ro=[1; ro1; ro2; size(syrchangeinfo,1)]; 
+    ro=[1; ro1; ro2; size(syrchangeinfo,1)];
     ro=sort(ro);
-
-%     ii=find(diff(syrchangeinfo(:,5))<0);
-%     ii2=find(syrchangeinfo(ii,5)~=1);
-%     ro=ii(ii2); %rollover indexes
-%     ro=[1; ro; size(syrchangeinfo,1)];
+    
+    %     ii=find(diff(syrchangeinfo(:,5))<0);
+    %     ii2=find(syrchangeinfo(ii,5)~=1);
+    %     ro=ii(ii2); %rollover indexes
+    %     ro=[1; ro; size(syrchangeinfo,1)];
     %%
-    %check if there are any split syringes? 
+    %check if there are any split syringes?
     % use 3hr gap ~ 10000 sec as cutoff to split the syringe -> case where acq stopped, but resumes syr num?
     ind2add=[];
-    for q=1:2:length(ro)-1        
-        if any(diff(syrchangeinfo(ro(q):ro(q+1),1)) > 10000) %3hr gap ~ 10000 sec - split the syringe -> case where acq stopped, but resumes syr num         
+    for q=1:2:length(ro)-1
+        if any(diff(syrchangeinfo(ro(q):ro(q+1),1)) > 10000) %3hr gap ~ 10000 sec - split the syringe -> case where acq stopped, but resumes syr num
             keyboard
             disp(['split syringe?' num2str(q)])
             jj=ro(q):ro(q+1); %easier to handle indexes
             kk=find(diff(syrchangeinfo(jj,1)) > 10000);
             ind2add=[ind2add; jj(kk)'; jj(kk+1)']; %add this split into the rollover indexes
-        end          
+        end
     end
     
     ro=sort([ro; ind2add]);
     
-    %%
-    if length(ro)>2 
+    if length(ro)>2
         syrslope=(syrchangeinfo(ro(2:2:end),2)-syrchangeinfo(ro(1:2:end-1)+1,1))./(syrchangeinfo(ro(2:2:end),5)-syrchangeinfo(ro(1:2:end-1)+1,5)); %two indexes to avoid some 0 syringes on restart
     else %case where no rollover detected
         syrslope=(syrchangeinfo(ro(end),2)-syrchangeinfo(ro(1)+1,1))./(syrchangeinfo(ro(end),5)-syrchangeinfo(ro(1)+1,5)); %two indexes to avoid some 0 syringes on restart
     end
+    
     %% fill in these slopes for all syringes:
     for q=1:2:length(ro)-1
         
-        %OLDER - THIS LOGIC MOVED ABOVE NOW
-%         if any(diff(syrchangeinfo(ro(q)+1:ro(q+1),1)) > 10000) %3hr gap ~ 10000 sec - split the syringe -> case where acq stopped, but resumes syr num?
-%             
-%             disp('split syringe?')
-%             jj=ro(q)+1:ro(q+1); %easier to handle indexes
-%             kk=find(diff(syrchangeinfo(jj,1)) > 10000);
-%             
-%             qq=[jj(1) jj(kk) jj(end)]; %again redo indexes for easier handling and easier for rare case where more than one split
-%             qq=unique(qq); %handles cases where kk=1 or kk=end index
-%             
-%             if length(qq) >=3
-%                 for i=1:length(qq)-2 %for rare case when have a double split!  -> normally length(kk)=1
-%                     syrchangeinfo(qq(i):qq(i+1),8)=(syrchangeinfo(qq(i+1)-1,2)-syrchangeinfo(qq(i),1))./(syrchangeinfo(qq(i+1)-1,5)-syrchangeinfo(qq(i),5)); %recalculate slopes for each split, one index in just for safety :)
-%                     syrchangeinfo(qq(i+1)+1:qq(i+2),8)=(syrchangeinfo(qq(i+2),2)-syrchangeinfo(qq(i+1)+1,1))./(syrchangeinfo(qq(i+2),5)-syrchangeinfo(qq(i+1)+1,5));
-%                 end             
-%             elseif kk(1)==1 & length(qq)==2 %kk=1
-%                syrchangeinfo(jj(1),8)=0; 
-%                syrchangeinfo(jj(kk)+1:jj(end),8)=(syrchangeinfo(jj(end),2)-syrchangeinfo(jj(kk)+1,1))./(syrchangeinfo(jj(end),5)-syrchangeinfo(jj(kk)+1,5));
-%             elseif kk(end)==length(jj) & length(qq)==2
-%                syrchangeinfo(jj(1):jj(end)-1,8)=(syrchangeinfo(jj(end)-1,2)-syrchangeinfo(jj(1),1))./(syrchangeinfo(jj(end)-1,5)-syrchangeinfo(jj(1),5));
-%                syrchangeinfo(jj(end),8)=0; 
-%             end
-            
         if length(ro(q):ro(q+1)) < 4 & length(ro)>2
             syrchangeinfo(ro(q)+1:ro(q+1),8)=0; %will be caught later - > unreliable slope estimates if low syrnum and many 0's and 1' for 'little' restarts
-        
+            
         else %Typical case:
             syrchangeinfo(ro(q):ro(q+1),8)=syrslope((q+1)/2);
         end
     end
     % keyboard
-    
+    %%
     %use the syrchangeinfo matrix to populate matrix for each record:
     avgsyrtime=nan(size(syrpumpinfo,1),2); %syringe times and slopes
     for q=1:size(syrchangeinfo,1)
@@ -251,7 +228,7 @@ if length(unique(syrpumpinfo(:,5))) > 1
         
         for i=1:length(jj)
             qq=find(goodrate <= jj(i)); %for looking back in time....
-            [~, im]=min(totalstartsec(jj(i))-totalstartsec(goodrate(qq)));  %find closest good bead or cell run in (backwards) time that has a pumprate       
+            [~, im]=min(totalstartsec(jj(i))-totalstartsec(goodrate(qq)));  %find closest good bead or cell run in (backwards) time that has a pumprate
             %[~, im]=min(abs(jj(i)-goodrate)); %find closest good bead or cell run that has a pumprate (in index)
             if ismember(goodrate(qq(im)),P3) %use this index speed
                 P3=[P3; jj(i)]; %add the test index to a speed index group
@@ -262,13 +239,13 @@ if length(unique(syrpumpinfo(:,5))) > 1
             else %then can try a forward time look:
                 [~, im]=min(abs(totalstartsec(jj(i))-totalstartsec(goodrate)));
                 if ismember(goodrate(im),P3) %use this index speed
-                P3=[P3; jj(i)]; %add the test index to a speed index group
+                    P3=[P3; jj(i)]; %add the test index to a speed index group
                 elseif ismember(goodrate(im),P2)
-                P2=[P2; jj(i)];
+                    P2=[P2; jj(i)];
                 elseif ismember(goodrate(im),P1)
-                P1=[P1; jj(i)];
+                    P1=[P1; jj(i)];
                 else
-                keyboard
+                    keyboard
                 end
             end
         end
@@ -328,28 +305,68 @@ end
 %of the data is outside the expected acquisition time range, discard that
 %syringe...
 
-%% okay:
-flag2=flag; flag3=flag;
+%Ooh- or, better yet - compare to see if roughly follows a normal
+%distribution of acquistion times - if not, flag!
+
+%% okay: screen syringes
+
+%go through each syringe, check whether or not follows a normal dist based
+%on linear test between ordered data and the normal inverse of data
+%positions
+%From Andy's notes, plot: y(1) < y(2) < y(3)  (these being the acquistion
+%times of a syringe)
+%against F^-1(1/(n+1), F^-1(2/n+1), F^-1(3/n+1), where F^-1 is the norm inv
+%parameterized from the syringe data
+
 for q=1:length(syrchangeinfo)
     
     %syrchangeinfo has the indexes per syringe at columns 3 and 4:
     inds=syrchangeinfo(q,3):syrchangeinfo(q,4);
     tempacq=acqtime(inds); %dataslices
-    tempflag=flag(inds);  
+    tempflag=flag(inds);
     tf=find(tempflag==3); %only evaluate cell records (ask of these, should any records be removed?)
+    n=length(tempacq(tf));
     
-    %construct the quantiles from the last 5 syringes:
-    if q
+    if ~isempty(tf) & n~=1 %can't be empty and length can't be 1
+          
+        finv = (norminv(((1:n)/(n+1)),mean(tempacq(tf)),std(tempacq(tf))))'; %expected value given an underling normal distribution
+        [ordered_acq, oind] = sort(tempacq(tf)); %ordered acquisition times              
+        ss=sum(sqrt((ordered_acq-finv).^2));
+        
+        %check deviation from expected:
+        
+        %first check for some outliers that occur at beginning and end of syringes
+        if (oind(end)==1 || oind(end)==n) && (ordered_acq(end)-ordered_acq(end-1) > 1.5*std(tempacq(tf))) %first or last point and greater than 1 std dev away
+            
+            %remove this point and see if better ss:
+            n=n-1;
+            ordered_acq2=ordered_acq(1:end-1);
+            finv2 = (norminv(((1:n)/(n+1)),mean(ordered_acq2),std(ordered_acq2)))'; %expected value given an underling normal distribution
+
+            ss2=sum(sqrt((ordered_acq2-finv2).^2));
+            
+            if ss2 < 3*mean(tempacq(tf))
+                disp('fixed it! excluding that datapacket from syringe')
+                flag(inds(tf(oind(end))))=60; %flag it!
+                syringe_acqtime_QC2(finv,ordered_acq,oind,ss,finv2,ordered_acq2,ss2)
+                keyboard
+            else
+                disp('hmmmm...more serious problems with this syringe?')
+                syringe_acqtime_QC2(finv,ordered_acq,oind,ss,finv2,ordered_acq2,ss2)
+                keyboard
+                flag(inds(tf))=61; %flag it!
+            end
+            
+        elseif ss > 4*mean(tempacq(tf))
+            disp('hmmmm...more serious problems with this syringe?')
+            syringe_acqtime_QC2(finv,ordered_acq,oind,ss)
+            keyboard
+            flag(inds(tf))=61; %flag it!
+        end      
+        
+        %pause
         
     end
-    
-    Q=quantile(tempacq(tf),[0 0.05 0.5 0.95 1]);
-    qq=find(abs(tempacq(tf)- Q(3)) > 2*(Q(4)-Q(2))); %rough, rough metric
-    qq2=find(abs(tempacq(tf)-Q(3))./(Q(4)-Q(2)) > 2);
-    flag2(inds(tf(qq)))=60;
-    flag3(inds(tf(qq2)))=61;
-    
-    
 end
 
 %%
