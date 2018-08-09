@@ -4,10 +4,12 @@ function [filelist,timepath] = find_fcb_file(time1,time2,varargin)
 %should be able to handle either matlab time entry or string entry
 
 
-[yy1,mm1,dd1,hh1,mi1,ss1]=datevec(time1);
-[yy2,mm2,dd2,hh2,mi2,ss2]=datevec(time2);
+[yy1,~,~,~,~,~]=datevec(time1);
+[yy2,~,~,~,~,~]=datevec(time2);
 
-%find the correct year label:
+if yy1==yy2
+
+    %find the correct year label:
 switch yy1
     case 2003
         yearlabel='May';
@@ -22,6 +24,10 @@ switch yy1
     otherwise
         yearlabel='Jan';
 end
+else
+    disp('hmmm - have not coded the piece to deal with timespan more than 1 year...')
+    keyboard
+end
 
 %and the correct partial path:
 if ~isempty(strfind(computer,'WIN'))
@@ -31,9 +37,13 @@ else
 end
 
 filetypes=varargin;
+
 for q=1:length(filetypes)
+    
     type=filetypes{q};
+    
     switch type
+        
         case 'time'
             
             timepath=fullfile(rootpath,['MVCO_' yearlabel num2str(yy1)],'data/processed/time/');
@@ -49,6 +59,7 @@ for q=1:length(filetypes)
                 time_file_record{j,3}=max(timemat(:,3)); %third col is start time
                 clearvars timemat temp tempname
             end
+            
             %make sure in correct temporal order:
             [~,is]=sort(cell2mat(time_file_record(:,2)));
             time_file_record=time_file_record(is,:);
