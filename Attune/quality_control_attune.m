@@ -1,7 +1,6 @@
 %this sets the current directory to the file with the matlab scripts for
 %processing the attune data.
 basepath = '\\sosiknas1\Lab_data\Attune\EN608\';
-
 %Input: Summary from code that process attune ran
 
 % if exist(Attune) == 1
@@ -10,7 +9,6 @@ basepath = '\\sosiknas1\Lab_data\Attune\EN608\';
 %     disp('process_attune needs to run first')
 %     process_attune(basepath)
 % end
-
 %run process attune if it hasn't been run yet
 
 %% "Excessive Spike Check"
@@ -20,32 +18,29 @@ basepath = '\\sosiknas1\Lab_data\Attune\EN608\';
 %checking for spikes in the Syn Concentration Data
 %the second argument is the specificity of the test
 
-spikeSyn = dataqc_spiketest(SynConc,0);
+spikeSyn = dataqc_spiketest(x,0);
 
 %checking for spikes in the Euk Concentration Data
 %the second argument is the specificity of the test
-spikeEuk = dataqc_spiketest(EukConc,0);
-
-index_spikeSyn = find(spikeSyn == 1);
-index_spikeEuk= find(spikeEuk == 1);
+index_x = find(x == 1);
 
 
 %% Unexpected CV and Count Ratios for Syn Data
 % this creates a vector of ones the same length as the SynConc vector
 
-YCV = std()./mean()
+YCV = std(x)./mean(x)
 
 % figure
 % plot(SynYcv, SynCount, 'r.')
 
-unexpcv = zeros(length(SynConc),1);
+unexpcv = zeros(length(x),1);
 
 %setting the threshold for expected Cv and Count values
 t_CV = 80;
 t_Count = 600;
 
 %this indexes any data points that are above the threshold (bad points)
-index_threshold = find(SynYcv >= t_CV & SynCount >= t_Count);
+index_threshold = find(YCV >= t_CV & SynCount >= t_Count);
 
 %this gives those points (indexed as bad) a value of zero, indicating they
 %have failed the test
@@ -55,8 +50,7 @@ unexpcv(index_threshold) = 1
 
 figure('units','normalized','outerposition',[0 0 1 1])
 subplot(4,1,1)
-figure
-plot(SynConc*1000, 'b.-','LineWidth',3)
+plot(x*1000, 'b.-','LineWidth',3)
 % hold on
 % plot(EukConc*1000, 'g.-','LineWidth',3)
 xlim([0 length(SynConc)])
@@ -67,10 +61,9 @@ lh = legend('\itSynechococcus', 'Small eukaryotes','location', 'northwest');
 set(gca, 'fontsize', 25)
 
 subplot(4,1,2)
-figure
-plot(SynConc*1000, 'b.-','LineWidth',3)
+plot(x*1000, 'b.-','LineWidth',3)
 hold on
-plot(index_threshold,SynConc(index_threshold)*1000,'r*','MarkerSize',20,'LineWidth',2)
+plot(index_threshold,x(index_threshold)*1000,'r*','MarkerSize',20,'LineWidth',2)
 xlim([0 length(SynConc)])
 ylabel('Cell concentration (ml^{-1})')
 lh = legend('\itSynechococcus','Unexpected CV Ratio', 'location', 'northwest');
@@ -140,8 +133,6 @@ expreview = zeros(length(SynConc),1);
 expreview(index_visual)= 1;
 SynConc_plot = SynConc;
 
-%%
-final = expreview + unexpcv + spikeSyn
 %%
 function [F] = bselection(bg,event,F)
 display(['Previous: ', event.OldValue.Text]);

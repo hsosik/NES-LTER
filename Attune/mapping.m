@@ -1,4 +1,4 @@
-%function [map] = transect_mapper();
+%function [map] = map_attune()
 %% Map of Sea Surface Temperature
 %needs fcsmatch.lat and fcsmatch.lon
 

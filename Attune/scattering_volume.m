@@ -318,8 +318,6 @@ lh = legend( 'Small eukaryotes');
 
 %% figure 4 temperature plot
 
-
-
 load([outpath 'compiled_stats'], 'fcsfile*', 'SynConc', 'EukConc','SynCount','SynYcv', 'EukCount','EukYcv');
 %return
 figure
