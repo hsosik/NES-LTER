@@ -1,29 +1,25 @@
-% EN608 CRUISE
-basepath ='\\sosiknas1\Lab_data\Attune\EN608\';
-
-%% AR29 CRUISE
-basepath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\';
-
-%%
-fpath = [basepath 'ExportedStats\'];
+function [compiled_stats] =compile_attune(basepath) % Input: path to directory of exported stats files
+%output 
+fpath = [basepath '\ExportedStats\'];
 outpath = [basepath '\Summary\'];
 
-% Extracting files out of the directory
+% Extracting files out of the directory sorts NES out from SFD
+%first it will populate with NES titled files but if empty will go for SFD
+%PROBLEM: ONLY 2565 files are analyzed when there are more
 filelist = dir([fpath 'NES*']); 
 if isempty(filelist) == 1
      filelist = dir([fpath 'SFD*']);
-else return
 end
 
 filelist = {filelist.name}';
 flistchar = char(filelist);
+% 
+% dstr = flistchar(:,15:end-5);
+% dstr = flistchar(:,10:end-5)
+% mdate = datenum(dstr);
+% [~,s] = sort(mdate);
 
-%dstr = flistchar(:,15:end-5);
-%dstr = flistchar(:,10:end-5)
-%mdate = datenum(dstr);
-%[~,s] = sort(mdate);
-%
-%filelist = filelist(s);
+% filelist = filelist(s);
 
 SynConc = [];
 SynCount = [];
@@ -33,8 +29,10 @@ EukCount = [];
 EukYcv = [];
 fcsfile_syn = SynConc;
 fcsfile_euk = SynConc;
+
 for count = 1:length(filelist)
     disp(filelist(count))
+    disp(count)
     itable = importfile([fpath filelist{count}]);
     ii = strmatch( 'Syn', itable.Gate);
     sample = itable.Sample(ii); 
@@ -63,19 +61,14 @@ for count = 1:length(filelist)
     temp = regexprep(temp, '( ', '(');
     temp = regexprep(temp, '(NaN)', '');
     fcsfile_euk = [fcsfile_euk; temp]; clear temp 
-    %FileSampleCount(count) = length(ii);
+    FileSampleCount(count) = length(ii);
 end
+
+compiled_stats.SynConc = SynConc;
+compiled_stats.EukConc = EukConc;
+compiled_stats.SynCount = SynCount;
+compiled_stats.SynYcv = SynYcv;
+compiled_stats.EukCount = EukCount;
+compiled_stats.EukYcv = EukYcv;
 save([outpath 'compiled_stats'], 'fcsfile*', 'SynConc', 'EukConc','SynCount','SynYcv', 'EukCount','EukYcv');
-%%
-%return
-figure
-plot(SynConc*1000, '.-')
-hold on
-plot(EukConc*1000, '.-')
-xlim([0 2563])
-ylabel('Cell concentration (ml^{-1})')
-xlabel('2-minute sample resolution, 31-Jan to 5-Feb 2018')
-%xlabel('2-minute sample resolution, 16-Apr to 29-Apr 2018')
-lh = legend('\itSynechococcus', 'Small eukaryotes', 'location', 'northwest');
-title('onshore              \leftarrow                     offshore            \rightarrow                    onshore')
-set(lh, 'fontsize', 14)
+end

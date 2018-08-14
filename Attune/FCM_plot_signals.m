@@ -1,7 +1,10 @@
+% function [fcsplot] = fcs_plot_signals(singlefcsfilepath)
 
-basepath = '\\sosiknas1\Lab_data\Attune\EN608';
+%basepath = '\\sosiknas1\Lab_data\Attune\EN608';
 %basepath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\';
-index = 2076;
+basepath= '\\sosiknas1\Lab_data\Attune\Size_calibration_July2018\ExportedFCS';
+index = 1;
+fcsfil
 
 %% Loading in data
 if ~exist([basepath '\Summary\compiled_stats.mat'],'file')
@@ -9,12 +12,16 @@ if ~exist([basepath '\Summary\compiled_stats.mat'],'file')
 else
 load([basepath '\Summary\compiled_stats.mat'])
 end
+
 fcs_path =  [basepath '\ExportedFCS\']
 
+%%
+filename = 'E:\Attune_Data\EN608\ExportedFCS\NESLTER_EN608_02Feb2018C_Group_day0_Sample(10).fcs'
 
 %% Synchecoccus Graph
-[~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,fcsfile_syn(index))));
-
+% [~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
+filename = 'E:\Attune_Data\EN608\ExportedFCS\NESLTER_EN608_31Jan2018B_Group_day0_Sample(1).fcs';
+[~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
 %this defines the edges of the rectange for synechecoccus
 min = 10^2
 max =  10^6
@@ -44,18 +51,20 @@ loglog(xx(in_syn),yy(in_syn),'r.')
 hold on
 loglog(x_rect,y_rect,'LineWidth',2,'Color','r','LineStyle','--')
 lh = legend('\itSynechococcus');
+xlabel('Forward Scattering')
+ylabel('Phycoerythrin')
 
 %Plotting Histogram of the scattering signal
 figure
 [n, xout] = hist(fsc_signal(find(in_syn==1)),syn_count);
 bar(xout, n, 'barwidth', 1, 'basevalue', 0,'FaceColor',[1 0 0]);
-xlabel('FSC');
+xlabel('Forward Scattering');
 ylabel('Count');
-title('FSC vs. Count');
+title('Histogram of Forward Scattering');
 %set(gca,'yscale','log')
 
 %% Small Eukaryotes
-[~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,fcsfile_syn(index))));
+[~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
 ssc_signal = fcsdatscaled(:,12);
 y_signal =fcsdatscaled(:,15);
 
@@ -93,7 +102,8 @@ hold on
 loglog(x_polygon,y_polygon,'LineWidth',1,'LineStyle','--','Color',[0 0.75 0]);
 xlim([plot_xmin plot_xmax]);
 ylim([plot_ymin plot_ymax]);
-
+xlabel('Side Scattering');
+ylabel('GL-1');
 title('Chlorophyll Signal for Small Eukaryotes')
 lh = legend( 'Small eukaryotes','\itSynechococcus');
 
@@ -102,8 +112,8 @@ figure
 [n, xout] = hist(ssc_signal(find(in_euk==1)),euk_count);
 bar(xout, n, 'barwidth', 0.5, 'basevalue', 1,'FaceColor',[0 0.75 0]);
 set(gca,'yscale','log','xscale','log');
-xlabel('SSC');
+xlabel('Side Scattering');
 ylabel('Count');
-title('Small Eukaryotes SSC vs. Count');
+title('Histogram of Side Scattering for Small Eukaryotes');
 
 

@@ -1,5 +1,7 @@
 function [ FCSfileinfo ] = FCS_DateTimeList( fcs_path )
-%UNTITLED2 Summary of this function goes here
+%UNTITLED2
+%input: path to a directory of fcs files
+%output: a structure called fcsfileinfo with matlab date starts and stops
 %   Detailed explanation goes here
 
 if ~exist('fcs_path', 'var')
