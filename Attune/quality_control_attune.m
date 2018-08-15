@@ -103,7 +103,7 @@ suptitle('Concentrations and Quality Control Test Results')
 filename_reviewlist = vertcat(fcsfile_syn(index_spikeSyn), fcsfile_syn(index_spikeEuk),fcsfile_syn(index_threshold));
 %fcs_path = '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\'
 fcs_path = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\FCSexport'
-exp = zeros(length(SynConc),1);x
+exp = zeros(length(SynConc),1);
 
 for ii = 1:length(filename_reviewlist)
     [~,fcshdr,fcsdatscaled] =fca_readfcs(char(fullfile(fcs_path,filename_reviewlist(ii))));
@@ -134,21 +134,3 @@ expreview(index_visual)= 1;
 SynConc_plot = SynConc;
 
 %%
-function [F] = bselection(bg,event,F)
-display(['Previous: ', event.OldValue.Text]);
-display(['Current: ', event.NewValue.Text]);
-switch event.NewValue.Text
-    case 'Bad'
-        exp(F.index) = 3;
-        display('index changed to 3');
-        display('------------------');
-    case 'Concerning'
-        exp(F.index) = 2;
-        display('index changed to 2');
-        display('------------------');
-    case 'Good'
-        exp(F.index) = 0 ;
-        display('index changed to 0');
-        display('------------------');
-end
-end

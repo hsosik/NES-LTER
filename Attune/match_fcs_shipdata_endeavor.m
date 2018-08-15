@@ -1,16 +1,15 @@
-%needs fcsfileinfo
-basepath = '\\sosiknas1\Lab_data\Attune\EN608\'
- %basepath = 'E:\Attune_Data\EN608'; 
 %function [fcsmatch]=match_fcs_shipdata_endeavor(basepath)
+
+basepath = '\\sosiknas1\Lab_data\Attune\EN608\'
+%basepath = 'E:\Attune_Data\EN608';
+%basepath = 'E:\Attune_Data\EN608\';
+%basepath = '\\sosiknas1\Backup\LTER\20180404_AR28\'
+
+fpath = [basepath '\ExportedFCS\'];
 f = [basepath '\Summary\Attune']
 outpath = [basepath '\Summary']
 
 load(f)
-% 
-% basepath = 'E:\Attune_Data\EN608\';
-% basepath = '\\sosiknas1\Backup\LTER\20180404_AR28\'
-fpath = [basepath '\ExportedFCS\'];
-outpath = [basepath '\Summary\'];
 
 % Extracting files out of the directory sorts NES out from SFD
 %first it will populate with NES titled files but if empty will go for SFD
@@ -42,6 +41,7 @@ temperature = str2num(char(temperature));
 Attune.fcsmatch.lat = [];
 Attune.fcsmatch.lon = [];
 Attune.fcsmatch.temperature = [];
+Attune.fcsmatch.salinity = [];
 for ii = 1:length(Attune.fcsmatch.mdate_start)
     [~,a] = min(abs(mdate - Attune.fcsmatch.mdate_start(ii)));
     Attune.fcsmatch.lat(ii) = lat(a);
@@ -51,5 +51,4 @@ end
 
 clear ii s lat lon temperature mdate yd t a b f
 save([basepath '\Summary\Attune'],'Attune')
-disp('finished')
 % save([outpath '\compiled_stats'],'fcsmatch')

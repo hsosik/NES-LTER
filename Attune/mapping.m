@@ -25,7 +25,8 @@ geoshow(states)
 % cmap = colormap(map)
 % colorbar
 %Display Colorbar
-geoshow(fcsmatch.lat,fcsmatch.lon,'LineWidth',2)
+[~,I] = sort(Attune.fcsmatch.mdate_start);
+geoshow(Attune.fcsmatch.lat(I),Attune.fcsmatch.lon(I),'LineWidth',3)
 colorbar
 
 ylabel('Sea Surface Temperature (Celsius)','FontName','Calibri')
@@ -56,3 +57,15 @@ annotation('textbox',...
     'LineStyle','none',...
     'FontName','Calibri',...
     'FitBoxToText','off','FontSize',19);
+
+hold on
+
+map = zeros(numel(Attune.fcsmatch.temperature),3);
+map(:,1)=1;
+map(:,2)=0;
+map(:,3)=Attune.fcsmatch.temperature./max(Attune.fcsmatch.temperature);
+%Set the current Colormap
+c= colormap(map);
+%Display Colorbar
+scatter(Attune.fcsmatch.lon,Attune.fcsmatch.lat,1,c)
+colorbar
