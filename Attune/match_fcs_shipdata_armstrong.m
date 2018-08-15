@@ -1,5 +1,4 @@
 % basepath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\';
-% basepath='E:\Attune_Data\EN608\';
 basepath='\\sosiknas1\Backup\LTER\20180404_AR28\';
 % %function [fcsmatch] = match_fcs_shipdata_armstrong(basepath)
 % fpath = [basepath '\underway\proc\'];

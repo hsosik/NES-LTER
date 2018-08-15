@@ -101,10 +101,10 @@ for count = 1:length(filelist)
  end
  
    Attune.Biovol.lesstwo = [Attune.Biovol.lesstwo; sum((4/3).*pi.*((size2./2).^3))];
-   Attune.Biovol.twoten = [Attune.Biovol.twoten; sum((4/3).*pi.*(size2_10./2).^3)];
-   Attune.Biovol.tentwen =[Attune.Biovol.tentwen; sum((4/3).*pi.*(size10_20./2).^3)];
-   Attune.Biovol.twen = [Attune.Biovol.twen; sum((4/3).*pi.*(size20./2).^3)];
-   Attune.Biovol.Syn = [Attune.Biovol.Syn; sum((4/3).*pi.*(SynDiameter./2).^3)];
+   Attune.Biovol.twoten = [Attune.Biovol.twoten; sum((4/3).*pi.*((size2_10./2).^3))];
+   Attune.Biovol.tentwen =[Attune.Biovol.tentwen; sum((4/3).*pi.*((size10_20./2).^3))];
+   Attune.Biovol.twen = [Attune.Biovol.twen; sum((4/3).*pi.*((size20./2).^3))];
+   Attune.Biovol.Syn = [Attune.Biovol.Syn; sum((4/3).*pi.*((SynDiameter./2).^3))];
    Attune.Count.lesstwo = [Attune.Count.lesstwo ; length(size2)];
    Attune.Count.twoten = [Attune.Count.twoten ; length(size2_10)];
    Attune.Count.tentwen =[Attune.Count.tentwen ; length(size10_20)];
