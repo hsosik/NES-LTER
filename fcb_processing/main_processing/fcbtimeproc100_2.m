@@ -318,6 +318,13 @@ end
 %against F^-1(1/(n+1), F^-1(2/n+1), F^-1(3/n+1), where F^-1 is the norm inv
 %parameterized from the syringe data
 
+figure(15)
+subplot(1,2,2,'replace')
+plot(totalstartsec,acqtime,'.-')
+hold on
+ii=find(flag==3);
+plot(totalstartsec(ii),acqtime(ii),'.')
+
 for q=1:length(syrchangeinfo)
     
     %syrchangeinfo has the indexes per syringe at columns 3 and 4:
@@ -328,10 +335,10 @@ for q=1:length(syrchangeinfo)
     n=length(tempacq(tf));
     
     if ~isempty(tf) & n~=1 %can't be empty and length can't be 1
-          
+        
         finv = (norminv(((1:n)/(n+1)),mean(tempacq(tf)),std(tempacq(tf))))'; %expected value given an underling normal distribution
-        [ordered_acq, oind] = sort(tempacq(tf)); %ordered acquisition times              
-        ss=sum(sqrt((ordered_acq-finv).^2));
+        [ordered_acq, oind] = sort(tempacq(tf)); %ordered acquisition times
+        ss=sum(sqrt((ordered_acq-finv).^2)); %difference between expected and observed
         
         %check deviation from expected:
         
@@ -341,31 +348,52 @@ for q=1:length(syrchangeinfo)
             %remove this point and see if better ss:
             n=n-1;
             ordered_acq2=ordered_acq(1:end-1);
+            oind2=oind(1:end-1);
             finv2 = (norminv(((1:n)/(n+1)),mean(ordered_acq2),std(ordered_acq2)))'; %expected value given an underling normal distribution
-
+            
             ss2=sum(sqrt((ordered_acq2-finv2).^2));
             
-            if ss2 < 3*mean(tempacq(tf))
-                disp('fixed it! excluding that datapacket from syringe')
+            if ss2 < 3*mean(ordered_acq)
+                disp(['#' num2str(q) ' fixed it! excluding that datapacket from syringe'])
                 flag(inds(tf(oind(end))))=60; %flag it!
-                syringe_acqtime_QC2(finv,ordered_acq,oind,ss,finv2,ordered_acq2,ss2)
-                keyboard
-            else
-                disp('hmmmm...more serious problems with this syringe?')
-                syringe_acqtime_QC2(finv,ordered_acq,oind,ss,finv2,ordered_acq2,ss2)
-                keyboard
-                flag(inds(tf))=61; %flag it!
+                %                 syringe_acqtime_QC2(finv,ordered_acq,oind,ss,subplot(1,2,1,'replace'))
+                %                 syringe_acqtime_QC2(finv2,ordered_acq2,oind2,ss2,subplot(1,2,2,'replace'))
+                %
+                %replace quantities so do not trigger below....
+                ordered_acq=ordered_acq2;
+                oind=oind2;
+                finv=finv2;
+                ss=ss2;
+                %keyboard
+            end
+        end %check for outlier...
+        
+        
+        if ss > 4*mean(ordered_acq) || ss > 50 %Regardless of initial outlier, check for general deviation...(the second logic argument catches cases where the syringe has few records...)
+            
+            disp(['#' num2str(q) ' hmmmm...more serious problems with this syringe? Checking for linearity...'])
+            [b,~,~,~,stats]=regress(finv,[ones(length(ordered_acq),1) ordered_acq]);
+            
+            
+            disp([num2str(stats(1)) ' : ' num2str(stats(3))])
+            if syrplotflag
+                subplot(1,2,2)
+                xlim([totalstartsec(inds(1))-500 totalstartsec(inds(end))+500])
+                line([totalstartsec(inds(1)) totalstartsec(inds(1))],ylim,'linestyle','--','color',[0.5 0.5 0.5])
+                line([totalstartsec(inds(end)) totalstartsec(inds(end))],ylim,'linestyle','--','color',[0.5 0.5 0.5])
+                subplot(1,2,1,'replace')
+                syringe_acqtime_QC2(finv,ordered_acq,oind,ss,subplot(1,2,1,'replace'))
+                plot(finv, b(1)+b(2)*finv,'r.-')
             end
             
-        elseif ss > 4*mean(tempacq(tf))
-            disp('hmmmm...more serious problems with this syringe?')
-            syringe_acqtime_QC2(finv,ordered_acq,oind,ss)
             keyboard
-            flag(inds(tf))=61; %flag it!
-        end      
+            if stats(1) < 0.85 %enough of a deviation from linearity...
+                flag(inds(tf))=61; %flag it!
+            end
+        end
         
-        %pause
-        
+    elseif n==1 %if you are a cell syringe of length 1 - ignore
+        flag(inds(tf))=62; %length of 1
     end
 end
 
