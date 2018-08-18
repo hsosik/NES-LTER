@@ -11,44 +11,99 @@
 basepath = '\\sosiknas1\Lab_data\Attune\EN608';
 load([basepath '\Summary\Attune'])
 
+%% Summary Plot of Tests
+
+figure('units','normalized','outerposition',[0 0 1 1])
+[~,ii] = sort(Attune.FCSfileinfo.matdate_start)
+SynConc = Attune.Count.SynTotal(ii)./Attune.vol_analyzed(ii)
+EukConc = Attune.Count.EukTotal(ii)./Attune.vol_analyzed(ii)
+
+subplot(4,1,1)
+plot(SynConc*1000, 'b.-','LineWidth',1)
+hold on
+plot(EukConc*1000, 'g.-','LineWidth',1)
+xlim([0 length(SynConc)])
+lh = legend('\itSynechococcus', 'Small eukaryotes','location', 'northwest');
+title('onshore              \leftarrow                     offshore            \rightarrow                    onshore')
+title('Raw Data')
+set(gca, 'fontsize', 12)
+
+
+% Results of Ratio Test
+subplot(4,1,2)
+plot(SynConc*1000, 'b.-','LineWidth',1)
+hold on
+plot(EukConc*1000, 'g.-','LineWidth',1)
+plot(synRatio,SynConc(synRatio)*1000,'r*','MarkerSize',10,'LineWidth',1)
+plot(eukRatio,EukConc(eukRatio)*1000,'r*','MarkerSize',10,'MarkerFaceColor',[.49 1 .63])
+xlim([0 length(SynConc)])
+lh = legend('\itSynechococcus','Small Euks','Unexpected CV Ratio', 'location', 'northwest');
+title('Unexpected CV Ratio Check')
+set(gca, 'fontsize', 12)
+
+
+subplot(4,1,3)
+plot(SynConc*1000 ,'b.-','LineWidth',1)
+hold on
+plot(synRatio, SynConc(synRatio)*1000, 'rx','MarkerSize',10,'LineWidth',1)
+xlim([0 length(SynConc)])
+lh = legend('\itSynechecoccus','Excessive Spike', 'location', 'northwest');
+title('Excessive Syn Spike Check')
+set(gca, 'fontsize', 12)
+
+subplot(4,1,4)
+plot(EukConc*1000, 'g.-','LineWidth',1)
+hold on
+plot(eukRatio,EukConc(eukRatio)*1000, 'rx','MarkerSize',10,'LineWidth',1)
+xlim([0 length(SynConc)])
+ylabel('Cell concentration (ml^{-1})')
+xlabel('2-minute sample resolution, 31-Jan to 5-Feb 2018')
+lh = legend('Small eukaryotes','Excessive Spike', 'location', 'northwest');
+title('onshore              \leftarrow                     offshore            \rightarrow                    onshore')
+title('Excessive Euk Spike Check')
+set(gca, 'fontsize', 12)
+suptitle('Concentrations and Quality Control Test Results')
 
 %% check gating for Syn
 % [~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
 % filename = 'E:\Attune_Data\EN608\ExportedFCS\NESLTER_EN608_31Jan2018B_Group_day0_Sample(1).fcs';
-filename = '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\NESLTER_EN608_31Jan2018B_Group_day0_Sample(1).fcs';
+filename = '\\sosiknas1\Lab_data\Attune\EN608\ExportedFCS\NESLTER_EN608_31Jan2018B_Group_day0_Sample(36).fcs';
 
 [~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
-%this defines the edges of the rectange for synechecoccus
-min = 10^2
-max =  10^6
-%for syn count box
-xmin= 200
-xmax= 10^4
-ymin= 10^3
-ymax= 10^5
+x = fcsdatscaled(:,11);
+y = fcsdatscaled(:,19);
+
+%plot min and mix
+min = 10^2;
+max =  10^6;
+
+%defining the boundaries of the syn gate
+xmin= 200;
+xmax= 10^4;
+ymin= 10^3;
+ymax= 10^5;
 x_rect = [xmin xmin xmax xmax xmin];
 y_rect = [ymin ymax ymax ymin ymin];
 
-figure
-loglog(fcsdatscaled(:,11),fcsdatscaled(:,19),'k.','HandleVisibility','off')
-xlim([min max])
-ylim([min max])
-hold on
-title('\itSynchecoccus')
-in_syn = inpolygon(fcsdatscaled(:,11),fcsdatscaled(:,19),x_rect,y_rect);
+
+in_syn = inpolygon(x,y,x_rect,y_rect);
 syn_count = length(find(in_syn==1));
-fsc_signal = fcsdatscaled(:,11);
+
+figure
+loglog(x,y,'k.','HandleVisibility','off');
+hold on
+loglog(x(in_syn),y(in_syn),'r.');
+loglog(x_rect,y_rect,'LineWidth',2,'Color','r','LineStyle','--');
+
+xlim([min max]);
+ylim([min max]);
+title('\itSynchecoccus');
 txt1 = ['Syn: ',num2str(syn_count)];
-text(xmin+100,10^5.15,txt1,'Color','r')
-xx = fcsdatscaled(:,11);
-yy = fcsdatscaled(:,19);
-hold on
-loglog(xx(in_syn),yy(in_syn),'r.')
-hold on
-loglog(x_rect,y_rect,'LineWidth',2,'Color','r','LineStyle','--')
+clear text
+text(xmin+1,10^5.15,txt1,'Color','r')
 lh = legend('\itSynechococcus');
-xlabel('Forward Scattering')
-ylabel('Phycoerythrin')
+xlabel('Forward Scattering');
+ylabel('Phycoerythrin');
 
 %Plotting Histogram of the scattering signal
 figure
@@ -61,6 +116,7 @@ title('Histogram of Forward Scattering');
 
 %% Check gates for Small Eukaryotes
 [~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
+
 ssc_signal = fcsdatscaled(:,12);
 y_signal =fcsdatscaled(:,15);
 
@@ -69,35 +125,24 @@ plot_xmax = 10 ^6;
 plot_ymin = 10^2;
 plot_ymax = 10^6;
 
-x_polygon = [25  50 10^4 10^6 10^6 10^5 10^4 25];
-y_polygon = [300 3500 10^6 10^6 10^5 10^4 10^3 300];
-
-figure
-loglog(fcsdatscaled(:,12),fcsdatscaled(:,15),'k.','HandleVisibility','off')
-xlim([plot_xmin plot_xmax]);
-ylim([plot_ymin plot_ymax]);
+x_polygon = [10^1.5  50   10^4 10^6 10^6   10^5    10^4.3  10^3.7  10^2.8      10^1.5 ];
+y_polygon = [10^2.8  3500 10^6 10^6 10^5.5 10^4.8  10^4.2  10^3.7  10^3        10^2.8 ];
 
 in_euk = inpolygon(ssc_signal,y_signal,x_polygon,y_polygon);
+euk_count = length(find(in_euk==1));
 
+figure
+loglog(ssc_signal,y_signal,'k.','HandleVisibility','off')
 hold on
 loglog(ssc_signal(in_euk),y_signal(in_euk),'.','Color',[0 0.75 0])
+loglog(ssc_signal(in_syn),y_signal(in_syn),'r.')
+loglog(x_polygon,y_polygon,'LineWidth',1,'LineStyle','--','Color',[0 0.75 0]);
+
 xlim([plot_xmin plot_xmax]);
 ylim([plot_ymin plot_ymax]);
 
-
-euk_count = length(find(in_euk==1));
 txt1 = ['small Euk: ',num2str(euk_count)];
 text(10^2,10^5.15,txt1,'Color',[0 0.75 0]);
-
-hold on
-loglog(ssc_signal(in_syn),y_signal(in_syn),'r.')
-xlim([plot_xmin plot_xmax]);
-ylim([plot_ymin plot_ymax]);
-
-hold on
-loglog(x_polygon,y_polygon,'LineWidth',1,'LineStyle','--','Color',[0 0.75 0]);
-xlim([plot_xmin plot_xmax]);
-ylim([plot_ymin plot_ymax]);
 xlabel('Side Scattering');
 ylabel('GL-1');
 title('Chlorophyll Signal for Small Eukaryotes')
@@ -169,7 +214,7 @@ savefig(attunefig,[basepath '\Figures\AttuneCellConc.fig'])
 
 %% IFCB
 basepath = '\\sosiknas1\IFCB_products\NESLTER_transect\summary\'
-load([basepath 'IFCB_biovolume_size_classes_manual_14Aug2018'])
+load([basepath 'IFCB_biovolume_size_classes_manual_16Aug2018'])
 load([basepath 'count_biovol_size_manual_14Aug2018'])
 
 %% IFCB Cell Concentration
@@ -233,6 +278,7 @@ plot(ifcblat,biovol20_inf_Conc,'.','MarkerSize',30,'MarkerEdgeColor',[0,0,1],'Ma
 ylabel('Biovolume (\mum^{3}ml^{-1})')
 xlabel('Latitude(Degrees North)')
 set(gca, 'YScale', 'log','FontSize',24)
+title(['Biovolume of Cells by Size Class during Cruise ' Attune.cruiseName],'FontSize',24)
 
 lh = legend('<2 \mum (attune)', '2-10 \mum (attune)','\itSynechecoccus (attune)','10-20 \mum (IFCB)','>20 \mum (IFCB)','Location','eastoutside')
 title(lh,'Size Classes')
@@ -368,7 +414,7 @@ N20_inf_Conc = N20_inf_phyto./ml_analyzed
 hold on
 plot(ifcblat,N10_20_Conc,'.','MarkerSize',30,'MarkerEdgeColor',[0,0,0.5],'MarkerFaceColor',[0,0,0.5])
 plot(ifcblat,N20_inf_Conc,'.','MarkerSize',40,'MarkerEdgeColor',[0,0,1],'MarkerFaceColor',[0,0,1])
-ylabel('Cell Concentrat0ion (ml^{-1})')
+ylabel('Cell Concentration (ml^{-1})')
 xlabel('Latitude(Degrees North)')
 lh = legend('<2\mum (Attune)','2-10 \mum (Attune)','10-20 \mum', '>= 20 \mum','Location','eastoutside')
 set(gca,'YScale','log')
@@ -387,8 +433,47 @@ att_conc.syn = (Attune.Count.SynTotal)./(Attune.vol_analyzed.*10^(-6));
 
 plot(Attune.fcsmatch.lat,att_conc.lesstwo,'.','MarkerSize',10,'MarkerEdgeColor',[0,0.2,0],'MarkerFaceColor',[0,0.2,0])
 hold on
+plot(Attune.fcsmatch.lat,att_conc.twoten,'.','MarkerSize',15,'MarkerEdgeColor',[0,0.5,0],'MarkerFaceColor',[0,0.5,0])
+plot(Attune.fcsmatch.lat,att_conc.tentwen,'*','MarkerSize',5,'MarkerEdgeColor',[0,0.7,0],'MarkerFaceColor',[0,0.7,0])
+% plot(Attune.fcsmatch.lat,att_conc.twen,'.','MarkerSize',35,'MarkerEdgeColor',[0,1,0],'MarkerFaceColor',[0,1,0])
+plot(Attune.fcsmatch.lat,att_conc.syn,'.','MarkerSize',10,'MarkerEdgeColor',[1,0,0],'MarkerFaceColor',[1,0,0])
+set(gca, 'YScale', 'log','FontSize',24)
+
+title(['Concentration of Cells by Size Class during Cruise ' Attune.cruiseName],'FontSize',24)
+xlabel('Latitude (Degrees North)')
+ylabel('[Cell Concentration] (mL^{-1})')
+set(gcf, 'Position', get(0, 'Screensize'));
+
+
+N0_10_Conc = N0_10_phyto./ml_analyzed
+N10_20_Conc = N10_20_phyto./ml_analyzed
+N20_inf_Conc = N20_inf_phyto./ml_analyzed
+
+plot(ifcblat,N0_10_Conc,'.','MarkerSize',10,'MarkerEdgeColor',[0.2,0,0.2],'MarkerFaceColor',[0,0,0.2])
+hold on
+plot(ifcblat,N10_20_Conc,'*','MarkerSize',5,'MarkerEdgeColor',[0,0,0.5],'MarkerFaceColor',[0,0,0.5])
+plot(ifcblat,N20_inf_Conc,'.','MarkerSize',40,'MarkerEdgeColor',[0,0,1],'MarkerFaceColor',[0,0,1])
+ylabel('Cell Concentrat0ion (ml^{-1})')
+xlabel('Latitude(Degrees North)')
+lh = legend('<2\mum (Attune)','2-10 \mum (Attune)','10-20 \mum (Attune)','\itSyn (attune)','0-10\mum (ifcb)','10-20 \mum (IFCB)', '>= 20 \mum (IFCB)','Location','eastoutside')
+set(gca,'YScale','log')
+
+%%
+%% Combined Concentration w overlap vs. lat
+
+attunefig = figure;
+[~,ii] = sort(Attune.FCSfileinfo.matdate_start)
+att_conc.lesstwo = (Attune.Count.lesstwo)./(Attune.vol_analyzed.*10^(-6));
+att_conc.twoten = (Attune.Count.twoten)./(Attune.vol_analyzed.*10^(-6));
+att_conc.tentwen = (Attune.Count.tentwen)./(Attune.vol_analyzed.*10^(-6));
+att_conc.twen = (Attune.Count.twen)./(Attune.vol_analyzed.*10^(-6));
+att_conc.syn = (Attune.Count.SynTotal)./(Attune.vol_analyzed.*10^(-6));
+
+
+plot(Attune.fcsmatch.lat,att_conc.lesstwo,'.','MarkerSize',10,'MarkerEdgeColor',[0,0.2,0],'MarkerFaceColor',[0,0.2,0])
+hold on
 plot(Attune.fcsmatch.lat,att_conc.twoten,'*','MarkerSize',5,'MarkerEdgeColor',[0,0.5,0],'MarkerFaceColor',[0,0.5,0])
-plot(Attune.fcsmatch.lat,att_conc.tentwen,'.','MarkerSize',5,'MarkerEdgeColor',[0,0.7,0],'MarkerFaceColor',[0,0.7,0])
+plot(Attune.fcsmatch.lat,att_conc.tentwen,'.','MarkerSize',15,'MarkerEdgeColor',[0,0.7,0],'MarkerFaceColor',[0,0.7,0])
 % plot(Attune.fcsmatch.lat,att_conc.twen,'.','MarkerSize',35,'MarkerEdgeColor',[0,1,0],'MarkerFaceColor',[0,1,0])
 plot(Attune.fcsmatch.lat,att_conc.syn,'.','MarkerSize',10,'MarkerEdgeColor',[1,0,0],'MarkerFaceColor',[1,0,0])
 set(gca, 'YScale', 'log','FontSize',24)
@@ -405,12 +490,13 @@ N20_inf_Conc = N20_inf_phyto./ml_analyzed
 
 plot(ifcblat,N0_10_Conc,'*','MarkerSize',5,'MarkerEdgeColor',[0.2,0,0.2],'MarkerFaceColor',[0,0,0.2])
 hold on
-plot(ifcblat,N10_20_Conc,'.','MarkerSize',5,'MarkerEdgeColor',[0,0,0.5],'MarkerFaceColor',[0,0,0.5])
+plot(ifcblat,N10_20_Conc,'.','MarkerSize',30,'MarkerEdgeColor',[0,0,0.5],'MarkerFaceColor',[0,0,0.5])
 plot(ifcblat,N20_inf_Conc,'.','MarkerSize',40,'MarkerEdgeColor',[0,0,1],'MarkerFaceColor',[0,0,1])
-ylabel('Cell Concentrat0ion (ml^{-1})')
+ylabel('Cell Concentration (ml^{-1})')
 xlabel('Latitude(Degrees North)')
 lh = legend('<2\mum (Attune)','2-10 \mum (Attune)','10-20 \mum (Attune)','\itSyn (attune)','0-10\mum (ifcb)','10-20 \mum (IFCB)', '>= 20 \mum (IFCB)','Location','eastoutside')
 set(gca,'YScale','log')
+
 
 
 %% combined conce w/overlap vs. time
@@ -446,7 +532,7 @@ plot(matdate,N0_10_Conc,'.','MarkerSize',20,'MarkerEdgeColor',[0.2,0,0.2],'Marke
 hold on
 plot(matdate,N10_20_Conc,'.','MarkerSize',30,'MarkerEdgeColor',[0,0,0.5],'MarkerFaceColor',[0,0,0.5])
 plot(matdate,N20_inf_Conc,'.','MarkerSize',40,'MarkerEdgeColor',[0,0,1],'MarkerFaceColor',[0,0,1])
-ylabel('Cell Concentrat0ion (ml^{-1})')
+ylabel('Cell Concentration (ml^{-1})')
 xlabel('Time')
 lh = legend('<2\mum (Attune)','2-10 \mum (Attune)','10-20 \mum (Attune)','0-10\mum (IFCB)','10-20 \mum (IFCB)', '>= 20 \mum (IFCB)','Location','eastoutside')
 set(gca,'YScale','log')

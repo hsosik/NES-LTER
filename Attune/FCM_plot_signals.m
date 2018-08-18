@@ -20,7 +20,7 @@ filename = 'E:\Attune_Data\EN608\ExportedFCS\NESLTER_EN608_02Feb2018C_Group_day0
 
 %% Synchecoccus Graph
 % [~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
-filename = 'E:\Attune_Data\EN608\ExportedFCS\NESLTER_EN608_31Jan2018B_Group_day0_Sample(1).fcs';
+% filename = 'E:\Attune_Data\EN608\ExportedFCS\NESLTER_EN608_31Jan2018B_Group_day0_Sample(1).fcs';
 [~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
 %this defines the edges of the rectange for synechecoccus
 min = 10^2
@@ -43,7 +43,7 @@ in_syn = inpolygon(fcsdatscaled(:,11),fcsdatscaled(:,19),x_rect,y_rect);
 syn_count = length(find(in_syn==1));
 fsc_signal = fcsdatscaled(:,11);
 txt1 = ['Syn: ',num2str(syn_count)];
-text(xmin+100,10^5.15,txt1,'Color','r')
+% text(xmin+100,10^5.15,txt1,'Color','r')
 xx = fcsdatscaled(:,11);
 yy = fcsdatscaled(:,19);
 hold on
@@ -91,7 +91,7 @@ ylim([plot_ymin plot_ymax]);
 
 euk_count = length(find(in_euk==1));
 txt1 = ['small Euk: ',num2str(euk_count)];
-text(10^2,10^5.15,txt1,'Color',[0 0.75 0]);
+% text(10^2,10^5.15,txt1,'Color',[0 0.75 0]);
 
 hold on
 loglog(ssc_signal(in_syn),y_signal(in_syn),'r.')
@@ -103,7 +103,7 @@ loglog(x_polygon,y_polygon,'LineWidth',1,'LineStyle','--','Color',[0 0.75 0]);
 xlim([plot_xmin plot_xmax]);
 ylim([plot_ymin plot_ymax]);
 xlabel('Side Scattering');
-ylabel('GL-1');
+ylabel('BL3-H');
 title('Chlorophyll Signal for Small Eukaryotes')
 lh = legend( 'Small eukaryotes','\itSynechococcus');
 

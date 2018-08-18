@@ -22,6 +22,13 @@ for ii = 1:length(matdate)
 end
 
 
-clear ii s lat lon temperature mdate yd t a b f
+clear ii s temperature yd t a b f
 
 % save([outpath '\compiled_stats'],'fcsmatch')
+
+%%
+
+figure
+plot(mdate, lat)
+hold on
+plot(matdate,ifcblat,'r.', 'MarkerSize',10)

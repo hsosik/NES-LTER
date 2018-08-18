@@ -1,8 +1,7 @@
-function [] = mapper()
+function  lter_ifcb_mapper(basepath,varagin,color,plotName,ylabel)
+% basepath is the filepath to the structure
 %
 %
-% addpath 
-basepath = 'C:\Users\mps48\Desktop\Summary\Attune'
 load(basepath)
 addpath 'C:\Users\mps48\Desktop\m_map'
 addpath 'C:\Program Files\MATLAB\R2018a\toolbox\add_ons'
@@ -17,8 +16,12 @@ hold on
 c = cmocean(color);
 cmap = colormap(c);
 
-m_scatter(Attune.fcsmatch.lon,Attune.fcsmatch.lat,20,Attune.Count.EukTotal,'filled');
+m_scatter(IFCB.match.lon,IFCB.match.lat,20,varagin,'filled');
 colorbar('eastoutside');
-title('EukTotal');
+title(plotName);
+ylabel(ylabel)
+y = ylabel(a ,y_label,'Rotation', -90)
+set(y, 'position', get(y,'position')-[-1,0,0])
 m_proj get;
 
+end

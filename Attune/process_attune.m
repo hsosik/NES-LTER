@@ -1,14 +1,8 @@
-% basepath = 'E:\Attune_Data\EN608\';
-% basepath = '\\sosiknas1\Backup\LTER\20180404_AR28';
-% basepath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\Attune\'
-basepath = '\\sosiknas1\Lab_data\Attune\EN608'
-cruiseName = 'EN608'
-
-Attune.cruiseName = cruiseName;
-%function [] = process_attune(cruiseName, basepath)
+function [] = process_attune(cruiseName, basepath)
 %input basepath to
 %Cruise\ with ExportedFCS and Summary
 
+Attune.cruiseName = cruiseName;
 fpath = [basepath '\ExportedFCS\'];
 outpath = [basepath '\Summary\'];
 
@@ -25,31 +19,47 @@ filelist = {filelist.name}';
 [Attune.FCSfileinfo] = FCS_DateTimeList(fpath)
 
 % Creating the variables
+Attune.FCSfileinfo.vol_analyzed = [];
 
 Attune.Count.lesstwo = [];
 Attune.Count.twoten = [];
 Attune.Count.tentwen =[];
 Attune.Count.twen = [];
+
 Attune.Biovol.lesstwo = [];
 Attune.Biovol.twoten = [];
 Attune.Biovol.tentwen =[];
 Attune.Biovol.twen = [];
 Attune.Biovol.Syn = [];
+
 Attune.Count.SynTotal = [];
 Attune.Count.SynYCV = [];
 Attune.Count.EukTotal = [];
-Attune.vol_analyzed = [];
 
 for count = 1:length(filelist)
-    disp(filelist{count});
+    
+    disp([num2str(count) ' of ' num2str(length(filelist))])
     filename = [fpath filelist{count}];
+    
+    %reading in each FCS file with fca_readfcs
     [~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
     
-  
-    synSignal = fcsdatscaled(:,11);
-    fscSignal =fcsdatscaled(:,19);
+    %Vector to indicate class of each event
+    class = zeros(numel(fcsdatscaled(:,1)),1)
+    
+    %Channels for Syn
+    synSignal = fcsdatscaled(:,11);%PE Signal GL1-H
+    fscSignal =fcsdatscaled(:,19);%FSC
+    
+    %Channels for Eukaryotes
+    ssc_signal = fcsdatscaled(:,3);%SSC
+    y_signal =fcsdatscaled(:,15);%BL1
    
-   %Defining the rectangular gate for the Synechecoccus Signal
+    %defining the polygon gate for the Small Eukaryote Signal
+    x_polygon = [10^1.5  50   10^4 10^6 10^6   10^5    10^4.3  10^3.7  10^2.8      10^1.5 ];
+    y_polygon = [10^2.8  3500 10^6 10^6 10^5.5 10^4.8  10^4.2  10^3.7  10^3        10^2.8 ];
+    
+    %defining the rectangular gate for the Synechecoccus Signal
     SynXmin= 200;
     SynXmax= 10^4;
     SynYmin= 10^3;
@@ -57,33 +67,36 @@ for count = 1:length(filelist)
     x_rect = [SynXmin SynXmin SynXmax SynXmax SynXmin];
     y_rect = [SynYmin SynYmax SynYmax SynYmin SynYmin];
     
-   in_syn = inpolygon(synSignal,fscSignal,x_rect,y_rect);
-   SynSsc = log10(synSignal(find(in_syn ==1)));
-   SynY = fscSignal(find(in_syn ==1));
-   
-   %Coefficient of Variation
-   SynYCV = (std(SynY)./mean(SynY)).*100;
- 
-   %volume from scattering conversion
-   SynVolume = 1.3.*SynSsc - 2.9;
-   lin_SynVol = 10.^(SynVolume);
-   SynDiameter = ((lin_SynVol/pi).*(3/4)).^(1/3);
-   
-   %S
-   ssc_signal = fcsdatscaled(:,3);
-   %SSC
-   y_signal =fcsdatscaled(:,15);
-   
-   %defing the polygon gate for the Small Eukaryote Signal
-   x_polygon = [25  50 10^4 10^6 10^6 10^5 10^4 25];
-   y_polygon = [300 3500 10^6 10^6 10^5 10^4 10^3 300];
-
+   %counting cells within the gates
    in_euk = inpolygon(ssc_signal,y_signal,x_polygon,y_polygon);
-   ssc = log10(ssc_signal(find(in_euk==1)));
-   volume = 1.3.*ssc - 2.9;
-   lin_vol = 10.^(volume);
-   diameter = ((lin_vol/pi).*(3/4)).^(1/3);
+   in_syn = inpolygon(synSignal,fscSignal,x_rect,y_rect);
+   
+   %defining euks and syn in the class
+   class(find(in_euk == 1)) = 1
+   class(find(in_syn == 1)) = 2
+   
+    %for euks
+    ssc = log10(ssc_signal(find(class==1)));
     
+    %for syn
+    SynSsc = log10(synSignal(find(class ==2)));
+    
+    %for %CV
+    SynY = fscSignal(find(class ==2));
+   
+    %Coefficient of Variation
+    SynYCV = (std(SynY)./mean(SynY)).*100;
+ 
+    %volume from scattering for euks
+    volume = 1.3.*ssc - 2.9;
+    lin_vol = 10.^(volume);
+    diameter = ((lin_vol/pi).*(3/4)).^(1/3);
+    
+    %volume from scattering conversion for syn
+    SynVolume = 1.3.*SynSsc - 2.9;
+    lin_SynVol = 10.^(SynVolume);
+    SynDiameter = ((lin_SynVol/pi).*(3/4)).^(1/3);
+   
  size2 = [];
  size2_10 =[];
  size10_20 = [];
@@ -104,6 +117,7 @@ for count = 1:length(filelist)
    Attune.Biovol.twoten = [Attune.Biovol.twoten; sum((4/3).*pi.*((size2_10./2).^3))];
    Attune.Biovol.tentwen =[Attune.Biovol.tentwen; sum((4/3).*pi.*((size10_20./2).^3))];
    Attune.Biovol.twen = [Attune.Biovol.twen; sum((4/3).*pi.*((size20./2).^3))];
+   
    Attune.Biovol.Syn = [Attune.Biovol.Syn; sum((4/3).*pi.*((SynDiameter./2).^3))];
    Attune.Count.lesstwo = [Attune.Count.lesstwo ; length(size2)];
    Attune.Count.twoten = [Attune.Count.twoten ; length(size2_10)];
@@ -111,14 +125,16 @@ for count = 1:length(filelist)
    Attune.Count.twen = [Attune.Count.twen ; length(size20)];
    Attune.Count.SynTotal = [Attune.Count.SynTotal; length(SynSsc)];
    Attune.Count.EukTotal = [Attune.Count.EukTotal; length(diameter)];
-   Attune.vol_analyzed = [Attune.vol_analyzed; fcshdr.VOL];
+   Attune.FCSfileinfo.vol_analyzed = [Attune.FCSfileinfo.vol_analyzed; fcshdr.VOL];
    Attune.Count.SynYCV = [Attune.Count.SynYCV; SynYCV];
  
 end
 clear ii diameter size2_10 size10_20 size20 synYCV SynSsc SynDiameter volume ssc_signal y_signal synSignal fscSignal in_syn in_euk
 
+sum(Attune.Count.lesstwo) + sum(Attune.Count.twoten) + sum(Attune.Count.tentwen) + sum(Attune.Count.twen) == sum(Attune.EukTotal) + sum(Attune.SynTotal)
 Attune.readme = ['This was generated by process_attune.m which takes in a'...
     'directory of FCS files that should be called Exported FCS and outputs an'...
     'structure called Attune.']
 
 save([basepath '\Summary'],Attune)
+end 
