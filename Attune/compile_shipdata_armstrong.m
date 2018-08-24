@@ -1,15 +1,4 @@
-fpath = '\\multiproc\data_on_memory\underway\proc\';
-
-flist = dir([fpath 'AR18*.csv']);
-flist = flist(3:end); %remove two days before cruise
-mdate = [];
-lat = [];
-lon = [];
-flr = [];
-sbe45S = [];
-sbe45T = [];
-for ii = 1:length(flist)
-    t = importdata([fpath char(flist(ii).name)]);
+%fpath = '\\multiproc\data_on_memory\underway\proc\'; 
     s = char(t.textdata(3:end,1));
     s2 = char(t.textdata(3:end,2));
     s3 = repmat(' ', size(s,1), 1);
