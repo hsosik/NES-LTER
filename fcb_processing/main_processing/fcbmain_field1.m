@@ -8,18 +8,18 @@ warning off
 
 %%USER CHANGE - below here
 for year2do = 2018 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
-dotime = 0; %0 = NO, 1 = YES
-domerge = 0;
+dotime = 1; %0 = NO, 1 = YES
+domerge = 1;
 doclassify = 1;
 doplotgroup = 1;
 docells = 1;
-dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
+dobeads = 1; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
 timeplotflag = 0; %for time: 0 = no plots, 1 = plots
 mergeplotflag = 0; %for merge: 0 = no plots, 1 = plots
 classplotflag = 0; %for classify: 0 = no plots, 1 = plots
 movieflag = 0;
 beadmovieflag=0;
-syrplotflag=0;
+syrplotflag=1;
 %%USER CHANGE - above here
 
 %defaults
