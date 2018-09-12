@@ -180,7 +180,7 @@ if length(unique(syrpumpinfo(:,5))) > 1
         end          
     end
     
-    ro=sort([ro; ind2add]);
+    ro=unique(sort([ro; ind2add])); %in case have ending indexing, in which case duplicated
     
     %%
     if length(ro)>2 
