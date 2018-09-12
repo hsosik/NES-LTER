@@ -172,6 +172,9 @@ if length(unique(syrpumpinfo(:,5))) > 1
     ind2add=[];
     for q=1:2:length(ro)-1
         if any(diff(syrchangeinfo(ro(q):ro(q+1),1)) > 10000) %3hr gap ~ 10000 sec - split the syringe -> case where acq stopped, but resumes syr num
+            figure, plot(totalstartsec,syrpumpinfo(:,5),'.-')
+            zz=find(diff(syrchangeinfo(ro(q):ro(q+1),1)) > 10000);
+            line([syrchangeinfo(ro(q)+zz-1) syrchangeinfo(ro(q)+zz-1)],ylim,'color','r')
             keyboard
             disp(['split syringe?' num2str(q)])
             jj=ro(q):ro(q+1); %easier to handle indexes
