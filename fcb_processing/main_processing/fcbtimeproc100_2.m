@@ -4,36 +4,30 @@
 %header), should work with any combination of port switching during analysis, Heidi
 %3/1/03 modified from cytosubproc2 to handle files from SYN expt's in lab
 %with two cultures analyzed (switch every half hour); Heidi
-%keyboard
-%
+
+%In this script:
+% Goal is to calculate time and volume analyzed for each record of each syringe:
+% ----Go through and remove syringes that are being refilled, etc. during acquitions
+% ----Calculate an accurate syringe pump speed in order to remove volume that hasn't been analyzed
+% ----Remove syringes where acquisition time of triggers do not conform to standard
+%       expection - indicating a possible clog or flow problem or sheath intrusion
+
+%flag summary:
+%99 - fast syringes
+%98 - syr refill at start of acqusition
+%97 - syr refill during acquistion
+%60 - outlier record (based on acq time) right after refill or just before end of syr
+%61 - acq times within syr do not resemble a normal distribution
+%62 - cell syr with just 1 record
+
+% initial info and setup
 flag = zeros(size(totalstartsec));
+
+querytime = 0.0908; %0.0930; %actually this is query+deadtime for 100 tirggers; querytime referrring to time it takes to query syringe position
+acqtime = totalendsec - totalstartsec - querytime; %for ts-acq-st  %July 2016, from high noise bead runs
 %acqtime = totalendsec - totalstartsec - .405;  %for tq-acq-qt?
 %acqtime = totalendsec - totalstartsec - .1326; %for vnts-acq-stnv
-querytime = 0.0908; %0.0930;
-acqtime = totalendsec - totalstartsec - querytime; %for ts-acq-st  %July 2016, from high noise bead runs
-
 %acqtime = totalendsec - totalstartsec; %for qt-acq-tq (mr07)
-flag(:) = 0;  %default all records to Not use
-%1=temp,2=humidity,3=start port,4=end port,5=start syr#,6=end syr#,7=start syr pos,8=end syr pos.
-
-%flag(find(syrpumpinfo(:,3) == 6 & syrpumpinfo(:,4) == 6 & syrpumpinfo(:,5) & syrpumpinfo(:,6))) = 1; %these are good records for culture 1
-%flag(find(syrpumpinfo(:,3) == 3 & syrpumpinfo(:,4) == 3 & syrpumpinfo(:,5) & syrpumpinfo(:,6))) = 2; %these are good records for culture 2
-
-%good records for cells or beads, skipping cases where syringe refills or
-%port (valve) changes, also skipping any fast syringes (i.e., syr# = 0)
-%non-zero port, same port at start and end, same syringe # at start and end (i.e. syringe did not refill during acquisition
-%ind = find((syrpumpinfo(:,3) == syrpumpinfo(:,4)) & syrpumpinfo(:,5) & syrpumpinfo(:,6) & (syrpumpinfo(:,5) == syrpumpinfo(:,6))));
-ind = 1 + find((syrpumpinfo(2:end,3) == syrpumpinfo(2:end,4)) & syrpumpinfo(2:end,5) & syrpumpinfo(2:end,6) & (syrpumpinfo(2:end,5) == syrpumpinfo(2:end,6)) & (syrpumpinfo(1:end-1,6) == syrpumpinfo(2:end,5)));
-%last part to skip cases where syringe starts to refill during preceeding data transmission (start syringe # ~= previous end syringe #)
-%these records often seem to have flow problem or something that makes apparent volume too high
-flag(ind) = syrpumpinfo(ind,3);  %set good records to syringe port # (3/03 6=culture 1, 3=culture2, ?=beads)
-flag = flag(1:length(acqtime)); %eliminate zeros added past end
-%follwing finds syringe refills starting mid-record
-%ind = find((syrpumpinfo(:,3) == 3 & syrpumpinfo(:,4) == 3) & syrpumpinfo(:,5) & syrpumpinfo(:,6) & (syrpumpinfo(:,5) ~= syrpumpinfo(:,6)));
-ind = find(syrpumpinfo(1:end-1,5) & syrpumpinfo(2:end,5) == 0);  %transitions to fast syringes
-flag(ind) = 99;
-% ind = find(acqtime < 0);
-% flag(ind) = 97; %record acquired too fast near?; indicator for high noise conditions in 2014, unreliable analvol, etc.
 
 start = syrpumpinfo(:,7);
 stop = syrpumpinfo(:,8);
@@ -44,24 +38,38 @@ analvol = stop*NaN;
 t = find(start - stop >= 0);  %start > stop
 analvol(t) = (start(t)-stop(t))/maxpos*totalvol;
 
-%flags:
-%99 - fast syringes
-%98 - syr refill at start of acqusition
-%97 - syr refill during acquistion
-%96 - next two records after syringe refill
 
-%t = find(start - stop < 0);  %start < stop --> syringe refilled
+%syrpumpinfo legend:
+%1=temp,2=humidity,3=start port,4=end port,5=start syr#,6=end syr#,7=start syr pos,8=end syr pos.
+
+%% CHECK FOR FLAGS:
+
+%good records for cells or beads, skipping cases where syringe refills or
+%port (valve) changes, also skipping any fast syringes (i.e., syr# = 0)
+%non-zero port, same port at start and end, same syringe # at start and end (i.e. syringe did not refill during acquisition
+
+flag(:) = 0;  %default all records to Not use
+%ind = find((syrpumpinfo(:,3) == syrpumpinfo(:,4)) & syrpumpinfo(:,5) & syrpumpinfo(:,6) & (syrpumpinfo(:,5) == syrpumpinfo(:,6))));
+ind = 1 + find((syrpumpinfo(2:end,3) == syrpumpinfo(2:end,4)) & syrpumpinfo(2:end,5) & syrpumpinfo(2:end,6) & (syrpumpinfo(2:end,5) == syrpumpinfo(2:end,6)) & (syrpumpinfo(1:end-1,6) == syrpumpinfo(2:end,5)));
+%last part to skip cases where syringe starts to refill during preceeding data transmission (start syringe # ~= previous end syringe #)
+%these records often seem to have flow problem or something that makes apparent volume too high
+flag(ind) = syrpumpinfo(ind,3);  %set good records to syringe port # (3/03 6=culture 1, 3=culture2, ?=beads)
+flag = flag(1:length(acqtime)); %eliminate zeros added past end
+
+%follwing finds syringe refills starting mid-record
+%ind = find((syrpumpinfo(:,3) == 3 & syrpumpinfo(:,4) == 3) & syrpumpinfo(:,5) & syrpumpinfo(:,6) & (syrpumpinfo(:,5) ~= syrpumpinfo(:,6)));
+ind = find(syrpumpinfo(1:end-1,5) & syrpumpinfo(2:end,5) == 0);  %transitions to fast syringes
+flag(ind) = 99;
+% ind = find(acqtime < 0);
+% flag(ind) = 97; %record acquired too fast near?; indicator for high noise conditions in 2014, unreliable analvol, etc.
+
 t = find(syrpumpinfo(:,5) < syrpumpinfo(:,6)); %syringe refilled during acquisition
 analvol(t) = (start(t) + maxpos-stop(t))/maxpos*totalvol;
 flag(t) = 97; %add specific flag for these syringes KRHC, 7/13/16
-% sacq=[t+1;t+2]; sacq2=sacq(sacq <= length(syrpumpinfo)); %find 2nd acquistion records after refilling
-% flag(sacq2)=96; %flag the next record and record after as likely contains sheath fluid?
 
 t = find(syrpumpinfo(:,5) == syrpumpinfo(:,6) & start - stop <= 0); %syringe in middle of refilling at start; June 2015 <=0 (not < 0) for cases in 2014 with stopped syr at top or bottom during v. noisy fast acq
 analvol(t) = (maxpos-stop(t))/maxpos*totalvol;
 flag(t) = 98; %syringes refilling in middle
-% sacq=[t+1;t+2]; sacq2=sacq(sacq <= length(syrpumpinfo));
-% flag(sacq2)=96;
 
 %last record before end of set (switch to new valve) when syringe is at end, sometimes these have really long acq times (renegade triggers?)
 flag(find(syrpumpinfo(2:end,6) < syrpumpinfo(1:end-1,6) & syrpumpinfo(1:end-1,8) == 10)) = 98;
@@ -77,50 +85,68 @@ if totalstartsec(end)/3600/24 + year > datenum('8-20-2011') &&  totalstartsec(en
     end;
 end;
 
-%analvol = analvol - 1.692e-4;  %volume offset for query, for mr07 set (3/03)
-%analvol = analvol - 5.48e-5;  %older, corresponds to P2 speed for two syringe queries? July 2016
-
 
 %% FIND VOLUME ANALYZED...turns out, not exactly straightforward...
 
 %Notes:
-%There are syringe movements not accounted for in the measurements, such
-%that volume is being moved while we are querying for pump position or for
-%dead time after a trigger. From Alexi's measurements (7/12/16) of full noise, we see
-%that average dead time for 100 triggers is .0275s (27.5ms) (without query time)
-%At a pump speed of 160 steps/sec, avg steps taken is 14.89 per 100 records with query time
-% At 40 steps/sec, avg steps taken is 3.72. In these cases, since the
-% triggers could be considered instantaneous, these steps/time are
+%There are syringe movements (and hence volume) not yet accounted for in
+%the measurements. The time is recorded, then syringe position queried. %
+%Volume is being pushed through while we are querying for pump position and
+%hence this volume is not accounted for. We are also not able to measure cells
+% directly after a trigger (dead time), such that volume is being pushed through that
+% we cannot analyze (and this should be subtracted from the final volume
+% measurement). These numbers really matter when there is a crazy amount of
+% noise in the system, such as years 2014 and 2017.
+
+% From Alexi's measurements (7/12/16) of full noise, we see
+%that the average dead time for 100 triggers is .0275s (27.5ms) (without query time)
+
+% From Alexi's measurements, at a pump speed of 160 steps/sec,
+% avg steps taken is 14.89 per 100 records with query time
+% At 40 steps/sec, avg steps taken is 3.72.
+% In these cases, since the triggers could be considered instantaneous, these steps/time are
 % essentially due to deadtime and querytime, which leaves:
 
 %       14.89 steps = (160 steps/s) * (dead time + query time)
-%       dead+query = 0.0931 sec
-%       3.72 steps = (40 steps/s) * (dead time + query time)
-%       dead+query = 0.0930 sec !!!!!
+%       (dead+query) = 0.0931 sec
 
-%So, the lost time in query ends up being 0.0655...but, we only really care about the total, so
-%multiply pump speed by 0.0930 sec to get steps lost, which gives volume lost!
+%       3.72 steps = (40 steps/s) * (dead time + query time)
+%       (dead+query) = 0.0930 sec !!!!!
+
+%So, the lost time in query (total - deadtime = 0.0930 - 0.0275) ends up being 0.0655...
+%....but, we only really care about the total time lost (dead +query), so we just
+%multiply pump speed by 0.0930 sec (total) to get steps lost, which gives volume lost
+
+%older comments, but perhaps useful?
+%analvol = analvol - 1.692e-4;  %volume offset for query, for mr07 set (3/03)
+%analvol = analvol - 5.48e-5;  %older, corresponds to P2 speed for two syringe queries? July 2016
+
+%% FIND PUMP SPEED
 
 %3 different speeds of pump:
 %P3 - 40 steps/sec -> 20min per syr -> syrnum rolls over at 50
 %P2 - 80 steps/sec -> 10min per syr -> syrnum rolls over at 100
 %P1 - 160 steps/sec -> 5min per syr -> syrnum rolls over at 200
 
-%%can find pump speed by looking at steps per second, avg syring time, or the most robust metric - slope of records/time:
+% can find pump speed by a few different methods:
+% ---- looking at steps per second
+% ---- avg syring time
+% ---- or the most robust metric - slope of records/time:
+
 stepdist=syrpumpinfo(:,7)-syrpumpinfo(:,8);
 timediff=totalendsec-totalstartsec;
 pump_speed=stepdist./timediff; %rough speed
 
-%     one way to get average syringe time:
-%     ds=find(diff(syrpumpinfo(:,5))~=0); %look for syringe changes...
-%     avgsyrtime=[totalstartsec(ds(2:end)) (1/60)*(totalstartsec(ds(2:end))-totalstartsec(ds(1:end-1)))]; %time difference inbetween
+%We will use the slope of records over time. To do this, we need to find
+%the individual syringes and when the number rolls over:
+
+%legned for syrchangeinfo=[syr_starttime  syr_endtime  start_index end_index syrnum avgsyrtime syrnum_slope]
 
 % a slightly clunkier way to find syringe changes, but perhaps more straight forward:
 if length(unique(syrpumpinfo(:,5))) > 1
     count=1;
     ii=1;
     syrnum=syrpumpinfo(1,5);
-    %syrchangeinfo=[syr_starttime  syr_endtime  start_index end_index syrnum avgsyrtime syrnum_slope]
     syrchangeinfo=[totalstartsec(1) NaN 1 NaN syrpumpinfo(1,5) syrpumpinfo(1,3)];
     while ii < size(syrpumpinfo,1)
         ii=ii+1;
@@ -151,8 +177,6 @@ if length(unique(syrpumpinfo(:,5))) > 1
     %calculate average syringe time:
     syrchangeinfo=[syrchangeinfo (1/60)*(syrchangeinfo(:,2)-syrchangeinfo(:,1))];
     
-    %keyboard
-    
     %find the slope of syringe numbers over time:
     celli=find(syrchangeinfo(:,6)==3); %use only the cell syringes for more reliable slopes
     ii=find(diff(syrchangeinfo(celli,5))<0);
@@ -162,12 +186,8 @@ if length(unique(syrpumpinfo(:,5))) > 1
     ro=[1; ro1; ro2; size(syrchangeinfo,1)];
     ro=sort(ro);
     
-    %     ii=find(diff(syrchangeinfo(:,5))<0);
-    %     ii2=find(syrchangeinfo(ii,5)~=1);
-    %     ro=ii(ii2); %rollover indexes
-    %     ro=[1; ro; size(syrchangeinfo,1)];
-    %%
-    %check if there are any split syringes?
+    % occassionally, FCB is down and then resumes in the middle of a syringe.
+    % This causes issues for finding the slope. Below is a check for these 'split syringes'
     % use 3hr gap ~ 10000 sec as cutoff to split the syringe -> case where acq stopped, but resumes syr num?
     ind2add=[];
     for q=1:2:length(ro)-1
@@ -175,15 +195,15 @@ if length(unique(syrpumpinfo(:,5))) > 1
             figure, plot(totalstartsec,syrpumpinfo(:,5),'.-')
             zz=find(diff(syrchangeinfo(ro(q):ro(q+1),1)) > 10000);
             line([syrchangeinfo(ro(q)+zz-1) syrchangeinfo(ro(q)+zz-1)],ylim,'color','r')
-            keyboard
-            disp(['split syringe?' num2str(q)])
+            %keyboard
+            disp(['Discontinuous syringe?' num2str(q)])
             jj=ro(q):ro(q+1); %easier to handle indexes
             kk=find(diff(syrchangeinfo(jj,1)) > 10000);
             ind2add=[ind2add; jj(kk)'; jj(kk+1)']; %add this split into the rollover indexes
         end
     end
     
-    ro=sort([ro; ind2add]);
+    ro=unique(sort([ro; ind2add])); %unique prevents duplicated indices at beginning or end of data batch
     
     if length(ro)>2
         syrslope=(syrchangeinfo(ro(2:2:end),2)-syrchangeinfo(ro(1:2:end-1)+1,1))./(syrchangeinfo(ro(2:2:end),5)-syrchangeinfo(ro(1:2:end-1)+1,5)); %two indexes to avoid some 0 syringes on restart
@@ -201,20 +221,21 @@ if length(unique(syrpumpinfo(:,5))) > 1
             syrchangeinfo(ro(q):ro(q+1),8)=syrslope((q+1)/2);
         end
     end
-    % keyboard
-    %%
-    %use the syrchangeinfo matrix to populate matrix for each record:
+    
+    %use the syrchangeinfo matrix to populate a matrix for each record:
     avgsyrtime=nan(size(syrpumpinfo,1),2); %syringe times and slopes
     for q=1:size(syrchangeinfo,1)
         avgsyrtime(syrchangeinfo(q,3):syrchangeinfo(q,4),1)=(1/60)*(syrchangeinfo(q,2)-syrchangeinfo(q,1));
         avgsyrtime(syrchangeinfo(q,3):syrchangeinfo(q,4),2)=syrchangeinfo(q,8);
     end
     
+    %assign actually syringe speed based on slope:
     P3=find(avgsyrtime(:,2) > 1000 & avgsyrtime(:,2) < 1800); %slope = ~1250 syringes/time ~ rollover
     P2=find(avgsyrtime(:,2) > 500 & avgsyrtime(:,2) < 700); %slope = ~615 syringes/time ~ rollover
     P1=find(avgsyrtime(:,2) > 250 & avgsyrtime(:,2) < 400); %slope = ~314 syringes/time ~ rollover
     
     %% any cells or bead runs unaccounted for?
+    % If cannot find a speed based on the above intervals, use the closest in time sped:
     ind1=find(flag==3 | flag ==6); %cells and beads
     test0=ismember(ind1,[P1;P2;P3]);
     goodrate=find(test0==1); goodrate=ind1(goodrate); %index still into syrpumpinfo
@@ -222,17 +243,12 @@ if length(unique(syrpumpinfo(:,5))) > 1
     
     if ~isempty(test)
         jj=ind1(test); %easier to handle indexes
-        disp(['bead rate and other rates unaccounted for: ' num2str(length(test)) ' ...using closest speed'])
-        
-        %     use speed and average syringe time to further help assign a speed:
-        %     p2=find((pump_speed(jj) > 70 & pump_speed(jj) < 85) | (avgsyrtime(jj) > 8 & avgsyrtime(jj) < 11));
-        %     p1=find((pump_speed(jj) > 150 & pump_speed(jj) < 165) | (avgsyrtime(jj) > 3.5 & avgsyrtime(jj) < 6 ));
-        %     p3=find((pump_speed(jj) > 30 & pump_speed(jj) < 45) | (avgsyrtime(jj) > 18 & avgsyrtime(jj) < 22 ));
+        disp(['bead rate and other rates unaccounted for: ' num2str(length(test)) ' out of ' num2str(length(avgsyrtime)) ' ...using closest speed'])
         
         for i=1:length(jj)
             qq=find(goodrate <= jj(i)); %for looking back in time....
             [~, im]=min(totalstartsec(jj(i))-totalstartsec(goodrate(qq)));  %find closest good bead or cell run in (backwards) time that has a pumprate
-            %[~, im]=min(abs(jj(i)-goodrate)); %find closest good bead or cell run that has a pumprate (in index)
+            
             if ismember(goodrate(qq(im)),P3) %use this index speed
                 P3=[P3; jj(i)]; %add the test index to a speed index group
             elseif ismember(goodrate(qq(im)),P2)
@@ -248,6 +264,7 @@ if length(unique(syrpumpinfo(:,5))) > 1
                 elseif ismember(goodrate(im),P1)
                     P1=[P1; jj(i)];
                 else
+                    disp('Cannot find a speed for these measurements! Help!')
                     keyboard
                 end
             end
@@ -259,32 +276,8 @@ if length(unique(syrpumpinfo(:,5))) > 1
     pumprate(P2)=80;
     pumprate(P1)=160;
     
-    %plots for sanity check:
-    if syrplotflag
-        subplot(2,1,1,'replace')
-        plot(totalstartsec,syrpumpinfo(:,5),'k.-');
-        hold on
-        if ~isempty(test)
-            plot(totalstartsec(ind1(test)),syrpumpinfo(ind1(test),5),'r.');
-        end
-        ylabel('Syringe Number')
-        
-        subplot(2,1,2,'replace'), hold on
-        plot(totalstartsec,pump_speed,'.-','color',[0.6 0.6 0.6])
-        plot(totalstartsec(ind1),pump_speed(ind1),'.','color',[0 0.5 1])
-        plot(totalstartsec(ind1),pumprate(ind1),'.','color',[0 0 1])
-        if ~isempty(test)
-            plot(totalstartsec(ind1(test)),pumprate(ind1(test)),'c.');
-        end
-        ylabel('Pump rate (steps/sec)')
-        ylim([-10 180])
-        
-        keyboard
-        %pause(0.5)
-    end
-    
 else %for rare case of only 1 syringe being processed...
-    %keyboard
+    
     P1=find((pump_speed > 70 & pump_speed < 85));
     P2=find((pump_speed > 150 & pump_speed < 165));
     P3=find((pump_speed > 30 & pump_speed < 45));
@@ -295,40 +288,21 @@ else %for rare case of only 1 syringe being processed...
     pumprate(P1)=160;
 end
 
-% So...now we need a metric to flag syringes or records that do not seem to
-% follow a constant syringe movement (i.e. a blocked syringe, sheath being
-% sucked into a partially clogged syringe, etc.
+%% SCREEN SYRINGES FOR EXPECTED DISTRIBUTION OF ACQ TIMES
 
-%This is primarily done with looking at the acquisition time over time:
+% We now would like to identify syrignes that may be partially, have sheath
+% intrusions or are not operating as expected for smooth, continuous flow.
 
-%Maybe a plan would be to go through, keep a running average of the mean
-%acquisition time, then compare, syringe by syringe?
+%We can do this by looking at the acquisition time over time and see if these values
+% follow a normal distribution (they should), and if not, flag for removal
 
-%Hmm...maybe a simple test with median values...and then if more than 0.25
-%of the data is outside the expected acquisition time range, discard that
-%syringe...
+% To check for a normal distribution, for each syringe:
+% ---- from Andy's stats notes, plot: y(1) < y(2) < y(3)  (where y's are the acquistion times of all the records within a syringe)
+% ---- against F^-1(1/(n+1), F^-1(2/n+1), F^-1(3/n+1), where F^-1 is the norm inv parameterized from teh mean and variance of the syringe data
+% ---- sum of squares between obs and expected is a good pre-check before testing for linearity
+% ---- if ss is high, perform linear regression between ordered data and the normal inverse of data positions and check how good fit is
 
-%Ooh- or, better yet - compare to see if roughly follows a normal
-%distribution of acquistion times - if not, flag!
-
-%% okay: screen syringes
-
-%go through each syringe, check whether or not follows a normal dist based
-%on linear test between ordered data and the normal inverse of data
-%positions
-%From Andy's notes, plot: y(1) < y(2) < y(3)  (these being the acquistion
-%times of a syringe)
-%against F^-1(1/(n+1), F^-1(2/n+1), F^-1(3/n+1), where F^-1 is the norm inv
-%parameterized from the syringe data
-
-figure(15)
-subplot(1,2,2,'replace')
-plot(totalstartsec,acqtime,'.-')
-hold on
-ii=find(flag==3);
-plot(totalstartsec(ii),acqtime(ii),'.')
-
-for q=1:length(syrchangeinfo)
+for q=1:length(syrchangeinfo) %for each syringe...
     
     %syrchangeinfo has the indexes per syringe at columns 3 and 4:
     inds=syrchangeinfo(q,3):syrchangeinfo(q,4);
@@ -337,80 +311,114 @@ for q=1:length(syrchangeinfo)
     tf=find(tempflag==3); %only evaluate cell records (ask of these, should any records be removed?)
     n=length(tempacq(tf));
     
-    if ~isempty(tf) & n~=1 %can't be empty and length can't be 1
+    if ~isempty(tf) && n~=1 %can't be empty and length can't be 1
         
         finv = (norminv(((1:n)/(n+1)),mean(tempacq(tf)),std(tempacq(tf))))'; %expected value given an underling normal distribution
         [ordered_acq, oind] = sort(tempacq(tf)); %ordered acquisition times
         ss=sum(sqrt((ordered_acq-finv).^2)); %difference between expected and observed
+ 
+        %Hmmm...maybe we should just start with linearity and then see if removing outliers fixes it?
         
-        %check deviation from expected:
+        [b,~,~,~,stats]=regress(finv,[ones(length(ordered_acq),1) ordered_acq]);
         
-        %first check for some outliers that occur at beginning and end of syringes
-        if (oind(end)==1 || oind(end)==n) && (ordered_acq(end)-ordered_acq(end-1) > 1.5*std(tempacq(tf))) %first or last point and greater than 1 std dev away
-            
-            %remove this point and see if better ss:
-            n=n-1;
-            ordered_acq2=ordered_acq(1:end-1);
-            oind2=oind(1:end-1);
-            finv2 = (norminv(((1:n)/(n+1)),mean(ordered_acq2),std(ordered_acq2)))'; %expected value given an underling normal distribution
-            
-            ss2=sum(sqrt((ordered_acq2-finv2).^2));
-            
-            if ss2 < 3*mean(ordered_acq)
-                disp(['#' num2str(q) ' fixed it! excluding that datapacket from syringe'])
-                flag(inds(tf(oind(end))))=60; %flag it!
-                %                 syringe_acqtime_QC2(finv,ordered_acq,oind,ss,subplot(1,2,1,'replace'))
-                %                 syringe_acqtime_QC2(finv2,ordered_acq2,oind2,ss2,subplot(1,2,2,'replace'))
-                %
-                %replace quantities so do not trigger below....
-                ordered_acq=ordered_acq2;
-                oind=oind2;
-                finv=finv2;
-                ss=ss2;
-                %keyboard
-            end
-        end %check for outlier...
-        
-        
-        if ss > 4*mean(ordered_acq) || ss > 50 %Regardless of initial outlier, check for general deviation...(the second logic argument catches cases where the syringe has few records...)
-            
-            disp(['#' num2str(q) ' hmmmm...more serious problems with this syringe? Checking for linearity...'])
-            [b,~,~,~,stats]=regress(finv,[ones(length(ordered_acq),1) ordered_acq]);
-            
-            
-            disp([num2str(stats(1)) ' : ' num2str(stats(3))])
-            if syrplotflag
-                subplot(1,2,2)
-                xlim([totalstartsec(inds(1))-500 totalstartsec(inds(end))+500])
-                line([totalstartsec(inds(1)) totalstartsec(inds(1))],ylim,'linestyle','--','color',[0.5 0.5 0.5])
-                line([totalstartsec(inds(end)) totalstartsec(inds(end))],ylim,'linestyle','--','color',[0.5 0.5 0.5])
-                subplot(1,2,1,'replace')
-                syringe_acqtime_QC2(finv,ordered_acq,oind,ss,subplot(1,2,1,'replace'))
-                plot(finv, b(1)+b(2)*finv,'r.-')
-            end
-            
-            keyboard
-            if stats(1) < 0.85 %enough of a deviation from linearity...
-                flag(inds(tf))=61; %flag it!
+        counter=0;
+        while stats(1) < 0.875 && counter < 3
+            counter=counter+1; %disp(num2str(counter))
+            if counter ~= 3
+                %disp('outlier problem?')
+                finv0 = (norminv(((1:(n-counter))/((n-counter)+1)),mean(ordered_acq(1:end-counter)),std(ordered_acq(1:end-counter))))'; %expected value given an underling normal distribution
+                [b,~,~,~,stats]=regress(finv0,[ones(length(ordered_acq(1:end-counter)),1) ordered_acq(1:end-counter)]);
+                disp([num2str(q) ': linear regression count: ' num2str(counter) ' : ' num2str(stats(1)) ' : ' num2str(stats(3))])
             end
         end
         
+        switch counter
+            case 1 %exclusion of one record was enough!
+                disp([num2str(q) ': Excluded a starting or ending outlier record from syringe'])
+                flag(inds(tf(oind(end))))=60; %flag it!
+            case 2 %two records excluded
+                disp([num2str(q) ': Excluded two starting or ending outlier records from syringe'])
+                flag(inds(tf(oind(end))))=60; %flag it!
+                flag(inds(tf(oind(end-1))))=60; %flag it!
+            case 3
+                disp([num2str(q) ': trying to exclude outliers did not fix data distribution, flagging syringe'])
+                flag(inds(tf))=61;
+        end
+        
+        if counter ~=0
+            subplot(1,2,1,'replace')
+            plot(finv,ordered_acq,'o'), hold on
+            ff=find(flag(inds(tf(oind)))==60);
+            plot(finv(ff),ordered_acq(ff),'ro','markerface','r') %identify outliers           
+            line([ordered_acq(1) ordered_acq(end)],[ordered_acq(1) ordered_acq(end)]) %expectation
+            title(['q: ' num2str(q) 'sum of squares:' num2str(ss)])
+            plot(finv, b(1)+b(2)*finv,'r.-')
+            
+            subplot(1,2,2)
+            plot(totalstartsec(max(1,inds(1)-500):min(inds(end),inds(end)+500)),acqtime(max(1,inds(1)-500):min(inds(end),inds(end)+500)),'.-','color',[0.4 0.4 0.4]), hold on
+            xlim([totalstartsec(inds(1))-500 totalstartsec(inds(end))+500])
+            line([totalstartsec(inds(1)) totalstartsec(inds(1))],ylim,'linestyle','-','color',[0 0 0],'linewidth',2)
+            line([totalstartsec(inds(end)) totalstartsec(inds(end))],ylim,'linestyle','-','color',[0 0 0],'linewidth',2)
+            
+            keyboard
+        end
+         
     elseif n==1 %if you are a cell syringe of length 1 - ignore
         flag(inds(tf))=62; %length of 1
     end
 end
 
-%%
-%analvol(t) = (start(t)-stop(t))/maxpos*totalvol;
-%offset = steps/sec*(q+d time)*(totalvol/maxpos)
-offset = pumprate*querytime*(totalvol/maxpos);
+%% if plotflag is on, plot a final summary for sanity check:
+if syrplotflag
+    
+    figure(16)
+    subplot(3,1,1,'replace')
+    plot(totalstartsec,syrpumpinfo(:,5),'k.-'); %syringe number and time
+    hold on
+    if ~isempty(test)
+        h1=plot(totalstartsec(ind1(test)),syrpumpinfo(ind1(test),5),'r.');
+        legend(h1(1),'assigned pump rate from closest syr','location','NorthOutside')
+    end
+    
+    ylabel('Syringe Number')
+    xlabel('Time (sec)')
+    
+    subplot(3,1,2,'replace'), hold on
+    h1=plot(totalstartsec,pump_speed,'.-','color',[0.6 0.6 0.6]); %time and speed; rough calc of speed for all syr
+    h2=plot(totalstartsec(ind1),pump_speed(ind1),'.','color',[0 0.5 1]); %rough calc of speed for cell/bead syr
+    h3=plot(totalstartsec(ind1),pumprate(ind1),'.','color',[0 0 1]); %assgined rate of cell/bead syr
+    legend([h1(1); h2(1); h3(1)],'calc rough speed','cell syr rough speed','assigned speed for cell syr','location','NorthOutside','Orientation','Horizontal')
+    if ~isempty(test)
+        h4(1)=plot(totalstartsec(ind1(test)),pumprate(ind1(test)),'c.');
+        legend([h1(1); h2(1); h3(1); h4(1)],'calc rough speed','cell syr rough speed','assigned speed for cell syr','assigned pump rate from closest syr','location','NorthOutside','Orientation','Horizontal')
+    end
+    ylabel('Calc and assigned pump rate (steps/sec)')
+    xlabel('Time (sec)')
+    ylim([-10 180])
+    xlabel('Time (sec)')
+    
+    subplot(3,1,3,'replace')
+    plot(totalstartsec,acqtime,'.-') %acquistion time vs. time
+    hold on
+    ii=find(flag==3);
+    h1=plot(totalstartsec(ii),acqtime(ii),'.');
+    jj=find(flag==60 | flag==61 | flag ==62);
+    h2=plot(totalstartsec(jj),acqtime(jj),'ko'); %cell syringes excluded
+    legend([h1(1); h2(1)],'cell syr.','excl. syr','location','NorthOutside')
+    ylabel('Acquisition time (sec)')
+    xlabel('Time (sec)')
+    
+    pause(0.5)
+    
+end %syrplotflag
+
+
+%% and now for the magic:
+
+offset = pumprate*querytime*(totalvol/maxpos); %offset = steps/sec*(q+d time)*(totalvol/maxpos)
 analvol = analvol - offset;
 
-%keyboard
-%outmatrix = [1:length(totalstartsec) totalstartsec totalendsec acqtime medianinterval flag ];
-%outmatrix = [200*(1:length(totalstartsec))' totalstartsec totalendsec acqtime analvol flag];
 %%
 outmatrix = [100*(1:length(totalstartsec))' totalstartsec totalendsec acqtime analvol flag];  %2/24/05 heidi, 100 event records for 12 channels
-
 clear acqtime flag t ind analvol maxpos start stop totalvol
 
