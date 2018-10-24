@@ -28,7 +28,7 @@ acqtime = totalendsec - totalstartsec - querytime; %for ts-acq-st  %July 2016, f
 %acqtime = totalendsec - totalstartsec - .405;  %for tq-acq-qt?
 %acqtime = totalendsec - totalstartsec - .1326; %for vnts-acq-stnv
 %acqtime = totalendsec - totalstartsec; %for qt-acq-tq (mr07)
-
+%%
 start = syrpumpinfo(:,7);
 stop = syrpumpinfo(:,8);
 totalvol = .25;  %ml vol of syringe
@@ -121,7 +121,7 @@ end;
 %analvol = analvol - 1.692e-4;  %volume offset for query, for mr07 set (3/03)
 %analvol = analvol - 5.48e-5;  %older, corresponds to P2 speed for two syringe queries? July 2016
 
-%% FIND PUMP SPEED
+% FIND PUMP SPEED
 
 %3 different speeds of pump:
 %P3 - 40 steps/sec -> 20min per syr -> syrnum rolls over at 50
@@ -290,7 +290,7 @@ end
 
 %% SCREEN SYRINGES FOR EXPECTED DISTRIBUTION OF ACQ TIMES
 
-% We now would like to identify syrignes that may be partially, have sheath
+% We now would like to identify syrignes that may be partially clogged, have sheath
 % intrusions or are not operating as expected for smooth, continuous flow.
 
 %We can do this by looking at the acquisition time over time and see if these values
@@ -320,7 +320,7 @@ for q=1:length(syrchangeinfo) %for each syringe...
         %Hmmm...maybe we should just start with linearity and then see if removing outliers fixes it?
         
         [b,~,~,~,stats]=regress(finv,[ones(length(ordered_acq),1) ordered_acq]);
-        
+        b0=b; stats0=stats;
         counter=0;
         while stats(1) < 0.875 && counter < 3
             counter=counter+1; %disp(num2str(counter))
@@ -354,11 +354,12 @@ for q=1:length(syrchangeinfo) %for each syringe...
             title(['q: ' num2str(q) 'sum of squares:' num2str(ss)])
             plot(finv, b(1)+b(2)*finv,'r.-')
             
-            subplot(1,2,2)
-            plot(totalstartsec(max(1,inds(1)-500):min(inds(end),inds(end)+500)),acqtime(max(1,inds(1)-500):min(inds(end),inds(end)+500)),'.-','color',[0.4 0.4 0.4]), hold on
+            subplot(1,2,2), hold on
+            line([totalstartsec(inds(1)) totalstartsec(inds(1))],ylim,'linestyle','-','color',[0.6 0.6 0.6],'linewidth',2)
+            line([totalstartsec(inds(end)) totalstartsec(inds(end))],ylim,'linestyle','-','color',[0.6 0.6 0.6],'linewidth',2)            
+            plot(totalstartsec(max(1,inds(1)-500):min(inds(end),inds(end)+500)),acqtime(max(1,inds(1)-500):min(inds(end),inds(end)+500)),'.-','color',[0 0 0]), hold on
             xlim([totalstartsec(inds(1))-500 totalstartsec(inds(end))+500])
-            line([totalstartsec(inds(1)) totalstartsec(inds(1))],ylim,'linestyle','-','color',[0 0 0],'linewidth',2)
-            line([totalstartsec(inds(end)) totalstartsec(inds(end))],ylim,'linestyle','-','color',[0 0 0],'linewidth',2)
+            plot(totalstartsec(inds(tf(oind(ff)))),acqtime(inds(tf(oind(ff)))),'ro','markerface','r') %identify outliers 
             
             keyboard
         end
