@@ -8,7 +8,7 @@
 %In this script:
 % Goal is to calculate time and volume analyzed for each record of each syringe:
 % ----Go through and remove syringes that are being refilled, etc. during acquitions
-% ----Calculate an accurate syringe pump speed in order to remove volume that hasn't been analyzed
+% ----Calculate an accurate syringe pump speed in order to remove correct volume that hasn't been analyzed
 % ----Remove syringes where acquisition time of triggers do not conform to standard
 %       expection - indicating a possible clog or flow problem or sheath intrusion
 
@@ -38,15 +38,14 @@ analvol = stop*NaN;
 t = find(start - stop >= 0);  %start > stop
 analvol(t) = (start(t)-stop(t))/maxpos*totalvol;
 
-
 %syrpumpinfo legend:
 %1=temp,2=humidity,3=start port,4=end port,5=start syr#,6=end syr#,7=start syr pos,8=end syr pos.
 
 %% CHECK FOR FLAGS:
 
-%good records for cells or beads, skipping cases where syringe refills or
-%port (valve) changes, also skipping any fast syringes (i.e., syr# = 0)
-%non-zero port, same port at start and end, same syringe # at start and end (i.e. syringe did not refill during acquisition
+%good records for cells or beads, skipping cases where syringe refills or port (valve) changes,
+%also skipping any fast syringes (i.e., syr# = 0)
+%non-zero port, same port at start and end, same syringe # at start and end (i.e. syringe did not refill during acquisition)
 
 flag(:) = 0;  %default all records to Not use
 %ind = find((syrpumpinfo(:,3) == syrpumpinfo(:,4)) & syrpumpinfo(:,5) & syrpumpinfo(:,6) & (syrpumpinfo(:,5) == syrpumpinfo(:,6))));
@@ -92,10 +91,10 @@ end;
 %There are syringe movements (and hence volume) not yet accounted for in
 %the measurements. The time is recorded, then syringe position queried. %
 %Volume is being pushed through while we are querying for pump position and
-%hence this volume is not accounted for. We are also not able to measure cells
+%hence this volume is not measured, and needs to be substracted. We are also not able to measure cells
 % directly after a trigger (dead time), such that volume is being pushed through that
 % we cannot analyze (and this should be subtracted from the final volume
-% measurement). These numbers really matter when there is a crazy amount of
+% measurement). These numbers really matter when there is a large amount of
 % noise in the system, such as years 2014 and 2017.
 
 % From Alexi's measurements (7/12/16) of full noise, we see
@@ -131,18 +130,109 @@ end;
 % can find pump speed by a few different methods:
 % ---- looking at steps per second
 % ---- avg syring time
-% ---- or the most robust metric - slope of records/time:
+% ---- or the most robust metric: slope of records/time:
+
+% Note that pump speed is changed manually - it is on a given speed, until
+% the instrument is turned off and reset....
 
 stepdist=syrpumpinfo(:,7)-syrpumpinfo(:,8);
 timediff=totalendsec-totalstartsec;
 pump_speed=stepdist./timediff; %rough speed
 
+%% identify when syringe number advances:
+
+j0=find(diff(totalstartsec) > 3600); %include any time gap over an hour...
+j1=find(syrpumpinfo(:,5)~=syrpumpinfo(:,6));
+j2 =find(syrpumpinfo(2:end,5)~=syrpumpinfo(1:end-1,6)); j2=j2+1;
+
+syr_ind=unique([j0;j1;j2]);
+
+%legend for syrchangeinfo=[syr_starttime  syr_endtime  start_index end_index syrnum]
+syrchangeinfo=nan(length(syr_ind)+1,6);
+for j=1:length(syr_ind)-1
+    
+    if ismember(syr_ind(j+1),j2)
+        syrchangeinfo(j+1,1:6)=[totalstartsec(syr_ind(j)+1) totalendsec(syr_ind(j+1)-1) syr_ind(j)+1 syr_ind(j+1)-1 syrpumpinfo(syr_ind(j)+1,6) syrpumpinfo(syr_ind(j)+1,4)];
+        
+    else
+        syrchangeinfo(j+1,1:6)=[totalstartsec(syr_ind(j)+1) totalendsec(syr_ind(j+1)) syr_ind(j)+1 syr_ind(j+1) syrpumpinfo(syr_ind(j)+1,6) syrpumpinfo(syr_ind(j)+1,4)];
+    end
+end
+
+% add beginning and end entries:
+syrchangeinfo(1,:)=[totalstartsec(1) totalendsec(syr_ind(1)) 1 syr_ind(1) syrpumpinfo(1,6) syrpumpinfo(1,4)];
+syrchangeinfo(end,:)=[totalstartsec(syr_ind(end)) totalendsec(end) syr_ind(end)+1 size(syrpumpinfo,1) syrpumpinfo(syr_ind(j),6) syrpumpinfo(syr_ind(j),4)];
+
+
+%% identify when syringe number rolls over and for each 'batch' assign a speed, based on top syringe count:
+batch_ind=find(diff(syrchangeinfo(:,5)) < -1);
+batch_ind=[batch_ind; size(syrchangeinfo,1)]; %add on the end entry...
+if any(syrchangeinfo(batch_ind,6) ~=3) % only consider cell syringes
+    keyboard
+end
+
+pumpspeed=nan(size(syrpumpinfo,1),1);
+missing_ind=[];
+for q=1:length(batch_ind) 
+    if q==1
+        ind1=1;
+        ind2=syrchangeinfo(batch_ind(q),4);
+    else
+        ind1=syrchangeinfo(batch_ind(q-1)+1,3);
+        ind2=syrchangeinfo(batch_ind(q),4); %assign indexes for easier handling
+    end
+    
+    switch syrchangeinfo(batch_ind(q),5)
+        case 50
+            pumpspeed(ind1:ind2)=40;
+        case 100
+            pumpspeed(ind1:ind2)=80;
+        case 200
+            pumpspeed(ind1:ind2)=160;
+        otherwise %record troublesome indexes
+            missing_ind=[missing_ind; batch_ind(q) q];
+    end
+    
+end
+
+%% for any missing batches, use the next closest in time speed, as long as no
+%time delays:
+[a, ~, c]=setxor(missing_ind(:,1),batch_ind);
+for q=1:length(missing_ind)
+    %find the smallest, positive number or least negative number as ->
+    %favoring back-in-time speeds
+    
+    test=missing_ind(q,1)-a;
+    ii=find(test>0);
+    if ~isempty(ii)
+        ii=c(ii(end)); %min positive
+    else %this is the first block then
+        ii=c(1);
+    end
+        
+     if missing_ind(q,2)==1
+        ind1=1;
+        ind2=syrchangeinfo(missing_ind(q,1),4);
+    else
+        ind1=syrchangeinfo(batch_ind(missing_ind(q,2)-1)+1,3);
+        ind2=syrchangeinfo(missing_ind(q,1),4); %assign indexes for easier handling
+     end
+    
+    pumpspeed(ind1:ind2)=pumpspeed(syrchangeinfo(batch_ind(ii),4));
+end
+
+
+% Okay, once have a pump speed, examine acquisition times with a data chunk
+% for any outliers:
+
+
+%%
 %We will use the slope of records over time. To do this, we need to find
 %the individual syringes and when the number rolls over:
 
-%legned for syrchangeinfo=[syr_starttime  syr_endtime  start_index end_index syrnum avgsyrtime syrnum_slope]
+%legend for syrchangeinfo=[syr_starttime  syr_endtime  start_index end_index syrnum avgsyrtime syrnum_slope]
 
-% a slightly clunkier way to find syringe changes, but perhaps more straight forward:
+% a slightly clunky way to find syringe changes, but perhaps straight forward:
 if length(unique(syrpumpinfo(:,5))) > 1
     count=1;
     ii=1;
@@ -177,6 +267,11 @@ if length(unique(syrpumpinfo(:,5))) > 1
     %calculate average syringe time:
     syrchangeinfo=[syrchangeinfo (1/60)*(syrchangeinfo(:,2)-syrchangeinfo(:,1))];
     
+    %% Okay, if syringe change takes longer than a minute, something is wrong or things are off...
+    % Find the time differences...
+    ii=find(syrchangeinfo(2:end,1)-syrchangeinfo(1:end-1,2) > 60)
+    
+    %%
     %find the slope of syringe numbers over time:
     celli=find(syrchangeinfo(:,6)==3); %use only the cell syringes for more reliable slopes
     ii=find(diff(syrchangeinfo(celli,5))<0);
@@ -316,7 +411,7 @@ for q=1:length(syrchangeinfo) %for each syringe...
         finv = (norminv(((1:n)/(n+1)),mean(tempacq(tf)),std(tempacq(tf))))'; %expected value given an underling normal distribution
         [ordered_acq, oind] = sort(tempacq(tf)); %ordered acquisition times
         ss=sum(sqrt((ordered_acq-finv).^2)); %difference between expected and observed
- 
+        
         %Hmmm...maybe we should just start with linearity and then see if removing outliers fixes it?
         
         [b,~,~,~,stats]=regress(finv,[ones(length(ordered_acq),1) ordered_acq]);
@@ -349,21 +444,21 @@ for q=1:length(syrchangeinfo) %for each syringe...
             subplot(1,2,1,'replace')
             plot(finv,ordered_acq,'o'), hold on
             ff=find(flag(inds(tf(oind)))==60);
-            plot(finv(ff),ordered_acq(ff),'ro','markerface','r') %identify outliers           
+            plot(finv(ff),ordered_acq(ff),'ro','markerface','r') %identify outliers
             line([ordered_acq(1) ordered_acq(end)],[ordered_acq(1) ordered_acq(end)]) %expectation
             title(['q: ' num2str(q) 'sum of squares:' num2str(ss)])
             plot(finv, b(1)+b(2)*finv,'r.-')
             
             subplot(1,2,2), hold on
             line([totalstartsec(inds(1)) totalstartsec(inds(1))],ylim,'linestyle','-','color',[0.6 0.6 0.6],'linewidth',2)
-            line([totalstartsec(inds(end)) totalstartsec(inds(end))],ylim,'linestyle','-','color',[0.6 0.6 0.6],'linewidth',2)            
+            line([totalstartsec(inds(end)) totalstartsec(inds(end))],ylim,'linestyle','-','color',[0.6 0.6 0.6],'linewidth',2)
             plot(totalstartsec(max(1,inds(1)-500):min(inds(end),inds(end)+500)),acqtime(max(1,inds(1)-500):min(inds(end),inds(end)+500)),'.-','color',[0 0 0]), hold on
             xlim([totalstartsec(inds(1))-500 totalstartsec(inds(end))+500])
-            plot(totalstartsec(inds(tf(oind(ff)))),acqtime(inds(tf(oind(ff)))),'ro','markerface','r') %identify outliers 
+            plot(totalstartsec(inds(tf(oind(ff)))),acqtime(inds(tf(oind(ff)))),'ro','markerface','r') %identify outliers
             
             keyboard
         end
-         
+        
     elseif n==1 %if you are a cell syringe of length 1 - ignore
         flag(inds(tf))=62; %length of 1
     end
