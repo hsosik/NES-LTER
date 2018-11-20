@@ -141,238 +141,130 @@ pump_speed=stepdist./timediff; %rough speed
 
 %% identify when syringe number advances:
 
-j0=find(diff(totalstartsec) > 3600); %include any time gap over an hour...
-j1=find(syrpumpinfo(:,5)~=syrpumpinfo(:,6));
-j2 =find(syrpumpinfo(2:end,5)~=syrpumpinfo(1:end-1,6)); j2=j2+1;
-
-syr_ind=unique([j0;j1;j2]);
-
-%legend for syrchangeinfo=[syr_starttime  syr_endtime  start_index end_index syrnum]
-syrchangeinfo=nan(length(syr_ind)+1,6);
-for j=1:length(syr_ind)-1
-    
-    if ismember(syr_ind(j+1),j2)
-        syrchangeinfo(j+1,1:6)=[totalstartsec(syr_ind(j)+1) totalendsec(syr_ind(j+1)-1) syr_ind(j)+1 syr_ind(j+1)-1 syrpumpinfo(syr_ind(j)+1,6) syrpumpinfo(syr_ind(j)+1,4)];
-        
-    else
-        syrchangeinfo(j+1,1:6)=[totalstartsec(syr_ind(j)+1) totalendsec(syr_ind(j+1)) syr_ind(j)+1 syr_ind(j+1) syrpumpinfo(syr_ind(j)+1,6) syrpumpinfo(syr_ind(j)+1,4)];
-    end
-end
-
-% add beginning and end entries:
-syrchangeinfo(1,:)=[totalstartsec(1) totalendsec(syr_ind(1)) 1 syr_ind(1) syrpumpinfo(1,6) syrpumpinfo(1,4)];
-syrchangeinfo(end,:)=[totalstartsec(syr_ind(end)) totalendsec(end) syr_ind(end)+1 size(syrpumpinfo,1) syrpumpinfo(syr_ind(j),6) syrpumpinfo(syr_ind(j),4)];
-
-
-%% identify when syringe number rolls over and for each 'batch' assign a speed, based on top syringe count:
-batch_ind=find(diff(syrchangeinfo(:,5)) < -1);
-batch_ind=[batch_ind; size(syrchangeinfo,1)]; %add on the end entry...
-if any(syrchangeinfo(batch_ind,6) ~=3) % only consider cell syringes
-    keyboard
-end
-
-pumpspeed=nan(size(syrpumpinfo,1),1);
-missing_ind=[];
-for q=1:length(batch_ind) 
-    if q==1
-        ind1=1;
-        ind2=syrchangeinfo(batch_ind(q),4);
-    else
-        ind1=syrchangeinfo(batch_ind(q-1)+1,3);
-        ind2=syrchangeinfo(batch_ind(q),4); %assign indexes for easier handling
-    end
-    
-    switch syrchangeinfo(batch_ind(q),5)
-        case 50
-            pumpspeed(ind1:ind2)=40;
-        case 100
-            pumpspeed(ind1:ind2)=80;
-        case 200
-            pumpspeed(ind1:ind2)=160;
-        otherwise %record troublesome indexes
-            missing_ind=[missing_ind; batch_ind(q) q];
-    end
-    
-end
-
-%% for any missing batches, use the next closest in time speed, as long as no
-%time delays:
-[a, ~, c]=setxor(missing_ind(:,1),batch_ind);
-for q=1:length(missing_ind)
-    %find the smallest, positive number or least negative number as ->
-    %favoring back-in-time speeds
-    
-    test=missing_ind(q,1)-a;
-    ii=find(test>0);
-    if ~isempty(ii)
-        ii=c(ii(end)); %min positive
-    else %this is the first block then
-        ii=c(1);
-    end
-        
-     if missing_ind(q,2)==1
-        ind1=1;
-        ind2=syrchangeinfo(missing_ind(q,1),4);
-    else
-        ind1=syrchangeinfo(batch_ind(missing_ind(q,2)-1)+1,3);
-        ind2=syrchangeinfo(missing_ind(q,1),4); %assign indexes for easier handling
-     end
-    
-    pumpspeed(ind1:ind2)=pumpspeed(syrchangeinfo(batch_ind(ii),4));
-end
-
-
-% Okay, once have a pump speed, examine acquisition times with a data chunk
-% for any outliers:
-
-
-%%
-%We will use the slope of records over time. To do this, we need to find
-%the individual syringes and when the number rolls over:
-
-%legend for syrchangeinfo=[syr_starttime  syr_endtime  start_index end_index syrnum avgsyrtime syrnum_slope]
-
-% a slightly clunky way to find syringe changes, but perhaps straight forward:
 if length(unique(syrpumpinfo(:,5))) > 1
-    count=1;
-    ii=1;
-    syrnum=syrpumpinfo(1,5);
-    syrchangeinfo=[totalstartsec(1) NaN 1 NaN syrpumpinfo(1,5) syrpumpinfo(1,3)];
-    while ii < size(syrpumpinfo,1)
-        ii=ii+1;
-        if syrnum ~= syrpumpinfo(ii,5) %moved onto new syringe
-            syrchangeinfo(count,2)=totalendsec(ii-1); %fill in previous record
-            syrchangeinfo(count,4)=ii-1; %record ending index
-            count=count+1; %advance syr count
-            syrchangeinfo(count,1)=totalstartsec(ii); %start new syringe record
-            syrnum=syrpumpinfo(ii,5);
-            syrchangeinfo(count,5)=syrnum;
-            syrchangeinfo(count,3)=ii; %record beginning index
-            syrchangeinfo(count,6)=syrpumpinfo(ii,3);
-        elseif syrnum ~= syrpumpinfo(ii,6) %moved onto new syringe      %this logic needs to come 2nd after 1st piece
-            syrchangeinfo(count,2)=totalstartsec(ii); %fill in record
-            syrchangeinfo(count,4)=ii; %record ending index
-            syrnum=syrpumpinfo(ii,6);
-            count=count+1;  %advance syr count
-            syrchangeinfo(count,1)=totalendsec(ii);
-            syrchangeinfo(count,5)=syrnum;
-            syrchangeinfo(count,3)=ii; %record beginning index
-            syrchangeinfo(count,6)=syrpumpinfo(ii,4);  %type of syringe
-        end
-    end
-    %to end this matrix:
-    syrchangeinfo(count,2)=totalendsec(end);
-    syrchangeinfo(count,4)=size(syrpumpinfo,1);
     
-    %calculate average syringe time:
-    syrchangeinfo=[syrchangeinfo (1/60)*(syrchangeinfo(:,2)-syrchangeinfo(:,1))];
+    j0=find(diff(totalstartsec) > 3600); j0=j0+1; %include any time gap over an hour...
+    j1=find(syrpumpinfo(:,5)~=syrpumpinfo(:,6));
+    j2 =find(syrpumpinfo(2:end,5)~=syrpumpinfo(1:end-1,6)); j2=j2+1;
     
-    %% Okay, if syringe change takes longer than a minute, something is wrong or things are off...
-    % Find the time differences...
-    ii=find(syrchangeinfo(2:end,1)-syrchangeinfo(1:end-1,2) > 60)
+    syr_ind=unique([1;j0;j1;j2]);
     
-    %%
-    %find the slope of syringe numbers over time:
-    celli=find(syrchangeinfo(:,6)==3); %use only the cell syringes for more reliable slopes
-    ii=find(diff(syrchangeinfo(celli,5))<0);
-    ro1=celli(ii); %rollover indexes
-    ro2=celli(ii+1); %start of new cell syringe
+    %legend for syrchangeinfo=[syr_starttime  syr_endtime  start_index end_index syrnum syrtype]
+    syrchangeinfo=nan(length(syr_ind),6);
     
-    ro=[1; ro1; ro2; size(syrchangeinfo,1)];
-    ro=sort(ro);
-    
-    % occassionally, FCB is down and then resumes in the middle of a syringe.
-    % This causes issues for finding the slope. Below is a check for these 'split syringes'
-    % use 3hr gap ~ 10000 sec as cutoff to split the syringe -> case where acq stopped, but resumes syr num?
-    ind2add=[];
-    for q=1:2:length(ro)-1
-        if any(diff(syrchangeinfo(ro(q):ro(q+1),1)) > 10000) %3hr gap ~ 10000 sec - split the syringe -> case where acq stopped, but resumes syr num
-            figure, plot(totalstartsec,syrpumpinfo(:,5),'.-')
-            zz=find(diff(syrchangeinfo(ro(q):ro(q+1),1)) > 10000);
-            line([syrchangeinfo(ro(q)+zz-1) syrchangeinfo(ro(q)+zz-1)],ylim,'color','r')
-            %keyboard
-            disp(['Discontinuous syringe?' num2str(q)])
-            jj=ro(q):ro(q+1); %easier to handle indexes
-            kk=find(diff(syrchangeinfo(jj,1)) > 10000);
-            ind2add=[ind2add; jj(kk)'; jj(kk+1)']; %add this split into the rollover indexes
-        end
-    end
-    
-    ro=unique(sort([ro; ind2add])); %unique prevents duplicated indices at beginning or end of data batch
-    
-    if length(ro)>2
-        syrslope=(syrchangeinfo(ro(2:2:end),2)-syrchangeinfo(ro(1:2:end-1)+1,1))./(syrchangeinfo(ro(2:2:end),5)-syrchangeinfo(ro(1:2:end-1)+1,5)); %two indexes to avoid some 0 syringes on restart
-    else %case where no rollover detected
-        syrslope=(syrchangeinfo(ro(end),2)-syrchangeinfo(ro(1)+1,1))./(syrchangeinfo(ro(end),5)-syrchangeinfo(ro(1)+1,5)); %two indexes to avoid some 0 syringes on restart
-    end
-    
-    %% fill in these slopes for all syringes:
-    for q=1:2:length(ro)-1
+    for j=1:length(syr_ind)-1
         
-        if length(ro(q):ro(q+1)) < 4 & length(ro)>2
-            syrchangeinfo(ro(q)+1:ro(q+1),8)=0; %will be caught later - > unreliable slope estimates if low syrnum and many 0's and 1' for 'little' restarts
-            
-        else %Typical case:
-            syrchangeinfo(ro(q):ro(q+1),8)=syrslope((q+1)/2);
+        %finding when a syringe starts is easy:
+        syrchangeinfo(j,:)=[totalstartsec(syr_ind(j)) NaN syr_ind(j) NaN syrpumpinfo(syr_ind(j),6) syrpumpinfo(syr_ind(j),4)];
+        
+        %finding when it ends...
+        if ismember(syr_ind(j+1),j2)  %must look at next syringe change:
+            syrchangeinfo(j,[2 4])=[totalendsec(syr_ind(j+1)-1) syr_ind(j+1)-1];
+        else
+            syrchangeinfo(j,[2 4])=[totalendsec(syr_ind(j+1)) syr_ind(j+1)];
         end
     end
     
-    %use the syrchangeinfo matrix to populate a matrix for each record:
-    avgsyrtime=nan(size(syrpumpinfo,1),2); %syringe times and slopes
-    for q=1:size(syrchangeinfo,1)
-        avgsyrtime(syrchangeinfo(q,3):syrchangeinfo(q,4),1)=(1/60)*(syrchangeinfo(q,2)-syrchangeinfo(q,1));
-        avgsyrtime(syrchangeinfo(q,3):syrchangeinfo(q,4),2)=syrchangeinfo(q,8);
+    % add end entry:
+    syrchangeinfo(end,:)=[totalstartsec(syr_ind(end)) totalendsec(end) syr_ind(end) size(syrpumpinfo,1) syrpumpinfo(syr_ind(end),6) syrpumpinfo(syr_ind(end),4)];
+    
+    
+    %% identify when syringe number rolls over and for each 'batch' assign a speed, based on top syringe count:
+    batch_ind=find(diff(syrchangeinfo(:,5)) < -1);
+    batch_ind=[batch_ind; size(syrchangeinfo,1)]; %add on the end entry...
+    %     if any(syrchangeinfo(batch_ind,6) ~=3) % only consider cell syringes
+    %         keyboard
+    %     end
+    %
+    pumpspeed=nan(size(syrpumpinfo,1),1);
+    missing_ind=[];
+    for q=1:length(batch_ind)
+        if q==1
+            ind1=1;
+            ind2=syrchangeinfo(batch_ind(q),4);
+        else
+            ind1=syrchangeinfo(batch_ind(q-1)+1,3);
+            ind2=syrchangeinfo(batch_ind(q),4); %assign indexes for easier handling
+        end
+        
+        switch syrchangeinfo(batch_ind(q),5)
+            case 50
+                pumpspeed(ind1:ind2)=40;
+            case 100
+                pumpspeed(ind1:ind2)=80;
+            case 200
+                pumpspeed(ind1:ind2)=160;
+            otherwise %record troublesome indexes
+                missing_ind=[missing_ind; batch_ind(q) q];
+        end
+        
     end
     
-    %assign actually syringe speed based on slope:
-    P3=find(avgsyrtime(:,2) > 1000 & avgsyrtime(:,2) < 1800); %slope = ~1250 syringes/time ~ rollover
-    P2=find(avgsyrtime(:,2) > 500 & avgsyrtime(:,2) < 700); %slope = ~615 syringes/time ~ rollover
-    P1=find(avgsyrtime(:,2) > 250 & avgsyrtime(:,2) < 400); %slope = ~314 syringes/time ~ rollover
-    
-    %% any cells or bead runs unaccounted for?
-    % If cannot find a speed based on the above intervals, use the closest in time sped:
-    ind1=find(flag==3 | flag ==6); %cells and beads
-    test0=ismember(ind1,[P1;P2;P3]);
-    goodrate=find(test0==1); goodrate=ind1(goodrate); %index still into syrpumpinfo
-    test=find(test0==0);
-    
-    if ~isempty(test)
-        jj=ind1(test); %easier to handle indexes
-        disp(['bead rate and other rates unaccounted for: ' num2str(length(test)) ' out of ' num2str(length(avgsyrtime)) ' ...using closest speed'])
+    %% for any missing batches, use the next closest in time speed, as long as no time delays:
+    [a, ~, c]=setxor(missing_ind(:,1),batch_ind);
+    for q=1:length(missing_ind)
+        %find the smallest, positive number or least negative number as ->
+        %favoring back-in-time speeds
         
-        for i=1:length(jj)
-            qq=find(goodrate <= jj(i)); %for looking back in time....
-            [~, im]=min(totalstartsec(jj(i))-totalstartsec(goodrate(qq)));  %find closest good bead or cell run in (backwards) time that has a pumprate
+        test=missing_ind(q,1)-a;
+        ii=find(test>0);
+        if ~isempty(ii)
+            ii=c(ii(end)); %min positive
+        else %this is the first block then
+            ii=c(1);
+        end
+        
+        %assign indexes for easier handling:
+        if missing_ind(q,2)==1, ind1=1; else ind1=syrchangeinfo(batch_ind(missing_ind(q,2)-1)+1,3); end
+        ind2=syrchangeinfo(missing_ind(q,1),4);
+        
+        pumpspeed(ind1:ind2)=pumpspeed(syrchangeinfo(batch_ind(ii),4));
+    end
+    
+    %
+    if any(isnan(pumpspeed)) %should be all filled in....
+        disp('Pump speeds unaccounted for!')
+        keyboard
+    end
+    
+    %% SCREEN SYRINGES FOR EXPECTED DISTRIBUTION OF ACQ TIMES
+    
+    % to incorporate:
+    %a quick check on slow acquisition times right after syringe refilling
+    %or end:
+    
+    % Okay, once have a pump speed, examine acquisition times for any log outliers: grouped by pump speed
+    for p=[40 80 160]
+        
+        %within a pump speed and for cell syringes only:
+        temp=find(flag==3 & pumpspeed==p);
+        if ~isempty(temp)
+            upperbd=quantile(acqtime(temp),0.99);
+            qq=find(acqtime(temp) < upperbd);
+            jj=find(acqtime(temp) > upperbd+3*std(acqtime(temp(qq)))); %find records that are more than 4 std dev away without top records
             
-            if ismember(goodrate(qq(im)),P3) %use this index speed
-                P3=[P3; jj(i)]; %add the test index to a speed index group
-            elseif ismember(goodrate(qq(im)),P2)
-                P2=[P2; jj(i)];
-            elseif ismember(goodrate(qq(im)),P1)
-                P1=[P1; jj(i)];
-            else %then can try a forward time look:
-                [~, im]=min(abs(totalstartsec(jj(i))-totalstartsec(goodrate)));
-                if ismember(goodrate(im),P3) %use this index speed
-                    P3=[P3; jj(i)]; %add the test index to a speed index group
-                elseif ismember(goodrate(im),P2)
-                    P2=[P2; jj(i)];
-                elseif ismember(goodrate(im),P1)
-                    P1=[P1; jj(i)];
-                else
-                    disp('Cannot find a speed for these measurements! Help!')
-                    keyboard
+            if ~isempty(jj)  %start flagging data!
+                %identify syringes that points belong to
+                %if more than a few points within a syringe - throw away entire syringe
+                ind=temp(jj); rec=nan(length(jj),1);
+                for q=1:length(jj)
+                    rec(q)=find(ind(q)>=syrchangeinfo(:,3) & ind(q)<=syrchangeinfo(:,4));
+                end
+                unqsyr=unique(rec); %indexes into syrchangeinfo
+                for q=1:length(unqsyr)                   
+                    num_records=syrchangeinfo(unqsyr(q),4)-syrchangeinfo(unqsyr(q),3); %total records within a syringe
+                    qq=length(find(rec==unqsyr(q))); %how many records had abnornal acquisition times within this syringe
+                    if qq/num_records > 0.1 %more than 10% of the syringe, toss
+                        flag(syrchangeinfo(unqsyr(q),3):syrchangeinfo(unqsyr(q),4))=60;
+                    end
                 end
             end
         end
     end
     
-    pumprate=zeros(size(syrpumpinfo,1),1);
-    pumprate(P3)=40;
-    pumprate(P2)=80;
-    pumprate(P1)=160;
-    
 else %for rare case of only 1 syringe being processed...
-    
+    keyboard
+    %OLD CODE HERE:
     P1=find((pump_speed > 70 & pump_speed < 85));
     P2=find((pump_speed > 150 & pump_speed < 165));
     P3=find((pump_speed > 30 & pump_speed < 45));
@@ -383,7 +275,7 @@ else %for rare case of only 1 syringe being processed...
     pumprate(P1)=160;
 end
 
-%% SCREEN SYRINGES FOR EXPECTED DISTRIBUTION OF ACQ TIMES
+
 
 % We now would like to identify syrignes that may be partially clogged, have sheath
 % intrusions or are not operating as expected for smooth, continuous flow.
