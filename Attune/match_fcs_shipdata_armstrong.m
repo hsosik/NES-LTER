@@ -1,7 +1,27 @@
-fpath = '\\multiproc\data_on_memory\underway\proc\';
+% basepath = '\\sosiknas1\Backup\SPIROPA\20180414_AR29\';
+basepath='\\sosiknas1\Backup\LTER\20180404_AR28\';
+% %function [fcsmatch] = match_fcs_shipdata_armstrong(basepath)
+% fpath = [basepath '\underway\proc\'];
+fpath = '\\sosiknas1\Backup\LTER\20180404_AR28\underway\proc\';
 
-flist = dir([fpath 'AR18*.csv']);
-flist = flist(3:end); %remove two days before cruise
+f = [basepath '\Attune\Summary\FCSfileinfo.mat'];  %AR29 Cruise
+if exist(f,'file')
+    load(f)
+else
+   [FCSfileinfo] = FCS_DateTimeList([basepath '\Attune\ExportedFCS\']); %AR
+    save(f, 'FCSfileinfo')
+end
+
+load([basepath '\Attune\Summary\compiled_stats.mat']) %AR29
+[~,a,b] = intersect(FCSfileinfo.filelist, fcsfile_syn);
+fcsmatch.mdate_start(b) = FCSfileinfo.matdate_start(a);
+
+
+flist = dir([fpath 'AR*.csv']);
+temp = flist(1).name;
+if temp(1:4) == 'AR29' %change to is equal or strmatch if it doesn't work
+    flist = flist(3:end); %remove two days before cruise
+end;
 mdate = [];
 lat = [];
 lon = [];
@@ -16,10 +36,17 @@ for ii = 1:length(flist)
     mdate = [mdate; datenum([s s2 s3])];
     lat = [lat; t.data(:,1)];
     lon = [lon; t.data(:,2)];
-    sbe45S = [sbe45S; t.data(:,30)];
-    sbe45T = [sbe45T; t.data(:,31)];
-    flr = [flr; t.data(:,32)];
+    sbe45S = [sbe45S; t.data(:,6)];
+    sbe45T = [sbe45T; t.data(:,7)];
+    flr = [flr; t.data(:,5)];
 end
 clear s s2 s3 t ii fpath flist
 
-save AR29_underway
+for ii = 1:length(fcsmatch.mdate_start)
+    [~,a] = min(abs(mdate-fcsmatch.mdate_start(ii)));
+    fcsmatch.lat(ii) = lat(a);
+    fcsmatch.lon(ii) = lon(a);
+    fcsmatch.sbe45T(ii) = sbe45T(a);
+    fcsmatch.sbe45S(ii) = sbe45S(a);
+    fcsmatch.flr(ii) = flr(a);
+end

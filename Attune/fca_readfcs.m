@@ -120,7 +120,7 @@ end
 
 %fid = fopen(filename,'r','ieee-be');
 fid = fopen(filename,'r','b');
-fcsheader_1stline   = fread(fid,64,'char');
+fcsheader_1stline = fread(fid,64,'char');
 fcsheader_type = char(fcsheader_1stline(1:6)');
 
 %% reading the header
@@ -181,10 +181,13 @@ elseif  strcmp(fcsheader_type,'FCS2.0') || strcmp(fcsheader_type,'FCS3.0')  || s
         return
     end
     fcshdr.NumOfPar = str2num(get_mnemonic_value('$PAR',fcsheader_main, mnemonic_separator));
+    fcshdr.VOL = str2num(get_mnemonic_value('$VOL',fcsheader_main, mnemonic_separator));
+
 %     if strcmp(mnemonic_separator,'LF')
 %         fcshdr.NumOfPar = fcshdr.NumOfPar + 1;
 %     end
 %     
+
     fcshdr.Creator = get_mnemonic_value('CREATOR',fcsheader_main, mnemonic_separator);
     
     % comp matrix reader
