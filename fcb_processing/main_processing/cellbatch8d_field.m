@@ -189,7 +189,7 @@ for typenum = 1:size(filetypelist,1),
                         ii3 = find(partialdatmerged(datbins2,5)>=bins(cc) & partialdatmerged(datbins2,2)==1);
                     end
                     %%
-                    if 1 %isequal(year2do, 2017)
+                    if isequal(year2do, 2017) || (isequal(year2do, 2018) && isequal(filename(1:4), 'FCB1'))
                     ii3 = []; %TEST 9/13/17 %%don't allow PE = 1 to be baselin
                     if length(ii) + length(ii3) >= 6
                         disp('Fudge for 2017')

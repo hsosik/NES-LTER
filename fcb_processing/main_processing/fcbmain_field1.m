@@ -7,17 +7,17 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = 2018 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+for year2do = 2017 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
 dotime = 0; %0 = NO, 1 = YES
 domerge = 0;
-doclassify = 1;
-doplotgroup = 1;
-docells = 1;
+doclassify = 0;
+doplotgroup = 0;
+docells = 0;
 dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
 timeplotflag = 0; %for time: 0 = no plots, 1 = plots
 mergeplotflag = 0; %for merge: 0 = no plots, 1 = plots
 classplotflag = 0; %for classify: 0 = no plots, 1 = plots
-movieflag = 0;
+movieflag = 1;
 beadmovieflag=0;
 syrplotflag=0;
 %%USER CHANGE - above here
