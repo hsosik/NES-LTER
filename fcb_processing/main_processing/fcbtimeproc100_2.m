@@ -231,33 +231,36 @@ if length(unique(syrpumpinfo(:,5))) > 1
     %% SCREEN SYRINGES FOR ABNORMALLY LONG ACQ TIMES
        
     % Okay, once have a pump speed, examine acquisition times for any long outliers: grouped by pump speed
-    for p=[40 80 160]
-        
-        %within a pump speed and for cell syringes only:
-        temp=find(flag==3 & pumpspeed==p);
-        if ~isempty(temp)
-            upperbd=quantile(acqtime(temp),0.99);
-            qq=find(acqtime(temp) < upperbd);
-            jj=find(acqtime(temp) > upperbd+3*std(acqtime(temp(qq)))); %find records that are more than 4 std dev away without top records
-            
-            if ~isempty(jj)  %start flagging data!
-                %identify syringes that points belong to
-                %if more than a few points within a syringe - throw away entire syringe
-                ind=temp(jj); rec=nan(length(jj),1);
-                for q=1:length(jj)
-                    rec(q)=find(ind(q)>=syrchangeinfo(:,3) & ind(q)<=syrchangeinfo(:,4));
-                end
-                unqsyr=unique(rec); %indexes into syrchangeinfo
-                for q=1:length(unqsyr)                   
-                    num_records=syrchangeinfo(unqsyr(q),4)-syrchangeinfo(unqsyr(q),3); %total records within a syringe
-                    qq=length(find(rec==unqsyr(q))); %how many records had abnornal acquisition times within this syringe
-                    if qq/num_records > 0.1 %more than 10% of the syringe, toss
-                        flag(syrchangeinfo(unqsyr(q),3):syrchangeinfo(unqsyr(q),4))=60;
-                    end
-                end
-            end
+    
+    %find the median, almost max and almost min acq time of each syringe:
+    rec=nan(length(syrchangeinfo),4);
+    for q=1:length(syrchangeinfo)
+        syrind=syrchangeinfo(q,3):syrchangeinfo(q,4);
+        syrind=syrind(flag(syrind)==3); %only want the cell records
+        if ~isempty(syrind)
+            rec(q,1:3)=quantile(acqtime(syrind),[0.05 0.5 0.95]);
+            rec(q,4)=unique(pumpspeed(syrind));
         end
     end
+    
+    for p=[40 80 160]
+        %what is the median range within a set speed?
+        speed_ind=find(rec(:,4)==p);
+        baseline=quantile(rec(speed_ind,3)-rec(speed_ind,2),0.95);
+        baseline=baseline+1.5; %tack on an extra 1.5 sec
+        %now find syringes that exceed this:
+        jj=find(rec(speed_ind,3)-rec(speed_ind,2) > baseline); %find syringes whose max - median is way outside some std dev
+        %flag all points that belong to these syringes:
+        for j=1:length(jj)
+            syrind=syrchangeinfo(speed_ind(jj(j)),3):syrchangeinfo(speed_ind(jj(j)),4);
+            flag(syrind)=60;
+        end
+        
+    end
+    
+    %FIND TROUBLING SYRINGES BETWEEN WASH AND A 'BAD BATCH'
+         %%   
+
     
     %Also change for first records after a syringe refill - acquisition times are longer than the rest of syringe - sheath leaking in?
     %for each syringe, check first and last record against rest of times:
@@ -303,11 +306,11 @@ if syrplotflag
     ylabel('Syringe Number')
     xlabel('Time (sec)')
 
-    %acquistion time vs. time
+    %% acquistion time vs. time
     subplot(2,1,2,'replace')
     plot(totalstartsec,acqtime,'.-') %acquistion time vs. time
     hold on
-    ii=find(flag==3);
+    ii=find(flag==3 | flag==60 | flag ==61);
     h3=plot(totalstartsec(ii),acqtime(ii),'.'); %only cell syringes
     
     jj=find(flag==60); %cell syringes excluded    
