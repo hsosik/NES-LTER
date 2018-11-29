@@ -170,6 +170,7 @@ if length(unique(syrpumpinfo(:,5))) > 1
     
     
     %% identify when syringe number rolls over and for each 'batch' assign a speed, based on top syringe count:
+    
     batch_ind=find(diff(syrchangeinfo(:,5)) < -1);
     batch_ind=[batch_ind; size(syrchangeinfo,1)]; %add on the end entry...
     %     if any(syrchangeinfo(batch_ind,6) ~=3) % only consider cell syringes
@@ -227,13 +228,9 @@ if length(unique(syrpumpinfo(:,5))) > 1
         keyboard
     end
     
-    %% SCREEN SYRINGES FOR EXPECTED DISTRIBUTION OF ACQ TIMES
-    
-    % to incorporate:
-    %a quick check on slow acquisition times right after syringe refilling
-    %or end:
-    
-    % Okay, once have a pump speed, examine acquisition times for any log outliers: grouped by pump speed
+    %% SCREEN SYRINGES FOR ABNORMALLY LONG ACQ TIMES
+       
+    % Okay, once have a pump speed, examine acquisition times for any long outliers: grouped by pump speed
     for p=[40 80 160]
         
         %within a pump speed and for cell syringes only:
@@ -262,6 +259,22 @@ if length(unique(syrpumpinfo(:,5))) > 1
         end
     end
     
+    %Also change for first records after a syringe refill - acquisition times are longer than the rest of syringe - sheath leaking in?
+    %for each syringe, check first and last record against rest of times:
+    %%
+    for q=1:length(syrchangeinfo)
+        syrind=syrchangeinfo(q,3):syrchangeinfo(q,4);
+        syrind=syrind(flag(syrind)==3); %only want the cell records
+        if ~isempty(syrind)
+            if acqtime(syrind(1)) > (max(acqtime(syrind(2:end-1)))+ 2) %if first record is over max by two sec, flag
+                flag(syrind(1))=61;
+            elseif acqtime(syrind(end)) > (max(acqtime(syrind(2:end-1)))+ 2) %if end record is over max by two sec, flag
+                flag(syrind(end))=61;
+            end
+        end
+    end
+    
+    
 else %for rare case of only 1 syringe being processed...
     keyboard
     %OLD CODE HERE:
@@ -276,134 +289,54 @@ else %for rare case of only 1 syringe being processed...
 end
 
 
-
-% We now would like to identify syrignes that may be partially clogged, have sheath
-% intrusions or are not operating as expected for smooth, continuous flow.
-
-%We can do this by looking at the acquisition time over time and see if these values
-% follow a normal distribution (they should), and if not, flag for removal
-
-% To check for a normal distribution, for each syringe:
-% ---- from Andy's stats notes, plot: y(1) < y(2) < y(3)  (where y's are the acquistion times of all the records within a syringe)
-% ---- against F^-1(1/(n+1), F^-1(2/n+1), F^-1(3/n+1), where F^-1 is the norm inv parameterized from teh mean and variance of the syringe data
-% ---- sum of squares between obs and expected is a good pre-check before testing for linearity
-% ---- if ss is high, perform linear regression between ordered data and the normal inverse of data positions and check how good fit is
-
-for q=1:length(syrchangeinfo) %for each syringe...
-    
-    %syrchangeinfo has the indexes per syringe at columns 3 and 4:
-    inds=syrchangeinfo(q,3):syrchangeinfo(q,4);
-    tempacq=acqtime(inds); %dataslices
-    tempflag=flag(inds);
-    tf=find(tempflag==3); %only evaluate cell records (ask of these, should any records be removed?)
-    n=length(tempacq(tf));
-    
-    if ~isempty(tf) && n~=1 %can't be empty and length can't be 1
-        
-        finv = (norminv(((1:n)/(n+1)),mean(tempacq(tf)),std(tempacq(tf))))'; %expected value given an underling normal distribution
-        [ordered_acq, oind] = sort(tempacq(tf)); %ordered acquisition times
-        ss=sum(sqrt((ordered_acq-finv).^2)); %difference between expected and observed
-        
-        %Hmmm...maybe we should just start with linearity and then see if removing outliers fixes it?
-        
-        [b,~,~,~,stats]=regress(finv,[ones(length(ordered_acq),1) ordered_acq]);
-        b0=b; stats0=stats;
-        counter=0;
-        while stats(1) < 0.875 && counter < 3
-            counter=counter+1; %disp(num2str(counter))
-            if counter ~= 3
-                %disp('outlier problem?')
-                finv0 = (norminv(((1:(n-counter))/((n-counter)+1)),mean(ordered_acq(1:end-counter)),std(ordered_acq(1:end-counter))))'; %expected value given an underling normal distribution
-                [b,~,~,~,stats]=regress(finv0,[ones(length(ordered_acq(1:end-counter)),1) ordered_acq(1:end-counter)]);
-                disp([num2str(q) ': linear regression count: ' num2str(counter) ' : ' num2str(stats(1)) ' : ' num2str(stats(3))])
-            end
-        end
-        
-        switch counter
-            case 1 %exclusion of one record was enough!
-                disp([num2str(q) ': Excluded a starting or ending outlier record from syringe'])
-                flag(inds(tf(oind(end))))=60; %flag it!
-            case 2 %two records excluded
-                disp([num2str(q) ': Excluded two starting or ending outlier records from syringe'])
-                flag(inds(tf(oind(end))))=60; %flag it!
-                flag(inds(tf(oind(end-1))))=60; %flag it!
-            case 3
-                disp([num2str(q) ': trying to exclude outliers did not fix data distribution, flagging syringe'])
-                flag(inds(tf))=61;
-        end
-        
-        if counter ~=0
-            subplot(1,2,1,'replace')
-            plot(finv,ordered_acq,'o'), hold on
-            ff=find(flag(inds(tf(oind)))==60);
-            plot(finv(ff),ordered_acq(ff),'ro','markerface','r') %identify outliers
-            line([ordered_acq(1) ordered_acq(end)],[ordered_acq(1) ordered_acq(end)]) %expectation
-            title(['q: ' num2str(q) 'sum of squares:' num2str(ss)])
-            plot(finv, b(1)+b(2)*finv,'r.-')
-            
-            subplot(1,2,2), hold on
-            line([totalstartsec(inds(1)) totalstartsec(inds(1))],ylim,'linestyle','-','color',[0.6 0.6 0.6],'linewidth',2)
-            line([totalstartsec(inds(end)) totalstartsec(inds(end))],ylim,'linestyle','-','color',[0.6 0.6 0.6],'linewidth',2)
-            plot(totalstartsec(max(1,inds(1)-500):min(inds(end),inds(end)+500)),acqtime(max(1,inds(1)-500):min(inds(end),inds(end)+500)),'.-','color',[0 0 0]), hold on
-            xlim([totalstartsec(inds(1))-500 totalstartsec(inds(end))+500])
-            plot(totalstartsec(inds(tf(oind(ff)))),acqtime(inds(tf(oind(ff)))),'ro','markerface','r') %identify outliers
-            
-            keyboard
-        end
-        
-    elseif n==1 %if you are a cell syringe of length 1 - ignore
-        flag(inds(tf))=62; %length of 1
-    end
-end
-
 %% if plotflag is on, plot a final summary for sanity check:
 if syrplotflag
     
     figure(16)
-    subplot(3,1,1,'replace')
+    %syringe number and pump speed over time
+    subplot(2,1,1,'replace')
     plot(totalstartsec,syrpumpinfo(:,5),'k.-'); %syringe number and time
     hold on
-    if ~isempty(test)
-        h1=plot(totalstartsec(ind1(test)),syrpumpinfo(ind1(test),5),'r.');
-        legend(h1(1),'assigned pump rate from closest syr','location','NorthOutside')
-    end
-    
+    h1=plot(totalstartsec,pumpspeed,'.','color',[0 0.5 1]); %syringe designated speed and time   
+    h2=plot(totalstartsec(missing_ind),pumpspeed(missing_ind),'.','color',[1 0.5 0]); %syringe speed assigned from closest syringe
+    legend([h1(1); h2(1)],'Assigned pump speed','Speeds from closest neighbor','location','NorthOutside')
     ylabel('Syringe Number')
     xlabel('Time (sec)')
-    
-    subplot(3,1,2,'replace'), hold on
-    h1=plot(totalstartsec,pump_speed,'.-','color',[0.6 0.6 0.6]); %time and speed; rough calc of speed for all syr
-    h2=plot(totalstartsec(ind1),pump_speed(ind1),'.','color',[0 0.5 1]); %rough calc of speed for cell/bead syr
-    h3=plot(totalstartsec(ind1),pumprate(ind1),'.','color',[0 0 1]); %assgined rate of cell/bead syr
-    legend([h1(1); h2(1); h3(1)],'calc rough speed','cell syr rough speed','assigned speed for cell syr','location','NorthOutside','Orientation','Horizontal')
-    if ~isempty(test)
-        h4(1)=plot(totalstartsec(ind1(test)),pumprate(ind1(test)),'c.');
-        legend([h1(1); h2(1); h3(1); h4(1)],'calc rough speed','cell syr rough speed','assigned speed for cell syr','assigned pump rate from closest syr','location','NorthOutside','Orientation','Horizontal')
-    end
-    ylabel('Calc and assigned pump rate (steps/sec)')
-    xlabel('Time (sec)')
-    ylim([-10 180])
-    xlabel('Time (sec)')
-    
-    subplot(3,1,3,'replace')
+
+    %acquistion time vs. time
+    subplot(2,1,2,'replace')
     plot(totalstartsec,acqtime,'.-') %acquistion time vs. time
     hold on
     ii=find(flag==3);
-    h1=plot(totalstartsec(ii),acqtime(ii),'.');
-    jj=find(flag==60 | flag==61 | flag ==62);
-    h2=plot(totalstartsec(jj),acqtime(jj),'ko'); %cell syringes excluded
-    legend([h1(1); h2(1)],'cell syr.','excl. syr','location','NorthOutside')
+    h3=plot(totalstartsec(ii),acqtime(ii),'.'); %only cell syringes
+    
+    jj=find(flag==60); %cell syringes excluded    
+    if ~isempty(jj), h4=plot(totalstartsec(jj),acqtime(jj),'o'); end 
+    
+    mm=find(flag==61); %first or last record of a syringe excluded
+    if ~isempty(mm), h5=plot(totalstartsec(mm),acqtime(mm),'o');end
+    
+    if ~isempty(jj) && ~isempty(mm)
+        legend([h3(1); h4(1); h5(1)],'cell records','excl. syr','records excl.','location','NorthOutside')
+    elseif ~isempty(jj) && isempty(mm)
+        legend([h3(1); h4(1)],'cell records','excl. syr','location','NorthOutside')
+    elseif isempty(jj) && ~isempty(mm)
+        legend([h3(1); h5(1)],'cell records','records excl.','location','NorthOutside')
+    else
+        legend(h3(1),'cell syr.','location','NorthOutside')
+    end
     ylabel('Acquisition time (sec)')
     xlabel('Time (sec)')
     
-    pause(0.5)
+    disp('Type dbcont to move to next batch of processing....')
+    keyboard
     
 end %syrplotflag
 
 
 %% and now for the magic:
 
-offset = pumprate*querytime*(totalvol/maxpos); %offset = steps/sec*(q+d time)*(totalvol/maxpos)
+offset = pumpspeed*querytime*(totalvol/maxpos); %offset = steps/sec*(q+d time)*(totalvol/maxpos)
 analvol = analvol - offset;
 
 %%
