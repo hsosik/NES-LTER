@@ -203,7 +203,7 @@ if length(unique(syrpumpinfo(:,5))) > 1
     
     %% for any missing batches, use the next closest in time speed, as long as no time delays:
     [a, ~, c]=setxor(missing_ind(:,1),batch_ind);
-    for q=1:length(missing_ind)
+    for q=1:size(missing_ind,1)
         %find the smallest, positive number or least negative number as ->
         %favoring back-in-time speeds
         
@@ -246,8 +246,8 @@ if length(unique(syrpumpinfo(:,5))) > 1
     for p=unique(pumpspeed)
         %what is the median range within a set speed?
         speed_ind=find(rec(:,4)==p); %should still be only for cell syringes
-        baseline=quantile(rec(speed_ind,3)-rec(speed_ind,2),0.95);
-        baseline=baseline+1.5; %tack on an extra 1.5 sec
+        baseline=quantile(rec(speed_ind,3)-rec(speed_ind,2),0.99);
+        baseline=baseline+2; %tack on an extra 2 sec just to safe ;)
         %now find syringes that exceed this:
         abn_syr=find(rec(speed_ind,3)-rec(speed_ind,2) > baseline); %find syringes whose max - median is way outside some std dev
         %flag all points that belong to these syringes:
@@ -281,9 +281,9 @@ if length(unique(syrpumpinfo(:,5))) > 1
         syrind=syrchangeinfo(q,3):syrchangeinfo(q,4);
         syrind=syrind(flag(syrind)==3); %only want the cell records
         if ~isempty(syrind)
-            if acqtime(syrind(1)) > (max(acqtime(syrind(2:end-1)))+ 2) %if first record is over max by two sec, flag
+            if acqtime(syrind(1)) > (max(acqtime(syrind(2:end-1)))+ 4) %if first record is over max by two sec, flag
                 flag(syrind(1))=61;
-            elseif acqtime(syrind(end)) > (max(acqtime(syrind(2:end-1)))+ 2) %if end record is over max by two sec, flag
+            elseif acqtime(syrind(end)) > (max(acqtime(syrind(2:end-1)))+ 4) %if end record is over max by two sec, flag
                 flag(syrind(end))=61;
             end
         end
@@ -347,7 +347,7 @@ if syrplotflag
     xlabel('Time (sec)')
     
     disp('Check the plots and then type dbcont to move to next batch of processing....')
-    keyboard
+%     keyboard
     
 end %syrplotflag
 
