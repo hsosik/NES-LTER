@@ -243,28 +243,40 @@ if length(unique(syrpumpinfo(:,5))) > 1
         end
     end
     
-    for p=[40 80 160]
+    for p=unique(pumpspeed)
         %what is the median range within a set speed?
-        speed_ind=find(rec(:,4)==p);
+        speed_ind=find(rec(:,4)==p); %should still be only for cell syringes
         baseline=quantile(rec(speed_ind,3)-rec(speed_ind,2),0.95);
         baseline=baseline+1.5; %tack on an extra 1.5 sec
         %now find syringes that exceed this:
-        jj=find(rec(speed_ind,3)-rec(speed_ind,2) > baseline); %find syringes whose max - median is way outside some std dev
+        abn_syr=find(rec(speed_ind,3)-rec(speed_ind,2) > baseline); %find syringes whose max - median is way outside some std dev
         %flag all points that belong to these syringes:
-        for j=1:length(jj)
-            syrind=syrchangeinfo(speed_ind(jj(j)),3):syrchangeinfo(speed_ind(jj(j)),4);
+        for j=1:length(abn_syr)
+            syrind=syrchangeinfo(speed_ind(abn_syr(j)),3):syrchangeinfo(speed_ind(abn_syr(j)),4);
             flag(syrind)=60;
         end
         
-    end
+    end  
     
-    %FIND TROUBLING SYRINGES BETWEEN WASH AND A 'BAD BATCH'
-         %%   
-
+    % a double check if this is at the start of roll over event, and if so -
+    %make sure to exclude first syringe:
+    for j=1:length(abn_syr)
+        if syrchangeinfo(speed_ind(abn_syr(j)),5) <= 3 && syrchangeinfo(speed_ind(abn_syr(j)),5) >= 2%troublesome syrignes are at start of roll over event -> exclude previous syringes
+            %check if previous syringes have been included:
+            count=syrchangeinfo(speed_ind(abn_syr(j)),5);
+            while count > 1
+                if ~ismember(speed_ind(abn_syr(j))-count+1,speed_ind(abn_syr)) %if the previous syringe is missing - add!
+                    %keyboard
+                    syrind=syrchangeinfo(speed_ind(abn_syr(j))-count+1,3):syrchangeinfo(speed_ind(abn_syr(j))-count+1,4);
+                    flag(syrind)=62;
+                end
+                count=count-1;
+            end
+        end
+    end  
     
     %Also change for first records after a syringe refill - acquisition times are longer than the rest of syringe - sheath leaking in?
     %for each syringe, check first and last record against rest of times:
-    %%
     for q=1:length(syrchangeinfo)
         syrind=syrchangeinfo(q,3):syrchangeinfo(q,4);
         syrind=syrind(flag(syrind)==3); %only want the cell records
@@ -306,24 +318,27 @@ if syrplotflag
     ylabel('Syringe Number')
     xlabel('Time (sec)')
 
-    %% acquistion time vs. time
+    % acquistion time vs. time
     subplot(2,1,2,'replace')
     plot(totalstartsec,acqtime,'.-') %acquistion time vs. time
     hold on
     ii=find(flag==3 | flag==60 | flag ==61);
     h3=plot(totalstartsec(ii),acqtime(ii),'.'); %only cell syringes
     
-    jj=find(flag==60); %cell syringes excluded    
-    if ~isempty(jj), h4=plot(totalstartsec(jj),acqtime(jj),'o'); end 
+    ww=find(flag==60); %cell syringes excluded    
+    if ~isempty(ww), h4=plot(totalstartsec(ww),acqtime(ww),'o'); end 
     
     mm=find(flag==61); %first or last record of a syringe excluded
     if ~isempty(mm), h5=plot(totalstartsec(mm),acqtime(mm),'o');end
     
-    if ~isempty(jj) && ~isempty(mm)
+    kk=find(flag==62); %syringe excluded at beginning of a rollover
+    if ~isempty(kk), h6=plot(totalstartsec(kk),acqtime(kk),'s');end
+    
+    if ~isempty(ww) && ~isempty(mm)
         legend([h3(1); h4(1); h5(1)],'cell records','excl. syr','records excl.','location','NorthOutside')
-    elseif ~isempty(jj) && isempty(mm)
+    elseif ~isempty(ww) && isempty(mm)
         legend([h3(1); h4(1)],'cell records','excl. syr','location','NorthOutside')
-    elseif isempty(jj) && ~isempty(mm)
+    elseif isempty(ww) && ~isempty(mm)
         legend([h3(1); h5(1)],'cell records','records excl.','location','NorthOutside')
     else
         legend(h3(1),'cell syr.','location','NorthOutside')
@@ -331,7 +346,7 @@ if syrplotflag
     ylabel('Acquisition time (sec)')
     xlabel('Time (sec)')
     
-    disp('Type dbcont to move to next batch of processing....')
+    disp('Check the plots and then type dbcont to move to next batch of processing....')
     keyboard
     
 end %syrplotflag
