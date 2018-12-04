@@ -234,122 +234,9 @@ if length(unique(syrpumpinfo(:,5))) > 1
     
     %% SCREEN SYRINGES FOR ABNORMALLY LONG ACQ TIMES
     
-    % Okay, once have a pump speed, examine acquisition times for any long outliers: grouped by pump speed
+    %First, check for long times right after or before a syringe pump
+    %refill and exlcude: (is this sheath leaking in?)
     
-    %find the median, almost max and almost min acq time of each syringe:
-    rec=nan(length(syrchangeinfo),4);
-    for q=1:size(syrchangeinfo,1)
-        syrind=(syrchangeinfo(q,3)+2):(syrchangeinfo(q,4)-2); %do not include end indexes as these are often long
-        syrind=syrind(flag(syrind)==3); %only want the cell records
-        if ~isempty(syrind)
-            rec(q,1:3)=quantile(acqtime(syrind),[0 0.5 1]);
-            rec(q,4)=unique(pumpspeed(syrind));
-        end
-    end
-    
-    %first identify potentially troublesome syringes globally by identifying abnormal acq times within a pumpspeed:
-    abn_syr=[];
-    for p=(unique(pumpspeed))'
-        speed_ind=find(rec(:,4)==p); %should still be only for cell syringes
-        baseline=mean(rec(speed_ind,3)-rec(speed_ind,2))+4*std(rec(speed_ind,3)-rec(speed_ind,2));       
-        %now find syringes that exceed this:
-        temp=find(rec(speed_ind,3)-rec(speed_ind,2) > baseline); %find syringes whose max - median is way outside some std dev
-        abn_syr=[abn_syr; speed_ind(temp)];       
-    end
-    
-    %% acquisition times evaluated based on a baseline from surrouding syringes:
-    
-    cellind=find(~isnan(rec(:,1))); %cell syringes only
-    window=20; %how many syringes to calc baseline
-    base_metric0=nanmean(rec(cellind,3)-rec(cellind,2))+2*std(rec(cellind,3)-rec(cellind,2));
-    syr_excl=[]; %keep record of excludedsyringes
-    
-    %identify syringes just after a time gap:
-    gap_syr=[];
-    if ~isempty(j0)    
-    for qq=1:length(j0)
-        gg=find(syrchangeinfo(:,3) >= j0(qq));
-        gap_syr=[gap_syr; gg(1)-1];      
-    end
-    end    
-    
-    for q=1:size(cellind,1)        
-        %select a window of syringes to serves as an evaluation baseline:
-        %exclude syringes that may be troublesome based on global metrics above
-        %favor backward looking
-        
-        if q < window+1 %at beginning of records
-            syrbase=cellind(1:window); %look forward    
-            %SHOULD ALSO LOOK FORWARD AFTER ROLL OVER EVENTS....
-        elseif any((cellind(q)-gap_syr <= window) & (cellind(q)-gap_syr >= 0)) %after a time gap, begin from here
-            syrbase=cellind(q+1):cellind(q+1+window); %look forward in time
-        else
-            syrbase=cellind((q-window):q-1); %indexes into syrchangeinfo and rec
-        end
-        
-        %check if any of these syringes may be troublesome and exclude:
-        if any(ismember(syrbase,abn_syr))          
-            if length(find(ismember(syrbase,abn_syr)==1)) <= 3 %up to 3 excluded is fine
-                syrbase=setdiff(syrbase,abn_syr);
-                base_metric=nanmean(rec(syrbase,3)-rec(syrbase,2))+3*std(rec(syrbase,3)-rec(syrbase,2));
-            else
-                base_metric=base_metric0; %use previous base metric
-            end
-            
-        else %go ahead and calculatea baseline:
-           base_metric=mean(rec(syrbase,3)-rec(syrbase,2))+3*std(rec(syrbase,3)-rec(syrbase,2));                
-        end
-        
-        if rec(cellind(q),3)-rec(cellind(q),2) > base_metric+1 %add another sec, just for padding
-            %keyboard
-            %flag it!
-            syrind=syrchangeinfo(cellind(q),3):syrchangeinfo(cellind(q),4);
-            syrind=syrind(flag(syrind)==3); %only flag cell records - don't overwrite 97,98's
-            flag(syrind)=60; 
-            
-            %and add it to abn_syr index!
-            abn_syr=sort(unique([abn_syr; cellind(q)])); 
-            syr_excl=[syr_excl; cellind(q)];
-        end
-        
-        base_metric0=base_metric; %hold onto this metric in case needed for eval of next syringe      
-    end 
-    
-    
-    
-    %% a double check to exclude additional syringes not flagged by the above code that are:
-    % either right after a roll over event, and before troublesome syringes -
-    % or inbetween troublesome syringes:
-    %or right before an end of a deployment:
-    
-    for j=1:length(abn_syr)
-        if syrchangeinfo(speed_ind(abn_syr(j)),5) <= 3 && syrchangeinfo(speed_ind(abn_syr(j)),5) >= 2%troublesome syrignes are at start of roll over event -> exclude previous syringes
-            %check if previous syringes have been included:
-            count=syrchangeinfo(speed_ind(abn_syr(j)),5);
-            while count > 1
-                if ~ismember(speed_ind(abn_syr(j))-count+1,speed_ind(abn_syr)) %if the previous syringe is missing - add!
-                    %keyboard
-                    syrind=syrchangeinfo(speed_ind(abn_syr(j))-count+1,3):syrchangeinfo(speed_ind(abn_syr(j))-count+1,4);
-                    flag(syrind)=62;
-                end
-                count=count-1;
-            end
-        end
-        
-        %find inbetween syrignes by looking ahead and behind....
-        %look behind:
-        %         if any(diff((ismember(abn_syr(j)-2:abn_syr(j)-1,abn_syr)))==1) %meaning you have a pattern of [0 1], etc.
-        %         end
-        %look ahead:
-        if any(diff(ismember(abn_syr(j)+1:abn_syr(j)+3,abn_syr))==1)
-            syr_range=abn_syr(j)+1:abn_syr(j)+3;
-            aa=find(diff(ismember(syr_range,abn_syr))==1);
-            syrind=syrchangeinfo(speed_ind(syr_range(aa)),3):syrchangeinfo(speed_ind(syr_range(aa)),4);
-            flag(syrind)=62;
-        end
-    end
-    
-    %% Also check the first and last records after a syringe refill - acquisition times can be longer than the rest of syringe - sheath leaking in?
     %for each syringe, check first and last record against rest of times:
     for q=1:length(syrchangeinfo)
         syrind=syrchangeinfo(q,3):syrchangeinfo(q,4);
@@ -364,6 +251,163 @@ if length(unique(syrpumpinfo(:,5))) > 1
             end
         end
     end
+    
+    %% Okay, now, within a pump speed, examine acquisition times for range outliers:
+    
+    %calculate the median, and almost max and almost min acq time of each
+    %syringe:
+    %The difference between almost max and median seems to do a good job of
+    %finding abnormal syringes:
+    
+    rec=nan(length(syrchangeinfo),4);
+    for q=1:size(syrchangeinfo,1)
+        syrind=(syrchangeinfo(q,3)+1):(syrchangeinfo(q,4)-1); %do not include end indexes as these are often long
+        syrind=syrind(flag(syrind)==3); %only want the cell records
+        if ~isempty(syrind)
+            rec(q,1:3)=quantile(acqtime(syrind),[0 0.5 0.95]);
+            rec(q,4)=unique(pumpspeed(syrind));
+        end
+    end
+    
+    %% first identify potentially troublesome syringes globally by identifying abnormal acq times within a pumpspeed:
+    abn_syr=[];
+    for p=(unique(pumpspeed))'
+        speed_ind=find(rec(:,4)==p); %should still be only for cell syringes
+        baseline=mean(rec(speed_ind,3)-rec(speed_ind,2))+5*std(rec(speed_ind,3)-rec(speed_ind,2));
+        %now find syringes that exceed this:
+        temp=find(rec(speed_ind,3)-rec(speed_ind,2) > baseline); %find syringes whose max - median is way outside some std dev
+        abn_syr=[abn_syr; speed_ind(temp)];
+    end
+    
+    %% evaluate acquisition times based on a baseline from surrouding syringes (but exclude abn syringes)
+    
+    cellind=find(~isnan(rec(:,1))); %cell syringes only
+    window=20; %how many syringes to calc baseline
+    base_metric0=nanmean(rec(cellind,3)-rec(cellind,2))+3*std(rec(cellind,3)-rec(cellind,2));
+    syr_excl=[]; %keep record of excludedsyringes
+    
+    %identify syringes just after a time gap: these are handled differently
+    gap_syr=[];
+    if ~isempty(j0)
+        for qq=1:length(j0)
+            gg=find(syrchangeinfo(:,3) >= j0(qq));
+            gap_syr=[gap_syr; gg(1)-1];
+        end
+    end
+    syrflag=0;
+    
+    for q=1:size(cellind,1)
+        %select a window of syringes to serves as an evaluation baseline:
+        %exclude syringes that may be troublesome based on global metrics above
+        %favor backward looking
+        
+        if q < window+1 %at beginning of records
+            syrbase=cellind(1:window); %look forward
+            %SHOULD ALSO LOOK FORWARD AFTER ROLL OVER EVENTS....
+        elseif any((cellind(q)-gap_syr <= window) & (cellind(q)-gap_syr >= 0)) %after a time gap, begin from here
+            if length(cellind) < q+window %at end of record - no more future syringes
+                syrflag=1;
+            else
+                syrbase=cellind(q+1):cellind(q+1+window); %look forward in time
+            end
+        else
+            syrbase=cellind((q-window):q-1); %indexes into syrchangeinfo and rec
+        end
+        
+        %check if any of these syringes may be troublesome and exclude:
+        if any(ismember(syrbase,abn_syr))
+            if length(find(ismember(syrbase,abn_syr)==1)) <= 3 %up to 3 excluded is fine
+                syrbase=setdiff(syrbase,abn_syr);
+                base_metric=nanmean(rec(syrbase,3)-rec(syrbase,2))+4*std(rec(syrbase,3)-rec(syrbase,2));
+            else
+                syrflag=1;
+            end
+            
+        else %go ahead and calculate a baseline:
+            base_metric=mean(rec(syrbase,3)-rec(syrbase,2))+4*std(rec(syrbase,3)-rec(syrbase,2));
+        end
+        
+        if syrflag==1
+            base_metric=base_metric0; %use previous base metric
+        end
+        
+        if rec(cellind(q),3)-rec(cellind(q),2) > base_metric+1 %add another sec, just for padding
+            %keyboard
+            %flag it!
+            syrind=syrchangeinfo(cellind(q),3):syrchangeinfo(cellind(q),4);
+            syrind=syrind(flag(syrind)==3); %only flag cell records - don't overwrite 97,98's
+            flag(syrind)=60;
+            
+            %and add it to abn_syr index!
+            abn_syr=sort(unique([abn_syr; cellind(q)]));
+            syr_excl=[syr_excl; cellind(q) q]; %indexes into syrchangeinfo and rec
+        end
+        
+        base_metric0=base_metric; %hold onto this metric in case needed for eval of next syringe
+        syrflag=0; %reset flag
+    end
+    
+    %SYR_EXCL - indexes in first column go to syrchangeinfo and rec, 2nd col into cellind
+    
+    %% a double check to exclude additional syringes not flagged by the above code that are:
+    % right after a roll over event, and before troublesome syringes
+    % or inbetween troublesome syringes and not flagged
+    % or right before an end of a deployment and after troublemsome syringes
+    
+    for j=1:length(syr_excl)
+        
+        %troublesome syrignes are at start of roll over event -> exclude
+        %previous syringes if not included already
+        if syrchangeinfo(cellind(syr_excl(j,2)),5) == 3 || syrchangeinfo(cellind(syr_excl(j,2)),5) == 2
+            %             check if previous syringes have been included:
+            %keyboard
+            count=syrchangeinfo(cellind(syr_excl(j,2)),5);
+            while count > 1
+                if ~ismember(cellind(syr_excl(j,2)-count+1),syr_excl(:,1)) %if the previous syringe is missing - add!
+                    %keyboard
+                    syrind=syrchangeinfo(cellind(syr_excl(j,2)-count+1),3):syrchangeinfo(cellind(syr_excl(j,2)-count+1),4);
+                    flag(syrind)=62;
+                end
+                count=count-1;
+            end
+        end
+        
+        %syringes often are a problem at the end of a deployment - exclude
+        %syringes not already flagged that come after troublesome ones near end
+        if any(gap_syr-syr_excl(j,1) < 3 & gap_syr-syr_excl(j,1) > 0) %gap is ahead of current index
+            gg=find((gap_syr-syr_excl(j,1) < 3) & (gap_syr - syr_excl(j,1) >=0)); %identify gap syr
+            % keyboard
+            to_add=find(ismember(syr_excl(j,1)+1:gap_syr(gg),syr_excl)==0);
+            for i=1:length(to_add)
+                % syr_excl=[syr_excl; syr_excl(j,1)+to_add(i) NaN];
+                syrind=syrchangeinfo(syr_excl(j,1)+to_add(i),3):syrchangeinfo(syr_excl(j,1)+to_add(i),4);
+                flag(syrind)=62;
+            end
+        end
+        
+        
+        % find inbetween syrignes by looking ahead and behind....
+        %look behind:
+        %         if any(diff((ismember(abn_syr(j)-2:abn_syr(j)-1,abn_syr)))==1) %meaning you have a pattern of [0 1], etc.
+        %         end
+        
+        %look ahead:
+        if any(diff(ismember(syr_excl(j,1)+1:syr_excl(j,1)+3,syr_excl(:,1)))==1) %there are missing syringes!
+            for i=1:3
+                if ~ismember(syr_excl(j,1)+i,syr_excl(:,1))
+                    syrind=syrchangeinfo(syr_excl(j,1)+i,3):syrchangeinfo(syr_excl(j,1)+i,4);
+                    flag(syrind)=62;
+                end
+            end
+            %             syr_range=syr_excl(j,1)+1:syr_excl(j,1)+3;
+            %             aa=find(diff(ismember(syr_range,abn_syr))==1);
+            %             syrind=syrchangeinfo(speed_ind(syr_range(aa)),3):syrchangeinfo(speed_ind(syr_range(aa)),4);
+            %             flag(syrind)=62;
+        end
+        
+    end
+    
+    
     
     
 else %for rare case of only 1 syringe being processed...
@@ -400,25 +444,15 @@ if syrplotflag
     hold on
     ii=find(flag==3 | flag==60 | flag==61 | flag==62);
     h3=plot(totalstartsec(ii),acqtime(ii),'.'); %only cell syringes
+    hleg=legend(h3(1),'cell records','location','NorthOutside');
     
     ww=find(flag==60); %cell syringes excluded
-    if ~isempty(ww), h4=plot(totalstartsec(ww),acqtime(ww),'o','markersize',4,'linewidth',1.5); end
-    
+    if ~isempty(ww), h4=plot(totalstartsec(ww),acqtime(ww),'o','markersize',4,'linewidth',1.5); hleg.String(2)={'syr. excl'}; end    
     mm=find(flag==61); %first or last record of a syringe excluded
-    if ~isempty(mm), h5=plot(totalstartsec(mm),acqtime(mm),'o','markersize',4,'linewidth',1.5);end
-    
+    if ~isempty(mm), h5=plot(totalstartsec(mm),acqtime(mm),'o','markersize',4,'linewidth',1.5); hleg.String(3)={'1st/last rec excl'}; end    
     kk=find(flag==62); %syringe excluded at beginning of a rollover
-    if ~isempty(kk), h6=plot(totalstartsec(kk),acqtime(kk),'s','markersize',4,'linewidth',1.5);end
-    
-    if ~isempty(ww) && ~isempty(mm)
-        legend([h3(1); h4(1); h5(1)],'cell records','excl. syr','records excl.','location','NorthOutside')
-    elseif ~isempty(ww) && isempty(mm)
-        legend([h3(1); h4(1)],'cell records','excl. syr','location','NorthOutside')
-    elseif isempty(ww) && ~isempty(mm)
-        legend([h3(1); h5(1)],'cell records','records excl.','location','NorthOutside')
-    else
-        legend(h3(1),'cell syr.','location','NorthOutside')
-    end
+    if ~isempty(kk), h6=plot(totalstartsec(kk),acqtime(kk),'s','markersize',4,'linewidth',1.5); hleg.String(4)={'2ndary catch'};end
+
     ylabel('Acquisition time (sec)')
     xlabel('Time (sec)')
     
