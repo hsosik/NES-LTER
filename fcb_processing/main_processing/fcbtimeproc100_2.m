@@ -1,3 +1,4 @@
+
 %fcbtimeproc = modified from fcbtimeproc to work for 12 channel setup in
 %lab, now with 100 events per record (instead of 200 as before) 2/24/05
 %3/7/03 fcbtimeproc = modified from cytosubproc2_labalt to handle new file format (with
@@ -8,17 +9,16 @@
 %In this script:
 % Goal is to calculate time and volume analyzed for each record of each syringe:
 % ----Go through and remove syringes that are being refilled, etc. during acquitions
-% ----Calculate an accurate syringe pump speed in order to remove correct volume that hasn't been analyzed
-% ----Remove syringes where acquisition time of triggers do not conform to standard
-%       expection - indicating a possible clog or flow problem or sheath intrusion
+% ----Find syringe pump speed in order to remove correct volume that hasn't been analyzed
+% ----Remove syringes where acquisition time of triggers are abnormal - indicating a possible clog or flow problem or sheath intrusion
 
 %flag summary:
 %99 - fast syringes
 %98 - syr refill at start of acqusition
 %97 - syr refill during acquistion
-%60 - outlier record (based on acq time) right after refill or just before end of syr
-%61 - acq times within syr do not resemble a normal distribution
-%62 - cell syr with just 1 record
+%60 - long acq times within a syr - discard whole syringe
+%61 - outlier record (based on acq time) right after refill or just before end of syr
+%62 - secondary catch on troublesome syringes near those with flag of 60
 
 % initial info and setup
 flag = zeros(size(totalstartsec));
@@ -71,21 +71,22 @@ t = find(syrpumpinfo(:,5) == syrpumpinfo(:,6) & start - stop <= 0); %syringe in 
 analvol(t) = (maxpos-stop(t))/maxpos*totalvol;
 flag(t) = 98; %syringes refilling in middle
 %syringes where number has ticked over, but still refilling -> has not reached totalvol yet
-%
 
 %last record before end of set (switch to new valve) when syringe is at end, sometimes these have really long acq times (renegade triggers?)
 flag(find(syrpumpinfo(2:end,6) < syrpumpinfo(1:end-1,6) & syrpumpinfo(1:end-1,8) == 10)) = 98;
-if totalstartsec(end)/3600/24 + year > datenum('8-20-2011') &&  totalstartsec(end)/3600/24 + year < datenum('2-11-2012'), %datenum('1-10-2014 17:50'),
-    %if year == datenum('31-Dec-11') && totalstartsec(end)/3600/24 < datenum('4-01-12')-year, %case for 2012 bad records after cleaning with clorox and not enough rinsing??
-    addgap_sec = 60*60; %minutes * 60 sec/min
-    t = find(flag == 99); % & totalstartsec/3600/24 > datenum('8-19-11')-year);
-    for count = 1:length(t),
-        a = totalstartsec(t(count));
-        b = a + addgap_sec;
-        tt = find(totalstartsec > a & totalstartsec < b & flag == 3); %find syr 3 = seawater in add gap interval
-        flag(tt) = 0; %set these records to 'not use'
-    end;
-end;
+
+%Old code, but no longer needed with the below catches:
+% if totalstartsec(end)/3600/24 + year > datenum('8-20-2011') &&  totalstartsec(end)/3600/24 + year < datenum('2-11-2012'), %datenum('1-10-2014 17:50'),
+%     %if year == datenum('31-Dec-11') && totalstartsec(end)/3600/24 < datenum('4-01-12')-year, %case for 2012 bad records after cleaning with clorox and not enough rinsing??
+%     addgap_sec = 60*60; %minutes * 60 sec/min
+%     t = find(flag == 99); % & totalstartsec/3600/24 > datenum('8-19-11')-year);
+%     for count = 1:length(t),
+%         a = totalstartsec(t(count));
+%         b = a + addgap_sec;
+%         tt = find(totalstartsec > a & totalstartsec < b & flag == 3); %find syr 3 = seawater in add gap interval
+%         flag(tt) = 0; %set these records to 'not use'
+%     end;
+% end;
 
 
 %% FIND VOLUME ANALYZED...turns out, not exactly straightforward...
@@ -133,7 +134,8 @@ end;
 % can find pump speed by a few different methods:
 % ---- looking at steps per second
 % ---- avg syring time
-% ---- or the most robust metric: slope of records/time:
+% ---- slope of records/time
+% ---- looking at syringe rollover numbers
 
 % Note that pump speed is changed manually - it is on a given speed, until
 % the instrument is turned off and reset....
@@ -231,14 +233,25 @@ if length(unique(syrpumpinfo(:,5))) > 1
                 ind1=1;
                 %to do an average time, go in a few syringes - avoids restarts of 0's and 1's
                 missing_avg_time=(totalstartsec(syrchangeinfo(missing_ind(q,1),3))-totalstartsec(syrchangeinfo(1+2,3)))./(syrchangeinfo(missing_ind(q,1),5)-syrchangeinfo(1+2,5));
+            elseif batch_ind(missing_ind(q,2)-1)+3 > size(syrchangeinfo,1) %case of records ending very close to rollover event
+                missing_avg_time=(totalstartsec(syrchangeinfo(missing_ind(q,1),3))-totalstartsec(syrchangeinfo(batch_ind(missing_ind(q,2)-1)+3,3)))./(syrchangeinfo(missing_ind(q,1),5)-syrchangeinfo(batch_ind(missing_ind(q,2)-1)+3,5));
             else
                 ind1=syrchangeinfo(batch_ind(missing_ind(q,2)-1)+1,3);
                 %to do an average time, go in a few syringes - avoids restarts of 0's and 1's
                 missing_avg_time=(totalstartsec(syrchangeinfo(missing_ind(q,1),3))-totalstartsec(syrchangeinfo(batch_ind(missing_ind(q,2)-1)+3,3)))./(syrchangeinfo(missing_ind(q,1),5)-syrchangeinfo(batch_ind(missing_ind(q,2)-1)+3,5));
             end
             
+            if || syrchangeinfo(missing_ind(q,1),5) < 3
+                
+            else
+                
+                
+            end
+            %calculate an average missing syringe speed:
+            
+            
             %time for rollover divided by number of syringes:
-            if round(missing_avg_time ./ batch_avgtime) == 1 || syrchangeinfo(missing_ind(q,1),5) < 3 %for small restarts, where average slope is unreliable
+            if round(missing_avg_time ./ batch_avgtime) == 1  %for small restarts, where average slope is unreliable
                 pumpspeed(ind1:ind2)=pumpspeed(syrchangeinfo(batch_ind(ii),4));
             elseif round(missing_avg_time ./ batch_avgtime) == 2
                 pumpspeed(ind1:ind2)=0.5*pumpspeed(syrchangeinfo(batch_ind(ii),4)); %likely half the speed
