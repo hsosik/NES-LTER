@@ -7,7 +7,7 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = 2005 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+for year2do = 2009 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
 dotime = 1; %0 = NO, 1 = YES
 domerge = 0;
 doclassify = 0;
