@@ -381,7 +381,7 @@ for q=1:length(batch_ind)
     temprange=[];
     for s=1:length(syrbase) %get appropriate indices:
         temprange0=(syrchangeinfo(syrbase(s),3):syrchangeinfo(syrbase(s),4))';
-        tt=find(flag(temprange0)==3); temprange=[temprange; temprange0(tt)];
+        tt=find(flag(temprange0)==3); temprange=[temprange; temprange0(tt)]; %only want cell records!
     end
     stdbase=nanstd(acqtime(temprange));
     baseline=nanmean(acqtime(temprange))+3*stdbase; 
@@ -397,10 +397,14 @@ for q=1:length(batch_ind)
         syrind=syrchangeinfo(s,3):syrchangeinfo(s,4);
         syrind=syrind(find(flag(syrind)==3));     
         
+%         within_syr_time=nanmean(diff(totalstartsec(syrind)))+10*nanstd(diff(totalstartsec(syrind)));
+        
         if isempty(syrind)
             syrflag=2; %skip!
-        elseif ~isempty(syrind) && length(syrind) <= 4 %exclude if a short syringe
-            syrflag=1;
+%         elseif ~isempty(syrind) && length(syrind) <= 4 %exclude if a short syringe
+%             syrflag=1;
+%         elseif any(diff(totalstartsec(syrind))) > within_syr_time %checking to see if gaps in time within a syringe...
+%             syrflag=1;
         elseif length(syrind) <= 20 %ugh...can't really do stats on these...
             if any(acqtime(syrind)-baseline > 10*stdbase) %these are given a wide range
                 syrflag=1;
@@ -423,13 +427,16 @@ for q=1:length(batch_ind)
             syrflag=1;
         end
         
+        
         if syrflag==0 %if syringe wasn't excluded, check for other outliers at beginning and end of syringe:
-            within_syr_metric=mean(acqtime(syrind(3:end-1)))+6*std(acqtime(syrind(3:end-1)));
-            if acqtime(syrind(1)) > within_syr_metric
-                flag(syrind(1))=61; %if beginning record is over metric, flag
-                if acqtime(syrind(2)) > within_syr_metric,flag(syrind(2))=61; end  %sometimes, second record are also over this metric
+            if length(syrind) >=6 %don't really try this with syringes with only a few records
+                within_syr_metric=mean(acqtime(syrind(3:end-1)))+6*std(acqtime(syrind(3:end-1)));
+                if acqtime(syrind(1)) > within_syr_metric
+                    flag(syrind(1))=61; %if beginning record is over metric, flag
+                    if acqtime(syrind(2)) > within_syr_metric,flag(syrind(2))=61; end  %sometimes, second record are also over this metric
+                end
+                if acqtime(syrind(end)) > within_syr_metric,flag(syrind(end))=61; end  %if end record is over metric, flag
             end
-            if acqtime(syrind(end)) > within_syr_metric,flag(syrind(end))=61; end  %if end record is over metric, flag
         elseif syrflag==1 %flag that syringe!
             flag(syrind)=60; %only flag cell records - don't overwrite 97,98's
             syr_excl=[syr_excl; s]; %indexes into syrchangeinfo and rec             
