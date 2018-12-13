@@ -333,22 +333,51 @@ end
 abn_syr=[];
 for p=(unique(pumpspeed))'
     speed_ind=find(rec(:,4)==p); %should still be only for cell syringes
-    baseline=mean(rec(speed_ind,3)-rec(speed_ind,2))+4*std(rec(speed_ind,3)-rec(speed_ind,2));
+    baseline0=mean(rec(speed_ind,3)-rec(speed_ind,2))+6*std(rec(speed_ind,3)-rec(speed_ind,2));
     %now find syringes that exceed this:
-    temp=find(rec(speed_ind,3)-rec(speed_ind,2) > baseline); %find syringes whose max - median is way outside some std dev
-    abn_syr=[abn_syr; speed_ind(temp)  temp ]; %abn_syr indexes into syrchangeinfo and cellind, respectively
-    
-    %add a temporary flag for these syringes?
+    temp=find(rec(speed_ind,3)-rec(speed_ind,2) > baseline0); %find syringes whose max - median is way outside some std dev
+    abn_syr=[abn_syr; speed_ind(temp)]; %abn_syr indexes into syrchangeinfo and cellind, respectively
 end
 
 %% evaluate within a roll over event: calculate baseline and eval from there:
 syr_excl=[]; syrflag=0;
 for q=1:length(batch_ind)
     
-    if q==1, s1=1; else s1=batch_ind(q-1)+1; end
-    s2=batch_ind(q);
+    %first check to make sure this index has a full complement of syringes:
+    if q==1 %first batch, handle differently
+        if syrchangeinfo(batch_ind(q),5)-syrchangeinfo(1,5) < 30
+            fullbatch_ind=batch_ind(find(diff(batch_ind)>30)+1);
+            if isempty(fullbatch_ind)
+                disp('cannot find a full batch to use?')
+                keyboard
+            end
+            [~,im]=min(abs(batch_ind(q)-fullbatch_ind));
+            s2=fullbatch_ind(im);
+            uu=find(batch_ind==fullbatch_ind(im));
+            s1=batch_ind(uu-1)+1;
+        else
+           s1=1; 
+           s2=batch_ind(q);
+        end
+    else
+        if batch_ind(q)-batch_ind(q-1) < 30 %nope, need more syringes for a proper base!
+            %find closest in time longest batch:
+            fullbatch_ind=batch_ind(find(diff(batch_ind)>30)+1);
+            if isempty(fullbatch_ind)
+                disp('cannot find a full batch to use?')
+                keyboard
+            end
+            [~,im]=min(abs(batch_ind(q)-fullbatch_ind));
+            s2=fullbatch_ind(im);
+            uu=find(batch_ind==fullbatch_ind(im));
+            s1=batch_ind(uu-1)+1;
+        else
+            s1=batch_ind(q-1)+1;
+            s2=batch_ind(q);
+        end
+    end 
       
-    syrbase=setdiff(s1:s2,abn_syr(:,1)); %exclude potentially troubling syringes from base line
+    syrbase=setdiff(s1:s2,abn_syr); %exclude potentially troubling syringes from base line
     temprange=[];
     for s=1:length(syrbase) %get appropriate indices:
         temprange0=(syrchangeinfo(syrbase(s),3):syrchangeinfo(syrbase(s),4))';
@@ -357,7 +386,11 @@ for q=1:length(batch_ind)
     stdbase=nanstd(acqtime(temprange));
     baseline=nanmean(acqtime(temprange))+3*stdbase; 
     
-    for s=s1:s2 %go through each syringe and see if too many records are above the baseline
+    %syringe indexes within this batch:
+    if q==1, y1=1; else y1=batch_ind(q-1)+1; end
+    y2=batch_ind(q);
+ 
+    for s=y1:y2 %go through each syringe and see if too many records are above the baseline
         %or are less than 4 records
         %or...
        
@@ -366,17 +399,29 @@ for q=1:length(batch_ind)
         
         if isempty(syrind)
             syrflag=2; %skip!
-        elseif ~isempty(syrind) & length(syrind) <= 4 %exclude if a short syringe
+        elseif ~isempty(syrind) && length(syrind) <= 4 %exclude if a short syringe
             syrflag=1;
-        elseif any(acqtime(syrind(2:end-1))-baseline > 3*stdbase) %any obs that is essentially 6 std away - just flag...(excludes slow acq times at beginning of syr - those are caught below)
-                syrflag=1;
-        elseif length(syrind) < 20
-            if length(find(acqtime(syrind)-baseline > max(stdbase,3)))/length(syrind) > 0.3 %short syringes are difficult...
+        elseif length(syrind) <= 20 %ugh...can't really do stats on these...
+            if any(acqtime(syrind)-baseline > 10*stdbase) %these are given a wide range
                 syrflag=1;
             end
-        elseif length(find(acqtime(syrind)-baseline > max(stdbase,3)))/length(syrind) > 0.1
+%         elseif length(syrind) <= 20 && length(syrind) > 10 %these are also handled slightly special
+%             if length(find(acqtime(syrind)-baseline > max(stdbase,3)))/length(syrind) > 0.3 %short syringes are difficult...
+%                 syrflag=1;
+%             end
+%             if any(acqtime(syrind(2:end-1))-baseline > min(3*stdbase,10)) %last catch chance...any obs that is essentially 6 std away - just flag...(excludes slow acq times at beginning of syr - those are caught below)
+%                 syrflag=1;
+%             end
+        elseif length(find(acqtime(syrind)-baseline > max(stdbase,3)))/length(syrind) > 0.08
+            rr=quantile(acqtime(syrind),[0.5 0.95]); % a secondary check to make sure needs to be flagged....
+            if ismember(s,abn_syr) || rr(2)-rr(1) > 4*stdbase
+                syrflag=1;
+            elseif any(acqtime(syrind(2:end-1))-baseline > max(4*stdbase,10)) %just incase
+                syrflag=1;
+            end
+        elseif any(acqtime(syrind(2:end-1))-baseline > max(4*stdbase,10)) %last catch chance...any obs that is essentially 6 std away - just flag...(excludes slow acq times at beginning of syr - those are caught below)
             syrflag=1;
-        end 
+        end
         
         if syrflag==0 %if syringe wasn't excluded, check for other outliers at beginning and end of syringe:
             within_syr_metric=mean(acqtime(syrind(3:end-1)))+6*std(acqtime(syrind(3:end-1)));
@@ -490,7 +535,7 @@ if syrplotflag
     
     disp('Check the plots and then type dbcont to move to next batch of processing....')
     disp(['Ending pump speed: ' num2str(pumpspeed(end))])
-    %keyboard
+    keyboard
     
 end %syrplotflag
 
