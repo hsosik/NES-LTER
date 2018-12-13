@@ -13,7 +13,7 @@ syrplotflag=1;
 %%
 
 clearvars -except year filelist pathname syrplotflag
-j=11;
+j=4;
 filename=filelist(j).name(1:end-6);
 load(strcat(pathname,filelist(j).name))
 eval(['temp=' filename ';'])
