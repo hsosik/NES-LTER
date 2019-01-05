@@ -7,13 +7,13 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = 2017 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+for year2do = 2018 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
 dotime = 0; %0 = NO, 1 = YES
-domerge = 0;
-doclassify = 0;
-doplotgroup = 0;
-docells = 0;
-dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
+domerge = 1;
+doclassify = 1;
+doplotgroup = 1;
+docells = 1;
+dobeads = 1; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
 timeplotflag = 0; %for time: 0 = no plots, 1 = plots
 mergeplotflag = 0; %for merge: 0 = no plots, 1 = plots
 classplotflag = 0; %for classify: 0 = no plots, 1 = plots
@@ -51,7 +51,7 @@ switch year2do
         %cellfiletypelist = ['au2303a'];
         plotgroupfiletypelist = ['my'; 'jn'; 'jl'; 'au'; 'oc'; 'no'; 'de'];
         readrawstr = 'fcbreadraw1a';
-        timeprocstr = 'fcbtimeproc2C_metric';
+%        timeprocstr = 'fcbtimeproc2C_metric';
         mergeprocstr = 'fcbmergeproc1';
         cellport = 6;
         beadport = 1;
@@ -64,7 +64,7 @@ switch year2do
         %cellfiletypelist = ['st2204b'];
         plotgroupfiletypelist = ['my'; 'jn'; 'jl'; 'au'; 'se'; 'st'; 'oc'];
         readrawstr = 'fcbreadraw1a';
-        timeprocstr = 'fcbtimeproc2B';
+%        timeprocstr = 'fcbtimeproc2B';
         mergeprocstr = 'fcbmergeproc1';
         cellport = 6;
         beadport = 1;
@@ -113,8 +113,10 @@ switch year2do
         SSC2PE_cutoff = 200;
     case 2017
         SSC2PE_cutoff = 200;
+        mergeprocstr = 'fcbmergeproc3';
     case 2018
         SSC2PE_cutoff = 200;
+        mergeprocstr = 'fcbmergeproc3';
     end;
 
     %datapath = regexprep(datapath, '\\\\queenrose\\mvco', 'c:\\work'); %temp for olive
