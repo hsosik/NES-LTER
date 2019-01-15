@@ -1,13 +1,57 @@
+<<<<<<< HEAD
 function [  ] = mvco_movies_avi_format( year , groupedpath0, mergedpath0, savepath )
+=======
+function [  ] = mvco_movies_avi_format4( year , groupedpath0, mergedpath0, savepath )
+>>>>>>> 099dfd03809c8d5991b252ca0545475a9334c0a0
 
 %To have MATALB make movies without exporting figures to screen, must set
 %figure 'Visible' property to 'off'. In the past, it seems that getframe
 %didn't play nice with this, but seems to be workign now?
 
+<<<<<<< HEAD
 %% Create and open a writerObj:
 eval(['writerobj1 = VideoWriter(''' savepath 'together_' num2str(year) '.avi'');'])
 writeobj1.FrameRate = 15;
 writeobj1.VideoCompressionMethod = 'Motion JPEG';
+=======
+%Getframe or a combination of im2frame with printing the image take a
+%loooong time. For the current figure generated below it's about ~10s per
+%frame :( Basicially, turning a figure into an image takes awhile and there
+%doesn't seem to be a good work around for speed for this. 
+
+
+%must use avifile - the trick is to turn off visible in the figure and then
+%do not call getframe, which seems it must export to screen in order to
+%function, but rather use this undocumented hardcopy function zbuffer_cdata
+%all within the MATLAB VideoWriter functions
+
+% IF RUNNING FROM fcbmain_field1.m , these parts aren't necessary:
+% switch year
+%     case 2003
+%         yearlabel='May';
+%     case 2004
+%         yearlabel='Apr';
+%     case 2005
+%         yearlabel='Apr';
+%     case 2006
+%         yearlabel='May';
+%     case 2007
+%         yearlabel='Mar';
+%     otherwise
+%         yearlabel='Jan';
+% end
+%
+% %mergedpath0 = ['/Volumes/Lab_data/MVCO/FCB/MVCO_' yearlabel num2str(year) '/data/processed/grouped/merged/']; %paths for Swallowtail (Kristen's machine)
+% %groupedpath0 = ['/Volumes/Lab_data/MVCO/FCB/MVCO_' yearlabel num2str(year) '/data/processed/grouped/'];
+%    mergedpath0 = ['\\sosiknas1\Lab_data\MVCO\FCB\MVCO_' yearlabel num2str(year) '/data/processed/grouped/merged/']; %paths for Swallowtail (Kristen's machine)
+%    groupedpath0 = ['\\sosiknas1\Lab_data\MVCO\FCB\MVCO_' yearlabel num2str(year) '/data/processed/grouped/'];
+
+%NOTE: USE OF '0' AT THE END OF MERGED AND GROUPED PATHNAMES IS IMPORTANT -
+%a 'mergedpath' name is stored in the data files that are being loaded!!!
+
+%% Create and open a writerObj:
+eval(['writerobj1 = VideoWriter(''' savepath 'together_' num2str(year) '.avi'');'])
+>>>>>>> 099dfd03809c8d5991b252ca0545475a9334c0a0
 open(writerobj1);
 
 disp(['Making combined movie for: ' num2str(year)])
