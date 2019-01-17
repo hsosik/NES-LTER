@@ -1,10 +1,8 @@
-if year2do == 2016
-    eval(['X=load(''' envpath num2str(year2do) '_MetDat_s.C99B.txt'',''ascii'');'])
-elseif year2do == 2017
-    eval(['X=load(''' envpath num2str(year2do) '_MetDat_sB.C99.txt'',''ascii'');'])
-else
-    eval(['X=load(''' envpath num2str(year2do) '_MetDat_s.C99'',''ascii'');'])
-end
+%Script that processes solar data form MVCO for input into setup_days for division rate
+%model. Data is checked for gaps, and when possible, replaced with data
+%from Nantucket buoy offshore.
+
+eval(['X=load(''' envpath num2str(year2do) '_MetDat_s.C99'',''ascii'');'])
 
 yd_met=X(:,2);
 Hour = X(:,5);
@@ -48,11 +46,8 @@ date_met0=date_met;
 
 %constructed from raw_data with get_average_dawn.m, 
 %load expected UTC values of dawn and dusk over 13 years :)
-if ~isempty(strfind(computer,'WIN'))
-    load \\sosiknas1\lab_data\mvco\FCB\Syn_divrate_model\median_dawn.mat
-else %temporary locations:
-    load /Users/kristenhunter-cevera/phyto-division-rate-model/setup_and_postprocessing/median_dawn.mat  
-end 
+
+load(fullfile('median_dawn.mat'))  
 
 
 %% find dawn and dusk of each day and detect gaps:
@@ -60,7 +55,7 @@ end
 days=(datenum(['1-1-' num2str(year2do)]):datenum(['12-31-' num2str(year2do)]))';
 duskhr=nan(length(days),1);
 dawnhr=nan(length(days),1);
-lighttime_gaps=nan(length(days),1);
+lighttime_gaps=zeros(length(days),1);
 
 for j=1:length(days)
     
@@ -84,7 +79,7 @@ for j=1:length(days)
                  Solar = [Solar; 0];
                  dawnhr(j)=dawn_median(j);
             else
-                lighttime_gaps(j)=0; %gap around dawn
+                lighttime_gaps(j)=1; %gap around dawn
             end
                         
             if abs(dusk_median(j)-tempdusk) <= 1
@@ -94,13 +89,13 @@ for j=1:length(days)
                  Solar = [Solar; 0];
                  duskhr(j)=dusk_median(j);
             else
-                lighttime_gaps(j)=2; %gap around dusk
+                lighttime_gaps(j)=3; %gap around dusk
             end
             
             %now check for any gaps during light time hours:
             if ~isnan(dawnhr(j)) && ~isnan(duskhr(j))
-                if any(find(diff(date_met(ind(ind2))) >= 2/24));
-                    lighttime_gaps(j) = 1;
+                if any(find(diff(date_met(ind(ind2))) >= 3/24));
+                    lighttime_gaps(j) = 2;
                 end;
             end
             
@@ -112,9 +107,11 @@ for j=1:length(days)
 %                 plot(date_met0(ind(ind2)),Solar0(ind(ind2)),'r*')              
 %                 keyboard
 %             end
-            
-            
+        else
+           lighttime_gaps(j) = 4;   
         end
+    else %if no data...flag this too!
+        lighttime_gaps(j) = 4;
     end
 end
 
@@ -156,7 +153,7 @@ if ismember(year2do,[2005:2007 2010:2013]) && buoy_flag==1; %meaning, yes - you'
           
     % splice in nantucket buoy data:
     % go through each day and see when data is available - then splice together:
-    missing_days=find(~isnan(lighttime_gaps));
+    missing_days=find(lighttime_gaps~=0);
     buoy_added=[];
     buoy_days=nan(length(days),1);
     mvco_to_remove=[];
@@ -164,8 +161,9 @@ if ismember(year2do,[2005:2007 2010:2013]) && buoy_flag==1; %meaning, yes - you'
     for q=1:length(missing_days) %check if buoy data has them!
         tempday=missing_days(q)+datenum(['1-0-' num2str(year2do)]);     
         qq=find(buoy_date-5/24 >=tempday & buoy_date-5/24 <tempday+1); %local frame of reference!
-        
-        if ~isempty(qq) && length(qq) >=22 %buoy data is available and seems complete!            
+        qq2=find(buoy_date(qq) >= tempday+(dawn_median(missing_days(q))-1)/24 & buoy_date(qq) <= tempday+(dusk_median(missing_days(q))+1)/24); %eval number of light hours
+
+        if ~isempty(qq) && length(qq2) >= 9 %buoy data is available and seems complete for light data!            
             %add data from buoy            
             buoy_added=[buoy_added; buoy_date(qq) sw_rad(qq)];   
             
@@ -198,8 +196,12 @@ if ismember(year2do,[2005:2007 2010:2013]) && buoy_flag==1; %meaning, yes - you'
 end
 
 dawn=[days dawnhr];
-ii=find(isnan(buoy_days));
-jj=find(~isnan(lighttime_gaps(ii)));
+if exist('buoy_added','var')
+    ii=find(isnan(buoy_days)); %of the days that weren't replaced with buoy data, had issues?
+else
+    ii=(1:length(lighttime_gaps))';
+end
+jj= lighttime_gaps(ii)~=0;
 dawn(ii(jj),2)=NaN; %not a good day
 
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%  check for nighttime noise  %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -225,6 +227,29 @@ for j=1:length(days)
             
         end
     end
+    
+    %special known outliers:
+    switch day
+    case datenum('1-19-05')
+        oo=Solar(ii) > 500;
+        Solar(ii(oo))=NaN;
+    case datenum('10-27-06')
+        ii=find(date_met < day+(22/24)); ii=ii(end);
+        Solar(ii)=NaN;
+    case datenum('1-29-12')
+        oo=Solar(ii) > 1100;
+        Solar(ii(oo))=NaN;
+    case datenum('1-20-15')
+        oo=Solar(ii) > 475;
+        Solar(ii(oo))=NaN;
+     case datenum('1-4-17')
+        oo=Solar(ii) > 800;
+        Solar(ii(oo))=NaN;
+     case datenum('1-8-17') %day seems a bit strange...
+        oo=Solar(ii) > 600;
+        Solar(ii(oo))=NaN;  
+    end
+    
 end
 
 %negative noise, simply remove:
@@ -259,10 +284,10 @@ if solarplotflag
         title(num2str(year2do))
     end
     
-    %add dawn lines:
+    %% add dawn lines:
     for i=1:length(dawn)
         if isnan(dawn(i,2))
-           plot(dawn(i,1)+(dawnhr(i)+12)/24,800,'x','linewidth',2,'color',[0 0 0]) %first matlab default color: [0 0.5 0.8]
+           plot(dawn(i,1)+(dawn_median(i)+10)/24,800,'x','linewidth',2,'color',[0 0 0]) %first matlab default color: [0 0.5 0.8]
         else
            line([dawn(i,1)+dawn(i,2)/24 dawn(i,1)+dawn(i,2)/24],[0 1000],'linewidth',2,'color',[0.8 0.5 0]) %first matlab default color: [0 0.5 0.8]
         end

@@ -2,7 +2,7 @@
 clear
 close all
 
-for year2do = 2013;
+for year2do = 2018
 
     % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m
     % addpath /Users/kristenhunter-cevera/Documents/phyto-division-rate-model/MVCO_FCB_PROCESSING/
@@ -17,13 +17,13 @@ for year2do = 2013;
 
     addpath ../../fcb_processing/miscellaneous/ %contains helpful scripts :)
     
-    do_Solar = 0;
-    buoy_flag=0;
-    solarplotflag=0;
+    do_Solar = 1;
+    buoy_flag=1;
+    solarplotflag=1;
     
     do_setupdays = 0;
     folder_tag='Jan2019';
-    do_setupdays_movie = 1;
+    do_setupdays_movie = 0;
     
     do_model = 0;
     do_modelfit_movie = 0;
@@ -48,8 +48,7 @@ for year2do = 2013;
     if do_Solar
         solarsavepath=fullfile(datapath, '/model/');
         if ~exist(solarsavepath, 'dir'), mkdir(solarsavepath), end
-        getSolar
-        %pause
+        getSolar     
     end
 
     if do_setupdays
