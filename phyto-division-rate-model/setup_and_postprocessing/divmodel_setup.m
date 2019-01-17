@@ -15,9 +15,9 @@ for year2do = 2013;
         rootpath='/Volumes/Lab_data/MVCO/FCB/';
     end
 
-    do_Solar = 1;
-    buoy_flag=1;
-    solarplotflag=1;
+    do_Solar = 0;
+    buoy_flag=0;
+    solarplotflag=0;
     
     do_setupdays = 0;
     do_setupdays_movie = 0;
@@ -44,7 +44,7 @@ for year2do = 2013;
 
     if do_Solar
         solarsavepath=fullfile(datapath, '/model/');
-        if ~exist(solarsavepath, 'dir'), mkdir(solarsavepath), end;
+        if ~exist(solarsavepath, 'dir'), mkdir(solarsavepath), end
         getSolar
         %pause
     end
@@ -53,8 +53,8 @@ for year2do = 2013;
         mergedpath0 = fullfile([datapath,'data/processed/grouped/merged/']); %the '0' designation is important - mergedpath is a save variable name in the files that will be downloaded....
         groupedpath = fullfile(datapath,'data/processed/grouped/');
         beadpath=fullfile(datapath, 'data/processed/beads/');
-        modelpath = fullfile(datapath, 'model/input_beadmean_Feb2017/');
-        if ~exist(modelpath, 'dir'), mkdir(modelpath), end; %where daily input will go....
+        modelpath = fullfile(datapath, 'model/input_beadmean_Jan2019/');
+        if ~exist(modelpath, 'dir'), mkdir(modelpath), end %where daily input will go....
         plotflag=1;
         setup_days_all
     end

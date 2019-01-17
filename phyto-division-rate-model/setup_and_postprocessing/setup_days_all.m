@@ -96,8 +96,11 @@ filelist=filelist(ch_order);
 %Load in ligth data:
 %eval(['load ' rootpath 'model_code/solar.mat'])
 solarpath=fullfile(datapath,'model/');
-eval(['load ' solarpath 'solar' num2str(year2do) '.mat']) %QC'd solar for time and nighttime noise
-
+if ismember(year2do,[2005:2007 2010:2013])
+    eval(['load ' solarpath 'solar' num2str(year2do) 'w_buoy.mat']) %QC'd solar for time and nighttime noise
+else
+    eval(['load ' solarpath 'solar' num2str(year2do) '.mat']) %QC'd solar for time and nighttime noise
+end
 Eall = [date_met Solar];  %date (UTC, matlab), SW radiation
 Eall(Eall(:,2)<0,2) = 0;  %no negatives allowed
 
