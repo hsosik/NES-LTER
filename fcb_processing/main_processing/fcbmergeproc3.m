@@ -4,26 +4,32 @@ function [datmerged, fit] = fcbmergeproc2(dat, fittouse)
 % April 12 2005 - fcbmergeproc2 modified from fcbmergeproc to deal with
 % addition of SSC2 (new lower HV PMT, also with 2 gains)
 % January 2015, add check to see if no good PE fit (in case use PE high gn only)
+% December 2018, update from fcbmergproc2 adding >0 lower limits for high
+%   gain channels before polyfit, necessary to deal with high noise levels
+%   apparent in 2017 FCB1 results, Heidi
 
 global special_flag
 
-PEcut = 200;
-FLScut = 200;
-CHLcut = 100;
-SSC1cut = 150;
-SSC2cut = 100;
-SSC1_2acut = 3000;
-SSC1_2bcut = 150;
+PEcut = 300; %200;
+FLScut = 300; %200;
+CHLcut = 200; %100;
+SSC1cut = 200; %150;
+SSC2cut = 200; %100;
+SSC1_2acut = 4000; %3000;
+SSC1_2bcut = 250; %150;
+
+LowGain_min = 200;
+
 fitPE = [NaN NaN NaN NaN]; fitFLS = fitPE; fitCHL = fitPE; fitSSC1 = fitPE; fitSSC1_2a = fitPE; fitSSC1_2b = fitPE;
 datmerged = NaN.*ones(size(dat,1),6);
 if isnan(fittouse)
-    t = find(dat(:,1) > 0 & dat(:,1) < PEcut & dat(:,2) > 0);
+    t = find(dat(:,1) > 0 & dat(:,1) < PEcut & dat(:,2) > PEcut);
     if length(t) > 3, temp = corrcoef(dat(t,1), dat(t,2)); fitPE  = [polyfit(dat(t,1), dat(t,2), 1) length(t) temp(2)]; end; %1 = slope, 2 = int, 3 = count, 4 = r
-    t = find(dat(:,3) > 0 & dat(:,3) < FLScut & dat(:,4) > 0);
+    t = find(dat(:,3) > 0 & dat(:,3) < FLScut & dat(:,4) > FLScut);
     if length(t) > 3, temp = corrcoef(dat(t,3), dat(t,4)); fitFLS = [polyfit(dat(t,3), dat(t,4), 1) length(t) temp(2)];  end;
-    t = find(dat(:,5) > 0 & dat(:,5) < CHLcut & dat(:,6) > 0);
+    t = find(dat(:,5) > 0 & dat(:,5) < CHLcut & dat(:,6) > CHLcut*4);
     if length(t) > 3, temp = corrcoef(dat(t,5), dat(t,6)); fitCHL = [polyfit(dat(t,5), dat(t,6), 1) length(t) temp(2)];  end;
-    t = find(dat(:,7) > 0 & dat(:,7) < SSC1cut & dat(:,8) > 0);
+    t = find(dat(:,7) > 0 & dat(:,7) < SSC1cut & dat(:,8) > SSC1cut);
     if length(t) > 3, temp = corrcoef(dat(t,7), dat(t,8)); fitSSC1 = [polyfit(dat(t,7), dat(t,8), 1) length(t) temp(2)];   end;
 else
     fitPE = [fittouse(1,:) NaN NaN];
@@ -42,6 +48,8 @@ datmerged(t,1) = dat(t,2);  %reassign stuff on baseline to be high gain
 t = find((dat(:,1) <= PEcut/2 & dat(:,2) >= PEcut/2*fitPE(1)+fitPE(2)) | (dat(:,1) >= PEcut/2 & dat(:,2) <= PEcut/2*fitPE(1)+fitPE(2)));  %points with one signal above and one signal below merge point
 indtemp = 1:2:length(t);  %odd indices
 datmerged(t(indtemp),1) = dat(t(indtemp),2); %"dither" by reassigning every other ambiguous point
+t = find(dat(:,1)< LowGain_min);
+datmerged(t,1) = dat(t,2);  %Make sure low low gain signals stay as high gain (not dithered) Dec 2018
 else
     disp('using PE high gain only')
     datmerged(:,1) = dat(:,2); 
@@ -53,6 +61,8 @@ datmerged(t,2) = dat(t,4);  %reassign stuff on baseline to be high gain
 t = find((dat(:,3) <= FLScut/2 & dat(:,4) >= FLScut/2*fitFLS(1)+fitFLS(2)) | (dat(:,3) >= FLScut/2 & dat(:,4) <= FLScut/2*fitFLS(1)+fitFLS(2)));  %points with one signal above and one signal below merge point
 indtemp = 1:2:length(t);  %odd indices
 datmerged(t(indtemp),2) = dat(t(indtemp),4); %"dither" by reassigning every other ambiguous point
+t = find(dat(:,3)< LowGain_min);
+datmerged(t,2) = dat(t,4);  %Make sure low low gain signals stay as high gain (not dithered) Dec 2018
 
 datmerged(:,3) = dat(:,5)*fitCHL(1)+fitCHL(2);
 t = find(dat(:,5) < CHLcut/2 & dat(:,6) < CHLcut/2*fitCHL(1)+fitCHL(2));  %unambiguously offscale low on low gain...
@@ -60,6 +70,8 @@ datmerged(t,3) = dat(t,6);  %reassign stuff on baseline to be high gain
 t = find((dat(:,5) <= CHLcut/2 & dat(:,6) >= CHLcut/2*fitCHL(1)+fitCHL(2)) | (dat(:,5) >= CHLcut/2 & dat(:,6) <= CHLcut/2*fitCHL(1)+fitCHL(2)));  %points with one signal above and one signal below merge point
 indtemp = 1:2:length(t);  %odd indices
 datmerged(t(indtemp),3) = dat(t(indtemp),6); %"dither" by reassigning every other ambiguous point
+t = find(dat(:,5)< LowGain_min);
+datmerged(t,3) = dat(t,6);  %Make sure low low gain signals stay as high gain (not dithered) Dec 2018
 
 datmerged(:,5) = dat(:,7)*fitSSC1(1)+fitSSC1(2);
 t = find(dat(:,7) < SSC1cut/2 & dat(:,8) < SSC1cut/2*fitSSC1(1)+fitSSC1(2));  %unambiguously offscale low on low gain...
@@ -67,11 +79,13 @@ datmerged(t,5) = dat(t,8);  %reassign stuff on baseline to be high gain
 t = find((dat(:,7) <= SSC1cut/2 & dat(:,8) >= SSC1cut/2*fitSSC1(1)+fitSSC1(2)) | (dat(:,7) >= SSC1cut/2 & dat(:,8) <= SSC1cut/2*fitSSC1(1)+fitSSC1(2)));  %points with one signal above and one signal below merge point
 indtemp = 1:2:length(t);  %odd indices
 datmerged(t(indtemp),5) = dat(t(indtemp),8); %"dither" by reassigning every other ambiguous point
+t = find(dat(:,7)< LowGain_min);
+datmerged(t,5) = dat(t,8);  %Make sure low low gain signals stay as high gain (not dithered) Dec 2018
 
 %NOW merge over merged SSC1 with high gain SSC2
 fitSSC1_2a = [NaN NaN NaN NaN];
 if isnan(fittouse)
-    t = find(dat(:,10) > 0 & dat(:,10) < SSC1_2acut & datmerged(:,5) > 5000);
+    t = find(dat(:,10) > 1000 & dat(:,10) < SSC1_2acut & datmerged(:,5) > 1e5 & datmerged(:,5) < 8e5); %5000*10);
     if length(t) > 100, 
         temp = corrcoef(dat(t,10), datmerged(t,5));
         fitSSC1_2a = [polyfit(dat(t,10), datmerged(t,5), 1) length(t) temp(2)]; 
@@ -101,7 +115,7 @@ end;
 %NOW merge over merged (SSC1 & high gain SSC2) and low gain SSC
 fitSSC1_2b = [NaN NaN NaN NaN];
 if isnan(fittouse)
-    t = find(dat(:,9) > 0 & dat(:,9) < SSC1_2bcut & datmerged(:,6) > 1e4);
+    t = find(dat(:,9) > 0 & dat(:,9) < SSC1_2bcut & datmerged(:,6) > 1e4*10);
     if length(t) > 100 & ~isnan(fitSSC1_2a(1)), %only do this merge if enough points and SSC1_2a was good
         temp = corrcoef(dat(t,9), datmerged(t,6));
         fitSSC1_2b = [polyfit(dat(t,9), datmerged(t,6), 1) length(t) temp(2)];  
@@ -123,7 +137,7 @@ end;
 
 fit = [fitPE; fitFLS; fitCHL; fitSSC1; fitSSC1_2a; fitSSC1_2b];
 
-if 0   %make plots or not
+if 0  %make plots or not
 figure(1)
 clf
 subplot(231)
@@ -167,7 +181,7 @@ subplot(236)
 plot(dat(:,9), datmerged(:,6), '.')
 hold on
 eval(['fplot(''x * ' num2str(fitSSC1_2b(1)) ' + ' num2str(fitSSC1_2b(2)) ''', [0 ' num2str(SSC1_2bcut) '], ''color'', ''r'')'])
-axis([0 300 0 4e6])
+axis([0 500 0 4e6])
 ylabel('SSC1&SSC2hi merged')
 xlabel('SSC2 low')
 
@@ -185,12 +199,16 @@ lowhist = histc(dattoplot(:,1)*fittemp(1)+fittemp(2),bins);
 highhist = histc(dattoplot(:,2),bins);
 mergedhist = histc(datmergedtoplot, bins);
 %subplot(211)
-bar(bins, [highhist,lowhist, mergedhist], 'histc')
+if ~isnan(bins)
+    bar(bins, [highhist,lowhist, mergedhist], 'histc')
+end
 set(gca, 'xscale', 'log')
 axis([100 1e5 0 5000])
 legend('low', 'hi', 'merg', 'bins')
 title('SSC1')
 figure(1)
-pause(.1)
+figure(3)
+loglog(datmerged(:,4), datmerged(:,3), '.'), axis([10 1e7 1e2 1e6])
+pause %(.1)
 %keyboard
 end; %if 1 for plots
