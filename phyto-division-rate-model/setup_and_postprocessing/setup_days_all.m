@@ -14,14 +14,11 @@ eval(['load ' beadpath 'beadresults.mat']);
 
 %smooth mean of bead SSC with 3-point moving average:
 
-% but first, check for outliers and other bead anomalies:
+% plot unaltered beads:
 if plotflag ==1
-    figure(6)
-    subplot(2,1,1,'replace')
-    plot(beadresults(:,1),beadresults(:,13),'.-')
+    figure(6), hold on
+    h1=plot(beadresults(:,1),beadresults(:,13),'.-');
     ylabel('Bead SSC')
-    disp('Any suspicous bead values?')
-    keyboard
 end
 
 [ss is]=sort(beadresults(:,1)); %happens for 2006 where out of time sync?
@@ -31,33 +28,37 @@ beadresults=beadresults(is,:);
 switch year2do
     case 2003
        ind=find(beadresults(:,13) < 0.9e4); %outlier
-       beadresults(ind,13)=NaN;
     case 2009
         ind=find(beadresults(:,13) > 4.05e4); %outlier
-        beadresults(ind,13)=NaN; 
     case 2011
         ind=find(beadresults(:,13) > 7e4); %outlier
-        beadresults(ind,13)=NaN; 
     case 2013
         ind=find(beadresults(:,13) > 10e4); %outlier
-        beadresults(ind,13)=NaN; 
     case 2016
          ind=find(beadresults(:,13) > 8e5); %outlier
-         beadresults(ind,13)=NaN; 
 end
+
+if plotflag==1 && exist('ind','var')
+    h3=plot(beadresults(ind,1),beadresults(ind,13),'o','markersize',6,'color',[0.9290 0.6940 0.1250]);
+end
+
+if exist('ind','var'), beadresults(ind,13)=NaN; end %remove any known outliers
 
 sm_bead_avgSSC=mvco_running_average(beadresults(:,1),beadresults(:,13),3,2); %running average smoothing function that takes into account breaks in FCB deployments
 %totalrunavg=mvco_running_average(time,data,windowsize,gapsize)
 bead_days=floor(beadresults(:,1));
 
 if plotflag ==1
-    subplot(2,1,2,'replace')
-    hold on
-    plot(beadresults(:,1),beadresults(:,13),'.-')
-    plot(beadresults(:,1),sm_bead_avgSSC,'.--')
+    figure(6)
+    %plot(beadresults(:,1),beadresults(:,13),'.-')
+    h2=plot(beadresults(:,1),sm_bead_avgSSC,'.--','color',[0.8500 0.3250 0.0980]);
     ylabel('Bead SSC')
-    legend('Bead SSC','Smoothed SSC, 3-points')
-    pause
+    if exist('ind','var')
+        legend([h1; h2;h3],'Bead SSC','Smoothed SSC, 3-points','Known outlier')
+    else
+        legend([h1; h2],'Bead SSC','Smoothed SSC, 3-points')
+    end
+    keyboard
 end
 
 %%
@@ -97,7 +98,7 @@ filelist=filelist(ch_order);
 %eval(['load ' rootpath 'model_code/solar.mat'])
 solarpath=fullfile(datapath,'model/');
 if ismember(year2do,[2005:2007 2010:2013])
-    eval(['load ' solarpath 'solar' num2str(year2do) 'w_buoy.mat']) %QC'd solar for time and nighttime noise
+    eval(['load ' solarpath 'solar' num2str(year2do) '_w_buoy.mat']) %QC'd solar for time and nighttime noise
 else
     eval(['load ' solarpath 'solar' num2str(year2do) '.mat']) %QC'd solar for time and nighttime noise
 end
@@ -371,7 +372,7 @@ while filenum <= numfiles && day <= floor(max(cellresults(:,1)))  % keep going u
             if isempty(daylog_fcb{w,2}), daylog_fcb(w,:)=[{day}  {'missing Edata'}];
             else daylog_fcb{w,2}=[daylog_fcb{w,2} '; missing Edata']; end
         else
-            eval(['save ' modelpath 'day' num2str(day) 'data volbins Edata Vhists N_dist cellsperml dielstarthr'])  %save data for rerunning batch later
+            eval(['save ' modelinputpath 'day' num2str(day) 'data volbins Edata Vhists N_dist cellsperml dielstarthr'])  %save data for rerunning batch later
         end;
     else
         disp(['...skip; dielhr: ' num2str(dielhr')])
@@ -399,4 +400,4 @@ end;     %while filenum <= numfiles & day <= floor(cellresults(end,1)),  % keep 
 emptydays=find(cellfun('isempty',daylog_fcb(:,1))==1);
 daylog_fcb(emptydays,1)=num2cell(datenum(repmat(['1-0-' num2str(year2do)],size(emptydays,1),1))+emptydays); %date
 daylog_fcb(emptydays,2)=cellstr(repmat('no fcb data',size(emptydays,1),1));
-eval(['save ' modelpath 'setupdays_log.mat daylog_fcb'])
+eval(['save ' modelinputpath 'setupdays_log.mat daylog_fcb'])

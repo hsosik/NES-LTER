@@ -1,32 +1,8 @@
-%setup days quality control on how days were constructed:
-MT={'2003' 'May';
-    '2004' 'Apr';
-    '2005' 'Apr';
-    '2006' 'May';
-    '2007' 'Mar';
-    '2008' 'Jan';
-    '2009' 'Jan';
-    '2010' 'Jan';
-    '2011' 'Jan';
-    '2012' 'Jan';
-    '2013' 'Jan';
-    '2014' 'Jan';
-    '2015' 'Jan';
-    '2016' 'Jan'};
+% A simple script that creates a matlab movie form (results in a structure)
+% to screen output from setup_days_all.m for model input days
 
-monthtag=MT{year2do-2002,2};
+filelist=dir([modelinputpath 'day*data.mat']);
 
-if ~isempty(strfind(computer,'MC'))
-        daypath=['/Volumes/Lab_data/MVCO/FCB/MVCO_' monthtag num2str(year2do) '/model/input_beadmean_July2016/'];
-        savepath=daypath;
-else
-         daypath=['\\sosiknas1\lab_data\MVCO\FCB\MVCO_' monthtag num2str(year2do) '\model\input_beadmean_July2016\'];
-        savepath=daypath;    
-end
-
-filelist=dir([daypath 'day*data.mat']);
-
-%% in a simple matlab movie form (results in a structure):
 figure, set(gcf,'Position',  [ 82         428        1524         521])
 count=0;
 
@@ -35,7 +11,7 @@ for j=1:length(filelist)
     count=count+1;
     
     filename=filelist(j).name;
-    eval(['load ' daypath filename])
+    eval(['load ' modelinputpath filename])
     
     clf
     subplot(1,3,2,'replace')
@@ -70,7 +46,7 @@ end
 
 notes='to play, type implay(syn_dist20XX) in MATLAB window';
 eval(['syn_dist' num2str(year2do) '=F1;'])
-eval(['save ' savepath 'setup_days' num2str(year2do) '.mat syn_dist' num2str(year2do) ' notes'])
+eval(['save ' modelinputpath 'setup_days' num2str(year2do) '.mat syn_dist' num2str(year2do) ' notes'])
 
 close all
 clear F1

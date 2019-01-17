@@ -15,12 +15,15 @@ for year2do = 2013;
         rootpath='/Volumes/Lab_data/MVCO/FCB/';
     end
 
+    addpath ../../fcb_processing/miscellaneous/ %contains helpful scripts :)
+    
     do_Solar = 0;
     buoy_flag=0;
     solarplotflag=0;
     
     do_setupdays = 0;
-    do_setupdays_movie = 0;
+    folder_tag='Jan2019';
+    do_setupdays_movie = 1;
     
     do_model = 0;
     do_modelfit_movie = 0;
@@ -53,7 +56,7 @@ for year2do = 2013;
         mergedpath0 = fullfile([datapath,'data/processed/grouped/merged/']); %the '0' designation is important - mergedpath is a save variable name in the files that will be downloaded....
         groupedpath = fullfile(datapath,'data/processed/grouped/');
         beadpath=fullfile(datapath, 'data/processed/beads/');
-        modelpath = fullfile(datapath, 'model/input_beadmean_Jan2019/');
+        modelinputpath = fullfile(datapath,[ 'model/input_beadmean_' folder_tag '/']);
         if ~exist(modelpath, 'dir'), mkdir(modelpath), end %where daily input will go....
         plotflag=1;
         setup_days_all
@@ -61,6 +64,7 @@ for year2do = 2013;
 
     % make movies of input days:
     if do_setupdays_movie
+        modelinputpath = fullfile(datapath,[ 'model/input_beadmean_' folder_tag '/']);
         MVCO_setup_days_QC
     end
 
