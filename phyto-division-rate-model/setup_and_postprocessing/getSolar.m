@@ -73,7 +73,11 @@ for j=1:length(days)
             
             %check for gaps around dawn and dusk:           
             if abs(dawn_median(j)-tempdawn) <= 1
-                dawnhr(j)=tempdawn; %good, accept this dawn!            
+                dawnhr(j)=tempdawn; %good, accept this dawn!   
+                if ind(ind2(ind3(1)))==ind(1)               
+                    date_met = [date_met; days(j)+(tempdawn-0.001)/24]; %add one hour after dusk
+                    Solar = [Solar; 0];
+                end
             elseif abs(dawn_median(j)-tempdawn) <= 3 %close...small gap, pad with a datapoint for later interpolation!
                  date_met = [date_met; days(j)+(dawn_median(j)-.001)/24];
                  Solar = [Solar; 0];
@@ -83,7 +87,13 @@ for j=1:length(days)
             end
                         
             if abs(dusk_median(j)-tempdusk) <= 1
-                duskhr(j)=tempdusk; %good, accept this dusk!            
+                duskhr(j)=tempdusk; %good, accept this dusk! 
+                %sometimes can have good data close to dusk, but no data
+                %further on...check this and then add 0 datapoint if need be:
+                if ind(ind2(ind3(end)))==ind(end)
+                    date_met = [date_met; days(j)+(tempdusk+0.001)/24]; %add one hour after dusk
+                    Solar = [Solar; 0];
+                end
             elseif abs(dusk_median(j)-tempdusk) <= 3 %close...small gap, pad with a datapoint for later interpolation!
                  date_met = [date_met; days(j)+(dusk_median(j)+.001)/24];
                  Solar = [Solar; 0];
@@ -129,7 +139,7 @@ Solar=Solar(ii);
 %#yr  mo dy hr mn   w/m2   w/m2   w/m2
 %but appears to use different instruments for different years...
 
-if ismember(year2do,[2005:2007 2010:2013]) && buoy_flag==1; %meaning, yes - you'd like to splice in buoy data
+if ismember(year2do,[2005:2007 2010:2013]) && buoy_flag==1 %meaning, yes - you'd like to splice in buoy data
     
     disp('Checking Nantucket Buoy data for any missing gaps in MVCO record...')
     filename = fullfile(envpath,'Nantucket_buoy44008_lightdata',['44008r' num2str(year2do)]);
@@ -273,6 +283,15 @@ if solarplotflag
     h1=plot(date_met,Solar,'-','color',[0.0265 0.6137 0.8135]);
     set(gca, 'layer', 'top')
     h2=plot(date_met0,Solar0,'.','color',[0 0.4 0.8]);
+        
+    % add dawn lines:
+    for i=1:length(dawn)
+        if isnan(dawn(i,2))
+           plot(dawn(i,1)+(dawn_median(i)+10)/24,800,'x','linewidth',2,'color',[0 0 0]) %first matlab default color: [0 0.5 0.8]
+        else
+           line([dawn(i,1)+dawn(i,2)/24 dawn(i,1)+dawn(i,2)/24],[0 1000],'linewidth',2,'color',[0.8 0.5 0]) %first matlab default color: [0 0.5 0.8]
+        end
+    end
     
     if exist('buoy_added','var')
         hold on
@@ -283,16 +302,6 @@ if solarplotflag
         legend([h1(1); h2(1)],'Final data','MVCO data','location','NorthOutside')
         title(num2str(year2do))
     end
-    
-    %% add dawn lines:
-    for i=1:length(dawn)
-        if isnan(dawn(i,2))
-           plot(dawn(i,1)+(dawn_median(i)+10)/24,800,'x','linewidth',2,'color',[0 0 0]) %first matlab default color: [0 0.5 0.8]
-        else
-           line([dawn(i,1)+dawn(i,2)/24 dawn(i,1)+dawn(i,2)/24],[0 1000],'linewidth',2,'color',[0.8 0.5 0]) %first matlab default color: [0 0.5 0.8]
-        end
-    end
-    
     
 end
 

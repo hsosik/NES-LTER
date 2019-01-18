@@ -2,7 +2,7 @@
 clear
 close all
 
-for year2do = 2018
+for year2do = 2013
 
     % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m
     % addpath /Users/kristenhunter-cevera/Documents/phyto-division-rate-model/MVCO_FCB_PROCESSING/
@@ -17,15 +17,15 @@ for year2do = 2018
 
     addpath ../../fcb_processing/miscellaneous/ %contains helpful scripts :)
     
-    do_Solar = 1;
-    buoy_flag=1;
-    solarplotflag=1;
+    do_Solar = 0;
+    buoy_flag=0;
+    solarplotflag=0;
     
     do_setupdays = 0;
     folder_tag='Jan2019';
     do_setupdays_movie = 0;
     
-    do_model = 0;
+    do_model = 1;
     do_modelfit_movie = 0;
     redo_model=0;
     
@@ -56,7 +56,7 @@ for year2do = 2018
         groupedpath = fullfile(datapath,'data/processed/grouped/');
         beadpath=fullfile(datapath, 'data/processed/beads/');
         modelinputpath = fullfile(datapath,[ 'model/input_beadmean_' folder_tag '/']);
-        if ~exist(modelpath, 'dir'), mkdir(modelpath), end %where daily input will go....
+        if ~exist(modelinputpath, 'dir'), mkdir(modelinputpath), end %where daily input will go....
         plotflag=1;
         setup_days_all
     end
@@ -69,10 +69,10 @@ for year2do = 2018
 
     %run the model:
     if do_model
-
+        addpath(fullfile('../model_src/')) %assumes you are in the setup_and_postprocessing folder - should fix this!
         disp(num2str(year2do))
-        pathname=fullfile(datapath, 'model/input_beadmean_Feb2017/');
-        savepath=fullfile(datapath,'\model\output_Feb2017\'); %Change path to sosiknas here!
+        pathname=fullfile(datapath, ['model/input_beadmean_' folder_tag '/']);
+        savepath=fullfile(datapath,['\model\output_' folder_tag '\']); %Change path to sosiknas here!
         if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet
   %      addpath \\sosiknas1\lab_data\mvco\FCB\Syn_divrate_model\onecomp_model_code
         call_to_opt_mvco
@@ -82,8 +82,8 @@ for year2do = 2018
 
     %make model result figures:
     if do_modelfit_movie
-        modelres_path=fullfile(datapath,'/model/output_Feb2017/');  %path to model results
-        setupdays_path=fullfile(datapath,'/model/input_beadmean_Feb2017/'); %path to setup_days input
+        modelres_path=fullfile(datapath,['\model\output_' folder_tag '\']);  %path to model results
+        setupdays_path=fullfile(datapath,['model/input_beadmean_' folder_tag '/']); %path to setup_days input
         addpath(fullfile(rootpath,'Syn_divrate_model/model_code/')); %path to access code to project model day forward
         addpath(fullfile(rootpath,'Syn_divrate_model/subplot_tight/')); %path for making 'tighter' subplots :)
 

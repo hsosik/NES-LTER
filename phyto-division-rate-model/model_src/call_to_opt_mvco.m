@@ -18,53 +18,18 @@ opts=optimset('Display','off','TolX',1e-8,'Algorithm','interior-point','UseParal
 icsTol=0.2;
 tolvec=[0.01 0.01 100 0.005 0.01 0.01 100 0.005 0.01 0.5 0.5 0.5 0.5 10];
 
-% Specify year:
-% for
-%year=2011;
-%
-%switch year
-%    case 2003
-%        yearlabel='May';
-%    case 2004
-%        yearlabel='Apr';
-%    case 2005
-%        yearlabel='Apr';
-%    case 2006
-%        yearlabel='May';
-%    case 2007
-%        yearlabel='Mar';
-%    otherwise
-%        yearlabel='Jan';
-%end
-
 disp(num2str(year2do))
-%eval(['pathname=''\\sosiknas1\Lab_data\MVCO\FCB\MVCO_' yearlabel num2str(year) '\model\input_beadmean_July2016\'';']) %Change path to sosiknas here!
-%eval(['savepath=''\\sosiknas1\Lab_data\MVCO\FCB\MVCO_' yearlabel num2str(year) '\model\output_July2016\'';']) %Change path to sosiknas here!
-
-% eval(['pathname=''\\sosiknas1.whoi.edu\Lab_data\MVCO\FCB\MVCO_' yearlabel num2str(year) '\model\input_beadmean_July2016\'';']) %Change path to sosiknas here!
-% eval(['savepath=''\\sosiknas1.whoi.edu\Lab_data\MVCO\FCB\MVCO_' yearlabel num2str(year) '\model\output_July2016\'';']) %Change path to sosiknas here!
-
-%  eval(['pathname=''/mnt/lab_data/MVCO/FCB/MVCO_' yearlabel num2str(year) '/model/input_beadmean_July2016/'';']) %Change path to sosiknas here!
-%  eval(['savepath=''/mnt/lab_data/MVCO/FCB/MVCO_' yearlabel num2str(year) '/model/output_July2016/'';']) %Change path to sosiknas here!
-% %
-
-% eval(['pathname=''/Volumes/Lab_data/MVCO/FCB/MVCO_' yearlabel num2str(year) '/model/input_beadmean_July2016/'';']) %Change path to sosiknas here!
-% eval(['savepath=''/Volumes/Lab_data/MVCO/FCB/MVCO_' yearlabel num2str(year) '/model/output_July2016/'';']) %Change path to sosiknas here!
 
 %both savepath and pathname should be specified before running this code!
+%This is done in divmodle_setup!
 
-%save results as they are processed in a separate directory:
-if ~exist(savepath,'dir'), mkdir(savepath), end %make directory if doesn't exist yet
-
-filelist = dir([pathname 'day*data.mat']);
+filelist = dir([pathname 'day*data.mat']); %find the input files
 
 % setup result variables:
-
 modelresults=zeros(length(filelist),23);
 allmodelruns=cell(length(filelist),2);
 
-% For 2005 - end of October onward (732607), merging problem - skipping for
-% now
+% For 2005 - end of October onward (732607), merging problem - skipping for now
 
 %%
 for filenum=1:length(filelist)
@@ -72,7 +37,6 @@ for filenum=1:length(filelist)
     filename=filelist(filenum).name;
     day=str2num(filename(4:9));
 
-    %     if ~isempty(find(daylist==day))
     disp(['optimizing day: ' num2str(day) ' file#: ' num2str(filenum)])
     eval(['load ' pathname filename])
 
@@ -271,7 +235,3 @@ for filenum=1:length(filelist)
 
 end
 
-% eval(['modelresults' num2str(year) '_np=modelresults;'])
-% eval(['allmodelruns' num2str(year) '_np=allmodelruns;'])
-% eval(['save ' savepath 'mvco_14par_dmn_' num2str(year) '_beadmean_July modelresults' num2str(year) '_np allmodelruns' num2str(year) '_np restitles notes'])
-%
