@@ -2,7 +2,7 @@
 clear
 close all
 
-for year2do = 2013
+for year2do = 2005
 
     % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m
     % addpath /Users/kristenhunter-cevera/Documents/phyto-division-rate-model/MVCO_FCB_PROCESSING/
