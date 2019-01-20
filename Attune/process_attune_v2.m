@@ -44,7 +44,7 @@ EukBiovol = temp;
 EukCarbon = temp;
 QC_flowrate = NaN(length(filelist),2);
 
-for count = 1:10:length(filelist)
+for count = 1:length(filelist)
     if ~rem(count,10)
         disp([num2str(count) ' of ' num2str(length(filelist))])
     end
