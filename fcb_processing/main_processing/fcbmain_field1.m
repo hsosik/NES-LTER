@@ -7,11 +7,8 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-<<<<<<< HEAD
-for year2do = 2013 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
-=======
-for year2do = 2018 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
->>>>>>> origin/master
+for year2do = 2005 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+
 dotime = 0; %0 = NO, 1 = YES
 domerge = 1;
 doclassify = 1;
