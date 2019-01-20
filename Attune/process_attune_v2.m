@@ -51,15 +51,14 @@ for count = 1:10:length(filelist)
     filename = [fpath filelist{count}];
     disp(filename)
     %reading in each FCS file with fca_readfcs
-    [~,fcshdr,fcsdatscaled] =fca_readfcs(filename);
-    t = find(fcsdatscaled(:,12)>500 & fcsdatscaled(:,3)>100);
-    QC_flowrate(count,1) = (median(fcsdatscaled(t,3)./fcsdatscaled(t,12)));
-    QC_flowrate(count,2) = (std(fcsdatscaled(t,3)./fcsdatscaled(t,12)));
+    [fcsdat,fcshdr] =fca_readfcs(filename);
+    t = find(fcsdat(:,12)>500 & fcsdat(:,3)>100);
+    QC_flowrate(count,1) = (median(fcsdat(t,3)./fcsdat(t,12)));
+    QC_flowrate(count,2) = (std(fcsdat(t,3)./fcsdat(t,12)));
     
+    [ class ] = eval([assign_class_function '( fcsdat, fcshdr, plot_flag );']);
     
-    [ class ] = eval([assign_class_function '( fcsdatscaled, fcshdr, plot_flag );']);
-    
-    temp = fcsdatscaled(:,3); %SSC-A
+    temp = fcsdat(:,3); %SSC-A
     temp(temp<0) = NaN;
     volume = 10.^(1.3.*log10(temp) - 2.9);
     carbon = biovol2carbon( volume, 0 );
