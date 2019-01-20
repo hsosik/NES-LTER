@@ -9,7 +9,7 @@ function [ class ] = assign_class_spiropa( fcsdat, fcshdr, plot_flag )
 %Heidi M. Sosik, Woods Hole Oceanographic Institution, Jan 2019
 
 %Initialze class vector
-    class = zeros(size(fcsdat,1));
+    class = zeros(size(fcsdat,1),1);
     
     %parameter numbers for main euk polygon
     npar_eukX = 12; %SSC-H
