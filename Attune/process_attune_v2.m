@@ -114,7 +114,7 @@ for count = 1:length(filelist)
     AttuneTable = [AttuneTable array2table(SynBiovol, 'VariableNames', {'SynBiovolTotal' 'SynBiovollt2' 'SynBiovol2_5'})];
     AttuneTable = [AttuneTable array2table(EukBiovol, 'VariableNames', {'EukBiovolTotal' 'EukBiovollt2' 'EukBiovol2_5' 'EukBiovol5_10' 'EukBiovol10_20' 'EukBiovol20_50' 'EukBiovolgt50'})];
     AttuneTable = [AttuneTable array2table(SynCarbon, 'VariableNames', {'SynCarbonTotal' 'SynCarbonlt2' 'SynCarbon2_5'})];
-    AttuneTable = [AttuneTable array2table(EukCarbon, 'VariableNames', {'EukCarbonTotal' 'EukCarbonlt2' 'EukCarbon2_5' 'EukCarbonl5_10' 'EukCarbon10_20' 'EukCarbon20_50' 'EukCarbongt50'})];
+    AttuneTable = [AttuneTable array2table(EukCarbon, 'VariableNames', {'EukCarbonTotal' 'EukCarbonlt2' 'EukCarbon2_5' 'EukCarbon5_10' 'EukCarbon10_20' 'EukCarbon20_50' 'EukCarbongt50'})];
     AttuneTable.QC_flowrate_median = QC_flowrate(:,1);
     AttuneTable.QC_flowrate_std = QC_flowrate(:,2);
     
