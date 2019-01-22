@@ -11,19 +11,38 @@
 hr1=7; hr2=25; %time window for the model
 
 restitles={'day';'gmax1';'b1';'E*1';'dmax1';'gmax2';'b2';'E*2';'dmax2';'proportion';'m1';'m2';'sigma1';'sigma2';'s';'-logL';'mu';'mu1';'mu2';'ending proportion 1';'ending proportion 2'; 'exitflag';'number solver runs'};
-notes='E* bounds are from 0 to max(Einterp)';
+notes='E* bounds are from 0 to max(Einterp), run with scaled s (by a factor of 100)';
 
 ms=MultiStart('Display','off','TolX',1e-5,'UseParallel','always','StartPointsToRun','bounds');
 opts=optimset('Display','off','TolX',1e-8,'Algorithm','interior-point','UseParallel','always','MaxIter', 3000,'MaxFunEvals',10000);
 icsTol=0.2;
 tolvec=[0.01 0.01 100 0.005 0.01 0.01 100 0.005 0.01 0.5 0.5 0.5 0.5 10];
 
-disp(num2str(year2do))
-
 %both savepath and pathname should be specified before running this code!
 %This is done in divmodle_setup!
 
-filelist = dir([pathname 'day*data.mat']); %find the input files
+if exist('year2do','var')
+    disp(num2str(year2do))
+    filelist = dir([pathname 'day*data.mat']); %find the input files
+elseif exist('valtype','var')
+    switch valtype
+        case 'benchtop'
+            %indexes of 'good days' to run:
+            load(fullfile(codepath,'validation/FCB3_benchtop/model_setup_and_postprocessing/indexes_new.mat'))
+
+            %find both port 2 and port 3 files, and check that correct files are found:
+            filelist2 = dir([pathname 'day*_2_*.mat']); %find the input files
+            temp_daylist2=str2num(char(cellfun(@(x) x(4:9), {filelist2(indtemp2).name}','UniformOutput',false)));           
+            if ~isequal(culture_date(c2m2(indtemp2)),temp_daylist2), disp('Uh oh - not finding correct benchtop files!'); keyboard, end
+
+            filelist3 = dir([pathname 'day*_3_*.mat']); %find the input files
+            temp_daylist3=str2num(char(cellfun(@(x) x(4:9), {filelist3(indtemp3).name}','UniformOutput',false)));           
+            if ~isequal(culture_date(c2m3(indtemp3)),temp_daylist3), disp('Uh oh - not finding correct benchtop files!'); keyboard, end
+            
+            filelist=[filelist2; filelist3]; 
+    end   
+    
+end
 
 % setup result variables:
 modelresults=zeros(length(filelist),23);
@@ -46,8 +65,24 @@ for filenum=1:length(filelist)
         N_dist=[nan(57,25-m) N_dist];
         Vhists=[nan(57,25-m) Vhists];
     end
-
-    %Fix and Interpolate Light Data:
+    
+    %temporary - should fix in getSolar for benchtop data:
+     if exist('valtype','var')
+        ind= Edata(:,2) < 6; %deal with extra noise (dark current values)
+        noise=mean(Edata(ind,2));
+        Edata(:,2)=Edata(:,2)-noise;
+        ind = Edata(:,2) < 0;
+        Edata(ind,2) = 0;
+        ind=find(Edata(:,2) < 4);
+        threshold=mean(Edata(ind,2)) + std(Edata(ind,2));
+        ii=find(Edata(ind,2) > threshold); %find values that are still too noisy
+        Edata(ind(ii),2)=0;
+        indh=find(Edata(:,1) < 1 | Edata(:,1) > 16.5); %for spurious light values at end of day...
+        ind2=find(Edata(indh,2) > threshold);
+        Edata(indh(ind2),2)=0;
+     end
+     
+     %Fix and Interpolate Light Data:
     time=0:(1/6):25;
     nnind = find(~isnan(Edata(:,2)));
     Edata=Edata(nnind,:);

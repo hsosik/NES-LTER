@@ -29,23 +29,7 @@ m1=theta(10); %mean volume for starting cell size distribution, subpopn 1
 m2=theta(11); %mean volume for starting cell size distribution, subpopn 2
 sigma1=theta(12); %variance parameter for starting cell size distributions for popn 1
 sigma2=theta(13); %variance parameter for starting cell size distributions for popn 2
-s=theta(14); %overdispersion parameter for the Dirichlet-multinomial distribution
-
-
-gmax1=theta(1);
-b1=theta(2);
-E_star1=theta(3);
-dmax1=theta(4);
-gmax2=theta(5);
-b2=theta(6);
-E_star2=theta(7);
-dmax2=theta(8);
-f=theta(9); %fraction of starting distribution
-m1=theta(10);
-m2=theta(11);
-sigma1=theta(12);
-sigma2=theta(13);
-s=100*theta(14); %scaled to help solver shrink distance between small numbers and very large numbers encountered in theta vector
+s=100*theta(14); %overdispersion parameter for the Dirichlet-multinomial distribution, scaled to help solver shrink distance between small numbers and very large numbers encountered in theta vector
 
 q=hr2-hr1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
