@@ -58,12 +58,14 @@ for count = 1:length(filelist)
     
     [ class ] = eval([assign_class_function '( fcsdat, fcshdr, plot_flag );']);
     
+    %compute the cell volume from side scattering (Area, integrated signal)
     temp = fcsdat(:,3); %SSC-A
-    temp(temp<0) = NaN;
-    volume = 10.^(1.3.*log10(temp) - 2.9);
-    carbon = biovol2carbon( volume, 0 );
+    temp(temp<0) = NaN; %FIGURE OUT LATER -- why are there SSC-A < 0 !!!???
+    volume = 10.^(1.3.*log10(temp) - 2.9); %cubic microns, APPROX calibration from Summer 2018
+    carbon = biovol2carbon( volume, 0 ); % carbon, picograms per cell
+    notes = ['Class 1= Euk, Class 2 = Syn, Class 0 = junk; Cell volume in cubic microns; assign_class_function = ' assign_class_function];
     
-    save([classpath regexprep(filelist{count}, '.fcs', '')], 'class', 'volume')
+    save([classpath regexprep(filelist{count}, '.fcs', '')], 'class', 'volume', 'notes')
     
     SynCount(count,1) = sum(class==2);
     EukCount(count,1) = sum(class==1);
@@ -72,7 +74,7 @@ for count = 1:length(filelist)
     SynCarbon(count,1) = sum(carbon(class==2));
     EukCarbon(count,1) = nansum(carbon(class==1));
     
-    diam = (volume*3/4/pi).^(1/3)*2;
+    diam = (volume*3/4/pi).^(1/3)*2; %equivalent spherical diam, micrometers
     ind = find(diam<=2 & class==2);
     SynCount(count,2) = length(ind);
     SynBiovol(count,2) = sum(volume(ind));
