@@ -265,8 +265,12 @@ for filenum=1:length(filelist)
     modelresults(filenum,:)=[day xmin fmin mu mu1 mu2 p1 p2 exitflag length(modelfits)];
     allmodelruns{filenum,1}=modelfits;
     allmodelruns{filenum,2}=allstarts;
-
-    eval(['save ' savepath 'mvco_14par_dmn_' num2str(year2do) ' modelresults allmodelruns'])
+    
+    if exist('year2do','var')
+        eval(['save ' savepath 'mvco_14par_dmn_' num2str(year2do) ' modelresults allmodelruns'])
+    elseif exist('valtype','var')
+        eval(['save ' savepath 'benchtop_14par_dmn_modelfits modelresults allmodelruns'])
+    end
 
 end
 
