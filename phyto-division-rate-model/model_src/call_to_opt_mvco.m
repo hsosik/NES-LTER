@@ -39,7 +39,7 @@ elseif exist('valtype','var')
             temp_daylist3=str2num(char(cellfun(@(x) x(4:9), {filelist3(indtemp3).name}','UniformOutput',false)));           
             if ~isequal(culture_date(c2m3(indtemp3)),temp_daylist3), disp('Uh oh - not finding correct benchtop files!'); keyboard, end
             
-            filelist=[filelist2; filelist3]; 
+            filelist=[filelist2(indtemp2); filelist3(indtemp3)]; 
     end   
     
 end

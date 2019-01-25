@@ -55,7 +55,7 @@ if do_model
     addpath(fullfile(codepath,'model_src/')) %assumes you are in the setup_and_postprocessing folder - should fix this!
     addpath(fullfile(codepath,'validation/FCB3_benchtop/model_setup_and_postprocessing/'))
     pathname=fullfile(datapath, 'input/');
-    savepath=fullfile(codepath,['validation/FCB3_benchtop/output_' folder_tag '\']); %Change path to sosiknas here!
+    savepath=fullfile(codepath,['validation/FCB3_benchtop/output_' folder_tag '/']); %Change path to sosiknas here!
     %savepath=fullfile(datapath,['output_' folder_tag '\']); %Change path to sosiknas here!
     if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet
     call_to_opt_mvco
