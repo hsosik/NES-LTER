@@ -58,6 +58,7 @@ if plotflag ==1
     else
         legend([h1; h2],'Bead SSC','Smoothed SSC, 3-points')
     end
+    disp('Check to see if bead avg looks alright')
     keyboard
 end
 

@@ -86,6 +86,7 @@ for filenum=1:length(filelist)
     time=0:(1/6):25;
     nnind = find(~isnan(Edata(:,2)));
     Edata=Edata(nnind,:);
+    if Edata(1,1) >= 1, Edata=[0 0; Edata]; end %rare case for gaps around dawn that are not caught by getSolar...i.e.Jun-10-2003   
     [unqE eind]=unique(Edata(:,1));
     Einterp = interp1(Edata(eind,1),Edata(eind,2),time);
     Einterp(find(isnan(Einterp))) = 0;

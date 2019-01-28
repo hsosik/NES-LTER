@@ -74,14 +74,16 @@ for j=1:length(days)
             %check for gaps around dawn and dusk:           
             if abs(dawn_median(j)-tempdawn) <= 1
                 dawnhr(j)=tempdawn; %good, accept this dawn!   
-                if ind(ind2(ind3(1)))==ind(1)               
-                    date_met = [date_met; days(j)+(tempdawn-0.001)/24]; %add one hour after dusk
+                if ind(ind2(ind3(1)))==ind(1)   %if daylight hour is first hour of day, indicates a gap during the night            
+                    date_met = [date_met; days(j)+(tempdawn+1)/24];
                     Solar = [Solar; 0];
                 end
             elseif abs(dawn_median(j)-tempdawn) <= 3 %close...small gap, pad with a datapoint for later interpolation!
-                 date_met = [date_met; days(j)+(dawn_median(j)-.001)/24];
+                 date_met = [date_met; days(j)+(dawn_median(j)+1)/24];
                  Solar = [Solar; 0];
                  dawnhr(j)=dawn_median(j);
+                 %the plus 1/24 is important - in setup_days, the
+                 %script looks only past the dawn hour, not before...
             else
                 lighttime_gaps(j)=1; %gap around dawn
             end
@@ -95,7 +97,7 @@ for j=1:length(days)
                     Solar = [Solar; 0];
                 end
             elseif abs(dusk_median(j)-tempdusk) <= 3 %close...small gap, pad with a datapoint for later interpolation!
-                 date_met = [date_met; days(j)+(dusk_median(j)+.001)/24];
+                 date_met = [date_met; days(j)+(dusk_median(j)+0.001)/24];
                  Solar = [Solar; 0];
                  duskhr(j)=dusk_median(j);
             else
