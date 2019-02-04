@@ -1,38 +1,27 @@
 clear all
 close all
-<<<<<<< HEAD
-year=2012;
+
+year=2017;
 %pathname='/home/kristen/Desktop/MVCO_FCB_time_testfiles/';
 %eval(['filelist=dir(''/home/kristen/Desktop/MVCO_FCB_time_testfiles/*' num2str(year) '*.mat'')'])
 
-pathname='/Volumes/Lab_data/MVCO/FCB/MVCO_Jan2012/data/processed_July2016/time/';
+pathname='/Volumes/Lab_data/MVCO/FCB/MVCO_Jan2017/data/processed/time/';
 %pathname='/Volumes/Lab_data/MVCO/FCB/MVCO_Apr2005/data/processed_July2016/time/';
 %pathname='/Volumes/Lab_data/MVCO/FCB/MVCO_May2006/data/processed_July2016/time/';
-=======
-year=2006;
-%pathname='/home/kristen/Desktop/MVCO_FCB_time_testfiles/';
-%eval(['filelist=dir(''/home/kristen/Desktop/MVCO_FCB_time_testfiles/*' num2str(year) '*.mat'')'])
 
-%pathname='/Volumes/Lab_data/MVCO/FCB/MVCO_Jan2008/data/processed_July2016/time/';
-%pathname='/Volumes/Lab_data/MVCO/FCB/MVCO_Apr2005/data/processed_July2016/time/';
-pathname='/Volumes/Lab_data/MVCO/FCB/MVCO_May2006/data/processed_July2016/time/';
->>>>>>> 099dfd03809c8d5991b252ca0545475a9334c0a0
 %eval(['filelist=dir(''' pathname '*_*.mat'')'])
 eval(['filelist=dir(''' pathname '*' num2str(year) '*.mat'')'])
 syrplotflag=1;
 %%
 
 clearvars -except year filelist pathname syrplotflag
-<<<<<<< HEAD
+
 j=1;
-=======
-j=4;
->>>>>>> 099dfd03809c8d5991b252ca0545475a9334c0a0
+
 filename=filelist(j).name(1:end-6);
 load(strcat(pathname,filelist(j).name))
 eval(['temp=' filename ';'])
 totalstartsec=24*3600*(temp(:,2)-temp(1,2));
-<<<<<<< HEAD
 totalendsec=24*3600*(temp(:,3)-temp(1,2));
 
 %% just the current plots:
@@ -65,6 +54,6 @@ totalendsec=24*3600*(temp(:,3)-temp(1,2));
     
     ylabel('Acquisition time (sec)')
     xlabel('Time (sec)')
-=======
-totalendsec=24*3600*(temp(:,3)-temp(1,2));
->>>>>>> 099dfd03809c8d5991b252ca0545475a9334c0a0
+
+
+
