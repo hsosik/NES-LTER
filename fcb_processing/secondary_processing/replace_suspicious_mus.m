@@ -2,7 +2,15 @@ function [smu, new_mu_est, no_new_est]=replace_suspicious_mus(time_mu,daily_mu,p
 %highlight suspicious mu's based on what we know about temperature response
 %and see if can find a replacement in that day's model runs:
 
-load ~/Documents/MATLAB/MVCO_Syn_analysis/mvco_envdata_26Jul2016.mat  %(or most current processed MVCO Enviornmental data)
+if exist('/Volumes/Lab_data/MVCO/','dir')
+    rootpath='/Volumes/Lab_data/MVCO/FCB/';
+    load(fullfile(rootpath,'/Syn_and_MVCO_packaged_data/mvco_envdata_current.mat'))
+else
+    rootpath='\\sosiknas\Lab_data\MVCO\FCB\';
+   load(fullfile(rootpath,'\Syn_and_MVCO_packaged_data/mvco_envdata_current.mat'));
+end
+
+%load ~/Documents/MATLAB/MVCO_Syn_analysis/mvco_envdata_26Jul2016.mat  %(or most current processed MVCO Enviornmental data)
 
 smu=find(daily_mu > 0.20 & Tbeam_corr <= 4);
 smu=[smu; find(daily_mu > 0.25 & (Tbeam_corr <= 5 & Tbeam_corr > 4))];
@@ -25,10 +33,10 @@ new_mu_est=[];
 for q=1:length(smu)
     
     day=time_mu(smu(q));
-    [yearlabel,~,~]=datevec(day);
+    [year2do,~,~]=datevec(day);
     disp(['Day: ' datestr(day) ' : temp:' num2str(Tbeam_corr(smu(q))) ' : mu: ' num2str(daily_mu(smu(q)))])
     
-    switch yearlabel
+    switch year2do
         case 2003
             filelabel='May';
         case 2004
@@ -43,7 +51,12 @@ for q=1:length(smu)
             filelabel='Jan';
     end
     
-    eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(yearlabel) '/model/output_July2016/mvco_14par_dmn_' num2str(yearlabel) '.mat'])
+    if exist(fullfile(rootpath,['MVCO_' filelabel num2str(year2do) '/model/output_Jan2019/']))
+        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_Jan2019/mvco_14par_dmn_' num2str(year2do) '.mat'])       
+    else
+        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_July2016/mvco_14par_dmn_' num2str(year2do) '.mat'])        
+    end
+    %eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_July2016/mvco_14par_dmn_' num2str(year2do) '.mat'])
     
     qq=find(modelresults(:,1)==day);
     temp=allmodelruns{qq,1};

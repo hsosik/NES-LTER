@@ -312,7 +312,6 @@ end
 
 dd=date;
 eval(['save ' savepath 'mvco_envdata_current.mat *light* *Tcorr* corr_years Tbeam_corr dy_*  *_month nutyears nutyrdy time_nut* SiOH_wk NH4_wk NO3_wk PO4_wk SiOH_*_mn NH4_*_mn NO3_*_mn PO4_*_mn'])
-%save a backup copy, if you'd like to return to this later:
 eval(['save ' fullfile(savepath,'older_products/') 'mvco_envdata_' dd(1:2) dd(4:6) dd(8:end) '.mat *light* *Tcorr* corr_years Tbeam_corr dy_*  *_month nutyears nutyrdy time_nut* SiOH_wk NH4_wk NO3_wk PO4_wk SiOH_*_mn NH4_*_mn NO3_*_mn PO4_*_mn'])
 
 % eval(['save /Users/kristenhunter-cevera/Documents/MATLAB/MVCO_Syn_analysis/mvco_envdata_' dd(1:2) dd(4:6) dd(8:end) '.mat *light* *Tcorr* corr_years Tbeam_corr dy_*  *_month nutyears nutyrdy time_nut* SiOH_wk NH4_wk NO3_wk PO4_wk SiOH_*_mn NH4_*_mn NO3_*_mn PO4_*_mn'])

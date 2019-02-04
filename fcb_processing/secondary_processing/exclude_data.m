@@ -8,6 +8,9 @@ function to_use=exclude_data(cellresultsall,year2do)
 %strange acquisiiton times - not sure what exactly these are...
 %syringe clogged - bad volume estimates
 
+to_use0=find(~isnan(cellresultsall(:,1)));
+cellresultsall=cellresultsall(to_use0,:);
+
 switch year2do
     case 2003
         
@@ -244,13 +247,14 @@ switch year2do
         reason=repmat('Noise classified as Syn',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
-        i1=find(cellresultsall(:,1)>=datenum('5-19-13 04:00:00') & cellresultsall(:,1)<=datenum('5-19-13 5:00:00'));
-        i2=find(cellresultsall(:,1)>=datenum('5-21-13 17:00:00') & cellresultsall(:,1)<=datenum('5-21-13 18:00:00'));
-        i3=find(cellresultsall(:,1)>=datenum('11-21-13 18:00:00') & cellresultsall(:,1)<=datenum('11-21-13 19:00:00'));
-        ii=[i1;i2;i3];
-        reason=repmat('Strange data pattern - no detectable Syn?',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-        
+        %seems this data was removed...
+%         i1=find(cellresultsall(:,1)>=datenum('5-19-13 04:00:00') & cellresultsall(:,1)<=datenum('5-19-13 5:00:00'));
+%         i2=find(cellresultsall(:,1)>=datenum('5-21-13 17:00:00') & cellresultsall(:,1)<=datenum('5-21-13 18:00:00'));
+%         i3=find(cellresultsall(:,1)>=datenum('11-21-13 18:00:00') & cellresultsall(:,1)<=datenum('11-21-13 19:00:00'));
+%         ii=[i1;i2;i3];
+%         reason=repmat('Strange data pattern - no detectable Syn?',length(ii),1);
+%         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+%         
         ii=find(cellresultsall(:,1)>=datenum('5-27-13 00:00:00') & cellresultsall(:,1)<=datenum('5-27-13 01:00:00'));
         reason=repmat('Part of Syn patch classified as picoeuks',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
@@ -392,4 +396,16 @@ switch year2do
         [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
         to_use=find(bt_pts==0);
         
+    case 2017
+        %to be determined
+        to_use=find(~isnan(cellresultsall(:,1)));
+    case 2018
+        %to be determined
+        to_use=find(~isnan(cellresultsall(:,1)));
+end
+
+to_use=to_use0(to_use);
+
+if any(isnan(cellresultsall(to_use,1)))
+    keyboard
 end

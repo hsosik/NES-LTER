@@ -184,8 +184,6 @@ syn_avg(end)=NaN; %this is because only one year with a leap year could be inclu
 syn_std=nanstd(daily_syn,0,2);
 syn_med=nanmedian(daily_syn,2);
 
-[syn_med_wk] = dy2wkmn_medclimatology(daily_syn, synyears);
-
 %% Division rates from the model-----------------------------------------------------------------------------------------------------------------------------------------------
 
 allgrowthrates=[];
@@ -622,18 +620,24 @@ PEdawnvol_ratio_avg=nanmean(daily_PEvol_ratio_dawn,2);
 %[PEmax_wkmed] = dy2wkmn_medclimatology(daily_PE_max, synyears);
 [volmin_wkmed] = dy2wkmn_medclimatology(daily_vol_min, synyears);
 
-%%
 
+%%
+dd=date;
 % eval(['save /Users/kristenhunter-cevera/Documents/MATLAB/MVCO_Syn_analysis/syndata_TEMP_' dd(1:2) dd(4:6) dd(8:end) '.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate'])
 
+
 if exist('/Volumes/Lab_data/MVCO/','dir')
+    
     savepath=fullfile('/Volumes/Lab_data/MVCO/FCB/Syn_and_MVCO_packaged_data/');
 else
-    savepath=fullfile('\\sosiknas\Lab_data\MVCO\FCB\Syn_and_MVCO_packaged_data\');
+   envpath=fullfile('\\sosiknas\Lab_data\MVCO\EnvironmentalData\');
+   solarpath=fullfile('\\sosiknas\Lab_data\MVCO\FCB\');
+   savepath=fullfile('\\sosiknas\Lab_data\MVCO\FCB\Syn_and_MVCO_packaged_data\');
 end
 
+
 dd=date;
-eval(['save ' savepath 'syndata_current.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate'])
+eval(['save ' savepath 'mvco_envdata_current.mat *light* *Tcorr* corr_years Tbeam_corr dy_*  *_month nutyears nutyrdy time_nut* SiOH_wk NH4_wk NO3_wk PO4_wk SiOH_*_mn NH4_*_mn NO3_*_mn PO4_*_mn'])
 %save a backup copy, if you'd like to return to this later:
-eval(['save ' fullfile(savepath,'older_products/') 'syndata_' dd(1:2) dd(4:6) dd(8:end) '.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate'])
+eval(['save ' fullfile(savepath,'older_products/') 'mvco_envdata_' dd(1:2) dd(4:6) dd(8:end) '.mat *light* *Tcorr* corr_years Tbeam_corr dy_*  *_month nutyears nutyrdy time_nut* SiOH_wk NH4_wk NO3_wk PO4_wk SiOH_*_mn NH4_*_mn NO3_*_mn PO4_*_mn'])
 
