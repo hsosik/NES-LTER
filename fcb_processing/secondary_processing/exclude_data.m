@@ -31,6 +31,9 @@ switch year2do
         reason=repmat('Syn classified as picoeuks!',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
+%         ii=find(cellresultsall(:,1)>=datenum('05-Dec-2003 15:35:59') & cellresultsall(:,1)<=datenum('06-Dec-2003 08:19:10'));
+%         reason=repmat('Unclear what is going on here -misclassification?',length(ii),1);
+%         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         %         ii=cell2mat(ex_timepts(:,1));
         %         [~, ia, ib] =intersect(ii,cellresultsall(:,1));
         [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
@@ -372,10 +375,14 @@ switch year2do
 %         i3=find(cellresultsall(:,1)>=datenum('6-15-16 12:00:00') & cellresultsall(:,1)<=datenum('6-16-16 01:00:00')); %mess of signatures 
 %         i4=find(cellresultsall(:,1)>=datenum('6-16-16 14:00:00') & cellresultsall(:,1)<=datenum('6-16-16 23:00:00')); %mess of signatures 
 %         i5=find(cellresultsall(:,1)>=datenum('6-17-16 11:00:00') & cellresultsall(:,1)<=datenum('6-19-16 05:00:00')); %mess of signatures 
-
         ii=[i1;i2;i3];
         reason=repmat('Bad signatures',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+        
+        ii=find(cellresultsall(:,1)>=datenum('9-22-16 00:00:00') & cellresultsall(:,1)<=datenum('10-05-16 10:00:00')); 
+        reason=repmat('Remove for now, should come back and investigate later, a bead calling issue?',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+        
         
         ii=find(cellresultsall(:,1)>=datenum('10-03-16 22:00:00') & cellresultsall(:,1)<=datenum('10-04-16 17:00:00')); 
         reason=repmat('SSC spread - bad signatures',length(ii),1);
@@ -398,10 +405,25 @@ switch year2do
         
     case 2017
         %to be determined
-        to_use=find(~isnan(cellresultsall(:,1)));
+        ex_timepts={};
+         
+        ii=find(cellresultsall(:,1)>=datenum('27-Aug-2017 07:00:00') & cellresultsall(:,1)<=datenum('07-Sep-2017 23:10:30')); 
+        reason=repmat('For now, exclude... some strangeness with bead values only - bead classification mistake?',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+ 
+        [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
+        to_use=find(bt_pts==0);
+                
     case 2018
         %to be determined
-        to_use=find(~isnan(cellresultsall(:,1)));
+        ex_timepts={};
+         
+        ii=find(cellresultsall(:,1)>=datenum('29-Jul-2018 18:00:00') & cellresultsall(:,1)<=datenum('10-Aug-2018 21:10:30')); 
+        reason=repmat('Need to investigate further...',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+ 
+        [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
+        to_use=find(bt_pts==0);
 end
 
 to_use=to_use0(to_use);

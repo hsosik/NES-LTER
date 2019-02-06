@@ -21,8 +21,6 @@ allsynCHLmode=[];
 allsynvol=[];
 allsynvolmode=[];
 
-%%
-
 for year2do=2003:2018
     
     switch year2do
@@ -55,7 +53,7 @@ for year2do=2003:2018
     end
     %eval(['matdate_' num2str(year2do) '=cellresultsall(:,1);'])
     %eval(['synconc_' num2str(year2do) '=cellNUMall(:,1)./cellresultsall(:,3);'])
-    
+  %%     
     to_use=exclude_data(cellresultsall,year2do); %ALSO REMOVES NANS!
     
     %known bead outliers:
@@ -87,7 +85,7 @@ for year2do=2003:2018
             beadresults(ind,:)=NaN;
     end
     
-    %smooth bead mean ?
+    %% smooth bead mean ?
     sm_bead_avgSSC=mvco_running_average(beadresults(:,1),beadresults(:,13),3,1); %running average smoothing function that takes into account breaks in FCB deployments
     sm_bead_avgPE=mvco_running_average(beadresults(:,1),beadresults(:,10),3,1); %running average smoothing function that takes into account breaks in FCB deployments
     sm_bead_avgCHL=mvco_running_average(beadresults(:,1),beadresults(:,12),3,1); %running average smoothing function that takes into account breaks in FCB deployments
@@ -100,35 +98,36 @@ for year2do=2003:2018
     beadPEmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgPE,cellresultsall(to_use,1),1);
     beadCHLmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgCHL,cellresultsall(to_use,1),1);
     
-    %% and plot to check!
-    %     figure(13)
-    %     subplot(3,1,1,'replace'), hold on
-    %     plot(beadresults(:,1),beadresults(:,13),'.--')
-    %     plot(beadresults(:,1),sm_bead_avgSSC,'o')
-    %     plot(cellresultsall(to_use),beadmatch,'.')
-    %     datetick('x','mm/dd')
-    %     ylabel('Bead mean SSC')
-    %     legend('bead data','smoothed bead data','matched data')
-    %     title(num2str(year2do))
-    %
-    %     subplot(3,1,2,'replace'), hold on
-    %     plot(beadresults(:,1),beadresults(:,10),'.--')
-    %     plot(beadresults(:,1),sm_bead_avgPE,'o')
-    %     plot(cellresultsall(to_use),beadPEmatch,'.')
-    %     datetick('x','mm/dd')
-    %     ylabel('Bead mean PE')
-    %     legend('bead data','smoothed bead data','matched data')
-    %
-    %     subplot(3,1,3,'replace'), hold on
-    %     plot(beadresults(:,1),beadresults(:,12),'.--')
-    %     plot(beadresults(:,1),sm_bead_avgCHL,'o')
-    %     plot(cellresultsall(to_use),beadCHLmatch,'.')
-    %     datetick('x','mm/dd')
-    %     ylabel('Bead mean CHL')
-    %     legend('bead data','smoothed bead data','matched data')
-    %
+%     %and plot to check!
+        figure(13)
+        subplot(3,1,1,'replace'), hold on
+        plot(beadresults(:,1),beadresults(:,13),'.--')
+        plot(beadresults(:,1),sm_bead_avgSSC,'o')
+        plot(cellresultsall(to_use),beadmatch,'.')
+        datetick('x','mm/dd')
+        ylabel('Bead mean SSC')
+        legend('bead data','smoothed bead data','matched data')
+        title(num2str(year2do))
+    
+        subplot(3,1,2,'replace'), hold on
+        plot(beadresults(:,1),beadresults(:,10),'.--')
+        plot(beadresults(:,1),sm_bead_avgPE,'o')
+        plot(cellresultsall(to_use),beadPEmatch,'.')
+        datetick('x','mm/dd')
+        ylabel('Bead mean PE')
+        legend('bead data','smoothed bead data','matched data')
+    
+        subplot(3,1,3,'replace'), hold on
+        plot(beadresults(:,1),beadresults(:,12),'.--')
+        plot(beadresults(:,1),sm_bead_avgCHL,'o')
+        plot(cellresultsall(to_use),beadCHLmatch,'.')
+        datetick('x','mm/dd')
+        ylabel('Bead mean CHL')
+        legend('bead data','smoothed bead data','matched data')
+%%     
     %     keyboard
     
+    %normalize if needed and record:
     allmatdate=[allmatdate; cellresultsall(to_use,1)];
     allsynconc=[allsynconc; cellNUMall(to_use,1)./cellresultsall(to_use,3)]; %syn cell counts
     
@@ -179,11 +178,13 @@ clearvars -except synrunavg allmatdate allsynconc allsynSSC* allsynPE* allsynvol
 [weekly_syn, time_syn_wk, yd_wk] = ydmat2weeklymat(daily_syn, synyears);
 [syn_avg_wk, syn_std_wk] = dy2wkmn_climatology(daily_syn, synyears);
 
+%daily avg:
 syn_avg=nanmean(daily_syn,2);
 syn_avg(end)=NaN; %this is because only one year with a leap year could be included, so the average isn't really good....
 syn_std=nanstd(daily_syn,0,2);
-syn_med=nanmedian(daily_syn,2);
 
+%median:
+syn_med=nanmedian(daily_syn,2);
 [syn_med_wk] = dy2wkmn_medclimatology(daily_syn, synyears);
 
 %% Division rates from the model-----------------------------------------------------------------------------------------------------------------------------------------------
@@ -474,41 +475,41 @@ loss_std=nanstd(daily_loss,0,2);
 
 %% we need volume and fluorescence to match up to light, which was calc on local time:
 
-%from hourly mean values:
-[time_PE, daily_PE] = timeseries2ydmat(allmatdate-4/24, allsynPE); %Syn PE fluorescence
-[time_SSC, daily_SSC] = timeseries2ydmat(allmatdate-4/24, allsynSSC); %SSC, bead normalized
-[time_vol, daily_vol] = timeseries2ydmat(allmatdate-4/24, allsynvol); %Cell volume from SSC-bead normalized
-[time_CHL, daily_CHL] = timeseries2ydmat(allmatdate-4/24, allsynCHL); %Syn CHL fluorescence
-
-PE_avg=nanmean(daily_PE,2);
-PE_med=nanmedian(daily_PE,2);
-SSC_avg=nanmean(daily_SSC,2);
-SSC_med=nanmedian(daily_SSC,2);
-vol_avg=nanmean(daily_vol,2);
-vol_med=nanmedian(daily_vol,2);
-CHL_avg=nanmean(daily_CHL,2);
-CHL_med=nanmedian(daily_CHL,2);
-
-[PE_avg_wk, PE_std_wk] = dy2wkmn_climatology(daily_PE, synyears);
-[CHL_avg_wk, CHL_std_wk] = dy2wkmn_climatology(daily_CHL, synyears);
-[SSC_avg_wk, SSC_std_wk] = dy2wkmn_climatology(daily_SSC, synyears);
-[vol_avg_wk, vol_std_wk] = dy2wkmn_climatology(daily_vol, synyears);
-
-%from hourly mode values:
-[time_PEmode, daily_PEmode] = timeseries2ydmat(allmatdate-4/24, allsynPEmode); %Syn PE fluorescence
-[time_SSCmode, daily_SSCmode] = timeseries2ydmat(allmatdate-4/24, allsynSSCmode); %smoothed abundance
-[time_volmode, daily_volmode] = timeseries2ydmat(allmatdate-4/24, allsynvolmode); %smoothed abundance
-[time_CHLmode, daily_CHLmode] = timeseries2ydmat(allmatdate-4/24, allsynCHLmode); %Syn CHL fluorescence
-
-PE_mode_avg=nanmean(daily_PEmode,2);
-SSC_mode_avg=nanmean(daily_SSCmode,2);
-vol_mode_avg=nanmean(daily_volmode,2);
-CHL_mode_avg=nanmean(daily_CHLmode,2);
-
-[PE_mode_avg_wk, PE_mode_std_wk] = dy2wkmn_climatology(daily_PEmode, synyears);
-[SSC_mode_avg_wk, SSC_mode_std_wk] = dy2wkmn_climatology(daily_SSCmode, synyears);
-[vol_mode_avg_wk, vol_mode_std_wk] = dy2wkmn_climatology(daily_volmode, synyears);
-[CHL_mode_avg_wk, CHL_mode_std_wk] = dy2wkmn_climatology(daily_CHLmode, synyears);
+%from hourly mean values (already bead normalized):
+% [time_PE, daily_PE] = timeseries2ydmat(allmatdate-4/24, allsynPE); %Syn PE fluorescence
+% [time_SSC, daily_SSC] = timeseries2ydmat(allmatdate-4/24, allsynSSC); %SSC, bead normalized
+% [time_vol, daily_vol] = timeseries2ydmat(allmatdate-4/24, allsynvol); %Cell volume from SSC-bead normalized
+% [time_CHL, daily_CHL] = timeseries2ydmat(allmatdate-4/24, allsynCHL); %Syn CHL fluorescence
+% 
+% PE_avg=nanmean(daily_PE,2);
+% PE_med=nanmedian(daily_PE,2);
+% SSC_avg=nanmean(daily_SSC,2);
+% SSC_med=nanmedian(daily_SSC,2);
+% vol_avg=nanmean(daily_vol,2);
+% vol_med=nanmedian(daily_vol,2);
+% CHL_avg=nanmean(daily_CHL,2);
+% CHL_med=nanmedian(daily_CHL,2);
+% 
+% [PE_avg_wk, PE_std_wk] = dy2wkmn_climatology(daily_PE, synyears);
+% [CHL_avg_wk, CHL_std_wk] = dy2wkmn_climatology(daily_CHL, synyears);
+% [SSC_avg_wk, SSC_std_wk] = dy2wkmn_climatology(daily_SSC, synyears);
+% [vol_avg_wk, vol_std_wk] = dy2wkmn_climatology(daily_vol, synyears);
+% 
+% %from hourly mode values:
+% [time_PEmode, daily_PEmode] = timeseries2ydmat(allmatdate-4/24, allsynPEmode); %Syn PE fluorescence
+% [time_SSCmode, daily_SSCmode] = timeseries2ydmat(allmatdate-4/24, allsynSSCmode); %smoothed abundance
+% [time_volmode, daily_volmode] = timeseries2ydmat(allmatdate-4/24, allsynvolmode); %smoothed abundance
+% [time_CHLmode, daily_CHLmode] = timeseries2ydmat(allmatdate-4/24, allsynCHLmode); %Syn CHL fluorescence
+% 
+% PE_mode_avg=nanmean(daily_PEmode,2);
+% SSC_mode_avg=nanmean(daily_SSCmode,2);
+% vol_mode_avg=nanmean(daily_volmode,2);
+% CHL_mode_avg=nanmean(daily_CHLmode,2);
+% 
+% [PE_mode_avg_wk, PE_mode_std_wk] = dy2wkmn_climatology(daily_PEmode, synyears);
+% [SSC_mode_avg_wk, SSC_mode_std_wk] = dy2wkmn_climatology(daily_SSCmode, synyears);
+% [vol_mode_avg_wk, vol_mode_std_wk] = dy2wkmn_climatology(daily_volmode, synyears);
+% [CHL_mode_avg_wk, CHL_mode_std_wk] = dy2wkmn_climatology(daily_CHLmode, synyears);
 
 %medians and max/min from the mode values:
 % [time_vol_Q, daily_vol_Q10] = timeseries2ydmat_quantile(allmatdate, allsynvolmode, .10);
@@ -561,7 +562,7 @@ end
 %One could also imagine just taking the metrics of the before dawn hour of each day...
 %find predawn hour of each day:
 unqdays=unique(floor(allmatdate));
-minPE_dawn=nan(length(unqdays),3);
+dawnPE=nan(length(unqdays),4);
 for q=1:length(unqdays)
     day=unqdays(q);
     ww=find(dawnhours(:,1)==day);
@@ -573,13 +574,14 @@ for q=1:length(unqdays)
         dawn=dawnhours(ww,2);
     end
     
-    qq=find(allmatdate >= day+dawn/24-1.5/24 & allmatdate <= day+dawn/24); %3 hours around dawn
+    qq=find(allmatdate >= day+dawn/24-1.5/24 & allmatdate <= day+dawn/24+1.5/24); %3 hours around dawn
     
     if ~isempty(qq)
-        [mm, im]=min(allsynvolmode(qq));
-        minPE_dawn(q,1)=mm; %min volume
-        minPE_dawn(q,2)=qq(im);  %index back for date and other matrices
-        minPE_dawn(q,3)=(allmatdate(qq(im))-day-dawn/24)*24; %hours after or before dawn
+        [mm, im]=min(allsynPE(qq)); %min(allsynvolmode(qq));
+        dawnPE(q,1)=mm; %min mean PE value around dawn
+        dawnPE(q,2)=qq(im);  %index back for date and other matrices
+        dawnPE(q,3)=(allmatdate(qq(im))-day)*24-dawn; %hours after or before 'dawn'
+        dawnPE(q,4)=mean(allsynPE(qq));
     end
 end
 
@@ -588,18 +590,24 @@ end
 %%
 minvol=minvol(~isnan(minvol(:,1)),:); %remove nan's
 maxvol=maxvol(~isnan(maxvol(:,1)),:);
-minPE=minPE(~isnan(minPE(:,1)),:);
-minPE_dawn=minPE_dawn(~isnan(minPE_dawn(:,1)),:);
+minPE=minPE(~isnan(minPE(:,1)),:); %min PE over day
+dawnPE=dawnPE(~isnan(dawnPE(:,1)),:); %min PE around dawn
 
+%keyboard
+%% into matrices:
 [time_volmin,daily_vol_min]=timeseries2ydmat_quantile(allmatdate(minvol(:,2)),minvol(:,1),0); %at this point, just using the script to bin into matrix for timeseries
 [time_volmax,daily_vol_max]=timeseries2ydmat_quantile(allmatdate(maxvol(:,2)),maxvol(:,1),0); %at this point, just using the script to bin into matrix for timeseries
 
 %normalize PE by volume:
-[time_PEmin,daily_PE_min]=timeseries2ydmat_quantile(allmatdate(minPE(:,2)),allsynPEmode(minPE(:,2)),0); %at this point, just using the script to bin into matrix for timeseries
-[time_PEmin,daily_PEminvol_ratio]=timeseries2ydmat_quantile(allmatdate(minPE(:,2)),allsynPEmode(minPE(:,2))./allsynvolmode(minPE(:,2)),0); %at this point, just using the script to bin into matrix for timeseries
-%%
-[time_PE_dawn,daily_PE_dawn]=timeseries2ydmat_quantile(allmatdate(minPE_dawn(:,2)),allsynPEmode(minPE_dawn(:,2)),0); %at this point, just using the script to bin into matrix for timeseries
-[time_PEmin_dawn,daily_PEvol_ratio_dawn]=timeseries2ydmat_quantile(allmatdate(minPE_dawn(:,2)),allsynPEmode(minPE_dawn(:,2))./allsynvolmode(minPE_dawn(:,2)),0); %at this point, just using the script to bin into matrix for timeseries
+[time_PEmin,daily_PE_min]=timeseries2ydmat(allmatdate(minPE(:,2)),minPE(:,1)); %at this point, just using the script to bin into matrix for timeseries
+[time_PEmin,daily_PEminvol_ratio]=timeseries2ydmat(allmatdate(minPE(:,2)),allsynPEmode(minPE(:,2))./allsynvolmode(minPE(:,2))); %at this point, just using the script to bin into matrix for timeseries
+
+%PE around dawn:
+
+%MEAN of MEAN PE's
+%RATIO THOUGH IS MIN PE AROUND DAWN divided by that volue...
+[time_PE_dawn,daily_PE_dawn]=timeseries2ydmat(allmatdate(dawnPE(:,2)),dawnPE(:,4)); 
+[time_PEmin_dawn,daily_PEvol_ratio_dawn]=timeseries2ydmat(allmatdate(dawnPE(:,2)),dawnPE(:,1)./allsynvolmode(dawnPE(:,2))); 
 
 %%
 %[time_vol_Q, daily_vol_min] = timeseries2ydmat_quantile(allmatdate-4/24, allsynvolmode, 0);
