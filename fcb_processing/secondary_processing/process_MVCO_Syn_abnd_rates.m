@@ -38,7 +38,7 @@ for year2do=2003:2018
             filelabel='Jan';
     end
     
-    if ismember(year2do,[2006:2012 2014:2015]) %temporary, until data is finished running...
+    if ismember(year2do,2003:2015) %temporary, until data is finished running...
         eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed_July2016/grouped/groupsum.mat'])
         eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed_July2016/beads/beadresults.mat'])
         [ss is]=sort(beadresults(:,1)); %sometimes data points are out of order...
@@ -99,31 +99,31 @@ for year2do=2003:2018
     beadCHLmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgCHL,cellresultsall(to_use,1),1);
     
 %     %and plot to check!
-        figure(13)
-        subplot(3,1,1,'replace'), hold on
-        plot(beadresults(:,1),beadresults(:,13),'.--')
-        plot(beadresults(:,1),sm_bead_avgSSC,'o')
-        plot(cellresultsall(to_use),beadmatch,'.')
-        datetick('x','mm/dd')
-        ylabel('Bead mean SSC')
-        legend('bead data','smoothed bead data','matched data')
-        title(num2str(year2do))
-    
-        subplot(3,1,2,'replace'), hold on
-        plot(beadresults(:,1),beadresults(:,10),'.--')
-        plot(beadresults(:,1),sm_bead_avgPE,'o')
-        plot(cellresultsall(to_use),beadPEmatch,'.')
-        datetick('x','mm/dd')
-        ylabel('Bead mean PE')
-        legend('bead data','smoothed bead data','matched data')
-    
-        subplot(3,1,3,'replace'), hold on
-        plot(beadresults(:,1),beadresults(:,12),'.--')
-        plot(beadresults(:,1),sm_bead_avgCHL,'o')
-        plot(cellresultsall(to_use),beadCHLmatch,'.')
-        datetick('x','mm/dd')
-        ylabel('Bead mean CHL')
-        legend('bead data','smoothed bead data','matched data')
+%         figure(13)
+%         subplot(3,1,1,'replace'), hold on
+%         plot(beadresults(:,1),beadresults(:,13),'.--')
+%         plot(beadresults(:,1),sm_bead_avgSSC,'o')
+%         plot(cellresultsall(to_use),beadmatch,'.')
+%         datetick('x','mm/dd')
+%         ylabel('Bead mean SSC')
+%         legend('bead data','smoothed bead data','matched data')
+%         title(num2str(year2do))
+%     
+%         subplot(3,1,2,'replace'), hold on
+%         plot(beadresults(:,1),beadresults(:,10),'.--')
+%         plot(beadresults(:,1),sm_bead_avgPE,'o')
+%         plot(cellresultsall(to_use),beadPEmatch,'.')
+%         datetick('x','mm/dd')
+%         ylabel('Bead mean PE')
+%         legend('bead data','smoothed bead data','matched data')
+%     
+%         subplot(3,1,3,'replace'), hold on
+%         plot(beadresults(:,1),beadresults(:,12),'.--')
+%         plot(beadresults(:,1),sm_bead_avgCHL,'o')
+%         plot(cellresultsall(to_use),beadCHLmatch,'.')
+%         datetick('x','mm/dd')
+%         ylabel('Bead mean CHL')
+%         legend('bead data','smoothed bead data','matched data')
 %%     
     %     keyboard
     
@@ -212,7 +212,7 @@ for year2do=2003:2018
     
     rootpath='/Volumes/Lab_data/MVCO/FCB/';
     
-    if exist(fullfile(rootpath,['MVCO_' filelabel num2str(year2do) '/model/output_Jan2019/']))
+    if ismember(year2do,2016:2018)%exist(fullfile(rootpath,['MVCO_' filelabel num2str(year2do) '/model/output_Jan2019/']))
         eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_Jan2019/mvco_14par_dmn_' num2str(year2do) '.mat'])       
     else
         eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_July2016/mvco_14par_dmn_' num2str(year2do) '.mat'])        
