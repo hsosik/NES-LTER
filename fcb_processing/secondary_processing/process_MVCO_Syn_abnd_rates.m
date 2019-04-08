@@ -9,6 +9,8 @@ addpath ~/NES-LTER/fcb_processing/miscellaneous/
 
 %% Synechococcus cell abundance, fluorescence and size:
 
+beadplotflag=0; %for QC
+
 allmatdate=[];
 allsynconc=[];
 allbeads=[];
@@ -20,7 +22,8 @@ allsynCHL=[];
 allsynCHLmode=[];
 allsynvol=[];
 allsynvolmode=[];
-
+FCBnum=[];
+%%
 for year2do=2003:2018
     
     switch year2do
@@ -38,7 +41,7 @@ for year2do=2003:2018
             filelabel='Jan';
     end
     
-    if ismember(year2do,2003:2015) %temporary, until data is finished running...
+    if ismember(year2do,2003:2015) %temporary, until data can QC new data....
         eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed_July2016/grouped/groupsum.mat'])
         eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed_July2016/beads/beadresults.mat'])
         [ss is]=sort(beadresults(:,1)); %sometimes data points are out of order...
@@ -53,7 +56,7 @@ for year2do=2003:2018
     end
     %eval(['matdate_' num2str(year2do) '=cellresultsall(:,1);'])
     %eval(['synconc_' num2str(year2do) '=cellNUMall(:,1)./cellresultsall(:,3);'])
-  %%     
+  %   
     to_use=exclude_data(cellresultsall,year2do); %ALSO REMOVES NANS!
     
     %known bead outliers:
@@ -85,7 +88,7 @@ for year2do=2003:2018
             beadresults(ind,:)=NaN;
     end
     
-    %% smooth bead mean ?
+    % smooth bead mean ?
     sm_bead_avgSSC=mvco_running_average(beadresults(:,1),beadresults(:,13),3,1); %running average smoothing function that takes into account breaks in FCB deployments
     sm_bead_avgPE=mvco_running_average(beadresults(:,1),beadresults(:,10),3,1); %running average smoothing function that takes into account breaks in FCB deployments
     sm_bead_avgCHL=mvco_running_average(beadresults(:,1),beadresults(:,12),3,1); %running average smoothing function that takes into account breaks in FCB deployments
@@ -98,35 +101,45 @@ for year2do=2003:2018
     beadPEmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgPE,cellresultsall(to_use,1),1);
     beadCHLmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgCHL,cellresultsall(to_use,1),1);
     
-%     %and plot to check!
-%         figure(13)
-%         subplot(3,1,1,'replace'), hold on
-%         plot(beadresults(:,1),beadresults(:,13),'.--')
-%         plot(beadresults(:,1),sm_bead_avgSSC,'o')
-%         plot(cellresultsall(to_use),beadmatch,'.')
-%         datetick('x','mm/dd')
-%         ylabel('Bead mean SSC')
-%         legend('bead data','smoothed bead data','matched data')
-%         title(num2str(year2do))
-%     
-%         subplot(3,1,2,'replace'), hold on
-%         plot(beadresults(:,1),beadresults(:,10),'.--')
-%         plot(beadresults(:,1),sm_bead_avgPE,'o')
-%         plot(cellresultsall(to_use),beadPEmatch,'.')
-%         datetick('x','mm/dd')
-%         ylabel('Bead mean PE')
-%         legend('bead data','smoothed bead data','matched data')
-%     
-%         subplot(3,1,3,'replace'), hold on
-%         plot(beadresults(:,1),beadresults(:,12),'.--')
-%         plot(beadresults(:,1),sm_bead_avgCHL,'o')
-%         plot(cellresultsall(to_use),beadCHLmatch,'.')
-%         datetick('x','mm/dd')
-%         ylabel('Bead mean CHL')
-%         legend('bead data','smoothed bead data','matched data')
-%%     
-    %     keyboard
+    %and plot to check!
+    if beadplotflag==1
+        figure(13)
+        subplot(3,1,1,'replace'), hold on
+        h1=plot(beadresults(:,1),beadresults(:,13),'.--');
+        h2=plot(beadresults(:,1),sm_bead_avgSSC,'o');
+        h3=plot(cellresultsall(to_use),beadmatch,'.');
+        %check the syn!
+        sc=max(beadresults(:,13))./max(cellSSCall(to_use,1)./beadmatch);
+        h5=plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,13),0.9),'.','color',[0.5 0.5 0.5]); %shows where data is missing
+        h4=plot(cellresultsall(to_use,1),sc*cellSSCall(to_use,1)./beadmatch,'.-'); %scaled SSC
+        datetick('x','mm/dd')
+        ylabel('Bead mean SSC')
+        legend([h1(1);h2(1);h3(1);h4(1);h5(1)],'bead data','smoothed bead data','matched data','scaled Syn data','unused data','location','northoutside')
+        title(num2str(year2do))
     
+        subplot(3,1,2,'replace'), hold on
+        plot(beadresults(:,1),beadresults(:,10),'.--')
+        plot(beadresults(:,1),sm_bead_avgPE,'o')
+        plot(cellresultsall(to_use),beadPEmatch,'.')
+        plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,10),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
+        sc=max(beadresults(:,10))./max(cellPEall(to_use,1)./beadPEmatch);
+        plot(cellresultsall(to_use,1),sc*cellPEall(to_use,1)./beadPEmatch,'.-') %scaled SSC
+        datetick('x','mm/dd')
+        ylabel('Bead mean PE')
+    
+        subplot(3,1,3,'replace'), hold on
+        plot(beadresults(:,1),beadresults(:,12),'.--')
+        plot(beadresults(:,1),sm_bead_avgCHL,'o')
+        plot(cellresultsall(to_use),beadCHLmatch,'.')
+        plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,12),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
+        sc=max(beadresults(:,12))./max(cellCHLall(to_use,1)./beadCHLmatch);
+        plot(cellresultsall(to_use,1),sc*cellCHLall(to_use,1)./beadCHLmatch,'.-') %scaled SSC
+ 
+        datetick('x','mm/dd')
+        ylabel('Bead mean CHL')
+%     
+        keyboard
+    end
     %normalize if needed and record:
     allmatdate=[allmatdate; cellresultsall(to_use,1)];
     allsynconc=[allsynconc; cellNUMall(to_use,1)./cellresultsall(to_use,3)]; %syn cell counts
@@ -143,30 +156,16 @@ for year2do=2003:2018
     allsynCHL=[allsynCHL; cellCHLall(to_use,1)./beadCHLmatch]; %CHL
     allsynCHLmode=[allsynCHLmode; cellCHLmodeall(to_use,1)./beadCHLmatch];
     
-    
+    FCBnum=[FCBnum; FCBnumberall(to_use)];
 end
 
-% remove nans:
 
-%DON't NEED THIS IF USING NEW EXCLUDE_DATA.M
-% ii=find(~isnan(allmatdate));
-% allmatdate=allmatdate(ii); allsynconc=allsynconc(ii);
-%
-% allsynPE=allsynPE(ii); %allbeads=allbeads(ii,:);
-% allsynPEmode=allsynPEmode(ii);
-% allsynSSC=allsynSSC(ii);
-% allsynSSCmode=allsynSSCmode(ii);
-% allsynvol=allsynvol(ii);
-% allsynvolmode=allsynvolmode(ii);
-% allsynCHL=allsynCHL(ii);
-% allsynCHLmode=allsynCHLmode(ii);
-
-%allmatdate=allmatdate-4/24; %shift from UTC time to local time -DO NOT SHIFT! BETTER TO WORK WITH DATA AS UTC!!!
+%DO NOT SHIFT! BETTER TO WORK WITH DATA AS UTC!!!
 
 %smooth the abundance data over 48 hours, with data separated by 1 day treated as separate chunks:
 synrunavg=mvco_running_average(allmatdate, allsynconc,48,1);
 
-clearvars -except synrunavg allmatdate allsynconc allsynSSC* allsynPE* allsynvol* allsynCHL*
+clearvars -except synrunavg allmatdate allsynconc allsynSSC* allsynPE* allsynvol* allsynCHL* FCBnum
 
 %% bin syn cell abundance:
 
@@ -306,6 +305,7 @@ mu_std=nanstd(daily_mu,0,2);
 %[weekly_mu, time_mu_wk] = ydmat2weeklymat(daily_mu, synyears);
 [time_mu_wk, weekly_mu]=sparse_weeklybin(time_mu,daily_mu,synyears);
 [mu_avg_wk, mu_std_wk] = dy2wkmn_climatology(daily_mu, synyears);
+[mu_med_wk] = dy2wkmn_medclimatology(daily_mu, synyears);
 % mu_avg_wk=nanmean(weekly_mu,2);
 % mu_std_wk=nanstd(weekly_mu,0,2);
 
@@ -461,7 +461,7 @@ net_std=nanstd(daily_net,0,2);
 
 [weekly_net, time_net_wk] = ydmat2weeklymat(daily_net, netyears );
 [net_avg_wk, net_std_wk] = dy2wkmn_climatology(daily_net, netyears);
-
+[net_med_wk] = dy2wkmn_medclimatology(daily_net, synyears);
 %% Back calculate loss rates:
 %---------------------------------------------------------------------------------------------------------
 
@@ -471,7 +471,7 @@ loss_std=nanstd(daily_loss,0,2);
 
 [time_loss_wk, weekly_loss]=sparse_weeklybin(time_net,daily_loss,synyears);
 [loss_avg_wk, loss_std_wk] = dy2wkmn_climatology(daily_loss, synyears);
-
+[loss_med_wk] = dy2wkmn_medclimatology(daily_loss, synyears);
 
 %% we need volume and fluorescence to match up to light, which was calc on local time:
 
