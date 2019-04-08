@@ -200,7 +200,7 @@ while count <= length(filedate)-1 %have gone through all the hours...
             set(hleg,'Position',[0.25    0.48    0.5526    0.0268])
         end;
         
-        fprintf('%d  ',count)
+        fprintf('%d  \n',count)
         F1=getframe(fig1);
 %        F1 = im2frame(zbuffer_cdata(fig1)); %an older fix for earlier
 %        matlab versions, getframe previously didn't play nice with
