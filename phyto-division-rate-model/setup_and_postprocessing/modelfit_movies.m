@@ -73,7 +73,7 @@ for j=1:length(filelist)
         %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         %project forward plus growth and division functions:
         
-        [dirsample, simdist,Vt1,Vt2]=simdata_dirichlet_sample_plt(Einterp,N_dist,theta,volbins,hr1,hr2);
+        [dirsample, simdist,Vt1,Vt2]=simdata_dirichlet_sample(Einterp,N_dist,theta,volbins,hr1,hr2);
         dirsample=dirsample./repmat(sum(dirsample,1),57,1);
         dirsample=[nan(57,6) dirsample];
         simdist=[nan(57,6) simdist];

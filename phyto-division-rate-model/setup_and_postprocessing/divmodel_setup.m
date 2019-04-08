@@ -1,13 +1,13 @@
-
 clear
 close all
 
-for year2do = 2003
+for year2do = 2016
 
     disp(num2str(year2do))
     % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m
-    % addpath /Users/kristenhunter-cevera/Documents/phyto-division-rate-model/MVCO_FCB_PROCESSING/
-
+    model_path=fullfile('~/NES-LTER/phyto-division-rate-model/');
+    addpath(fullfile('~/NES-LTER/fcb_processing/miscellaneous/')); %contains helpful scripts :)
+    
     if ~isempty(strfind(computer,'WIN'))
         envpath='\\sosiknas1\lab_data\mvco\EnvironmentalData\';
         rootpath='\\sosiknas1\lab_data\MVCO\FCB\';
@@ -16,7 +16,7 @@ for year2do = 2003
         rootpath='/Volumes/Lab_data/MVCO/FCB/';
     end
 
-    addpath ../../fcb_processing/miscellaneous/ %contains helpful scripts :)
+    
     
     do_Solar = 0;
     buoy_flag=0;
@@ -26,8 +26,8 @@ for year2do = 2003
     folder_tag='Jan2019';
     do_setupdays_movie = 0;
     
-    do_model = 1;
-    do_modelfit_movie = 0;
+    do_model = 0;
+    do_modelfit_movie = 1;
     redo_model=0;
     
     
@@ -70,7 +70,7 @@ for year2do = 2003
 
     %run the model:
     if do_model
-        addpath(fullfile('../model_src/')) %assumes you are in the setup_and_postprocessing folder - should fix this!
+        eval(['addpath ' model_path])
         disp(num2str(year2do))
         pathname=fullfile(datapath, ['model/input_beadmean_' folder_tag '/']);
         savepath=fullfile(datapath,['\model\output_' folder_tag '\']); %Change path to sosiknas here!
@@ -83,10 +83,9 @@ for year2do = 2003
 
     %make model result figures:
     if do_modelfit_movie
-        modelres_path=fullfile(datapath,['\model\output_' folder_tag '\']);  %path to model results
-        setupdays_path=fullfile(datapath,['model/input_beadmean_' folder_tag '/']); %path to setup_days input
-        addpath(fullfile(rootpath,'Syn_divrate_model/model_code/')); %path to access code to project model day forward
-        addpath(fullfile(rootpath,'Syn_divrate_model/subplot_tight/')); %path for making 'tighter' subplots :)
+        modelres_path=fullfile(datapath,'model',['output_' folder_tag],'/');  %path to model results
+        setupdays_path=fullfile(datapath,'model',['input_beadmean_' folder_tag],'/'); %path to setup_days input
+        addpath(fullfile('~/NES-LTER/phyto-division-rate-model/setup_and_postprocessing/','plotting_tools/subplot_tight/')); %path for making 'tighter' subplots :)
 
         modelfit_movies
     end
