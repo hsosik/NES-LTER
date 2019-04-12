@@ -7,10 +7,10 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = 2005 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+for year2do = 2006 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
 
 dotime = 0; %0 = NO, 1 = YES
-domerge = 1;
+domerge = 0;
 doclassify = 1;
 doplotgroup = 1;
 docells = 1;
@@ -18,7 +18,7 @@ dobeads = 1; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
 timeplotflag = 0; %for time: 0 = no plots, 1 = plots
 mergeplotflag = 0; %for merge: 0 = no plots, 1 = plots
 classplotflag = 0; %for classify: 0 = no plots, 1 = plots
-movieflag = 1;
+movieflag = 0;
 beadmovieflag=0;
 syrplotflag=0;
 %%USER CHANGE - above here
@@ -81,11 +81,13 @@ switch year2do
         SSC2PE_cutoff = 800;
         SSC2PE_cutoff = 200;
     case 2006
-        datapath = '\\sosiknas1\Lab_data\MVCO\FCB\MVCO_May2006\data\';
+        datapath = fullfile('/Volumes/Lab_data/MVCO/FCB/MVCO_May2006/data/');
+        %datapath = '\\sosiknas1\Lab_data\MVCO\FCB\MVCO_May2006\data\';
         SSC2PE_cutoff = 400; 
 %        cellfiletypelist = ['FCB1_2006_2']; %['FCB1_2006_1'; 'FCB1_2006_2'; 'FCB1_2006_3'];
     case 2007
-        datapath = '\\sosiknas1\Lab_data\MVCO\FCB\MVCO_Mar2007\data\';
+        datapath = fullfile('/Volumes/Lab_data/MVCO/FCB/MVCO_Mar2007/data/');
+        %datapath = '\\sosiknas1\Lab_data\MVCO\FCB\MVCO_Mar2007\data\';
         SSC2PE_cutoff = 200; 
         %cellfiletypelist = ['FCB1_2007_1'];
     case 2009
@@ -131,7 +133,7 @@ temp = [datapath 'processed\time\']; if ~exist(temp, 'dir'), mkdir(temp), end;
 temp = [datapath 'processed\beads\']; if ~exist(temp, 'dir'), mkdir(temp), end;
 temp = [datapath 'processed\grouped\']; if ~exist(temp, 'dir'), mkdir(temp), end;
 temp = [datapath 'processed\grouped\merged\']; if ~exist(temp, 'dir'), mkdir(temp), end;    
-baseprocpath = [datapath 'processed\'];
+baseprocpath = fullfile(datapath, 'processed');
 setsize = 200;  %how many data files to process in one set
 
 if dotime,
@@ -157,15 +159,15 @@ end;
 
 if doclassify,
     procpath = baseprocpath;
-    timepath = [baseprocpath 'time\'];
-    beadpath = [baseprocpath 'beads\']; 
-    groupedpath = [baseprocpath 'grouped\']; 
-    mergedpath = [baseprocpath 'grouped\merged\'];
+    timepath = fullfile(baseprocpath,'time');
+    beadpath = fullfile(baseprocpath, 'beads'); 
+    groupedpath = fullfile(baseprocpath, 'grouped'); 
+    mergedpath = fullfile(baseprocpath, 'grouped','merged');
     plotflag = classplotflag;
     disp('CLASSIFYING')
     if dobeads,
         datapath = baseprocpath; 
-        savepath = [baseprocpath 'beads\']; 
+        savepath = fullfile(baseprocpath, 'beads'); 
         filetypelist = beadfiletypelist;
         beadbatch6M %temp test for bead movies July 11, 2016
         %beadbatch6_field 
@@ -179,7 +181,7 @@ end;
 
 if doplotgroup,
     disp('PLOTTING FINAL RESULTS')
-    procpath = [baseprocpath 'grouped\'];
+    procpath = fullfile(baseprocpath, 'grouped');
     filetypelist = plotgroupfiletypelist;
     plotgroup_field
 end;

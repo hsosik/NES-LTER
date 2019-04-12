@@ -16,7 +16,7 @@ smu=find(daily_mu > 0.20 & Tbeam_corr <= 4);
 smu=[smu; find(daily_mu > 0.25 & (Tbeam_corr <= 5 & Tbeam_corr > 4))];
 smu=[smu; find(daily_mu > 0.30 & (Tbeam_corr <= 6 & Tbeam_corr > 5))];
 smu=[smu; find(daily_mu > 0.35 & (Tbeam_corr <= 7 & Tbeam_corr > 6))];
-%smu=[smu; find(daily_mu > 0.45 & (Tbeam_corr <= 8 & Tbeam_corr > 7))];
+smu=[smu; find(daily_mu > 0.55 & (Tbeam_corr <= 8 & Tbeam_corr > 7))];
 smu=unique(smu);
 
 % if want to see:
@@ -72,6 +72,8 @@ for q=1:length(smu)
         tt=find(temp(:,16) < .30);
     elseif  Tbeam_corr(smu(q)) > 6 & Tbeam_corr(smu(q)) <= 7
         tt=find(temp(:,16) < .35);
+    elseif Tbeam_corr(smu(q)) > 7 & Tbeam_corr(smu(q)) <= 8
+        tt=find(temp(:,16) < .55);
     end
     
     if ~isempty(tt)
