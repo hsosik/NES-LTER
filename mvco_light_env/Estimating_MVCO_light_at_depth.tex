@@ -17,9 +17,11 @@
 \maketitle
 \section{Overview}
 
-Our goal is to estimate the light intensity (and possible quality) at 4 m depth at MVCO to relate division rates of \textit{Synechococcus} to the in situ light environment (rather than the incident light) as best we can. This nvolves quite a few different measurements and quite a few different assumptions for an estimation. At the moment, we're construction an estimate from:
-\begin{itemize}\item time series of incident solar radiation
-\item attenuation coefficients from available radiometer\item estimation of stratification at MVCO from continuous temperature records at two depths.
+Our goal is to estimate the light intensity (and possible quality) at 4 m depth at MVCO to relate division rates of \textit{Synechococcus} to the in situ light environment (rather than the incident light) as best we can. This involves quite a few different measurements and quite a few different assumptions for an estimation. At the moment, we're construction an estimate from:
+\begin{itemize}
+\item time series of incident solar radiation
+\item attenuation coefficients from available radiometer
+\item estimation of stratification at MVCO from continuous temperature records at two depths.
 \end{itemize}
 
 \section{Radiometer data processing}
@@ -227,6 +229,14 @@ This calculation can be performed analytically and comes out to:
 \end{equation}
 
 \noindent This script saves the interpolated k's and light at depth products in \path{k_interp.mat} in the repository.
+
+\section{Setting light levels in incubators}
+
+Now that we have a handle on attenuation and average incident light at MVCO, we can relate this to levels set in incubators for culture maintenance and physiological work. 
+figures to make
+The average radiation over a day divided by 24 hours (J/m2)
+How this relates to an incubator on/off cold start/stop (level in W/m2)
+Then how this relates to the more familiar measurement of $\mu$mol/m$^2$/s
 
 
 \end{document}  
