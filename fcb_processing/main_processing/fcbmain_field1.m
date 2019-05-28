@@ -7,14 +7,14 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = 2005 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+for year2do = [2008 2010:2105 2018] %2003:2004 %2011, 2005
 
 dotime = 0; %0 = NO, 1 = YES
-domerge = 1;
-doclassify = 1;
-doplotgroup = 1;
-docells = 1;
-dobeads = 1; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
+domerge = 0;
+doclassify = 0;
+doplotgroup = 0;
+docells = 0;
+dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
 timeplotflag = 0; %for time: 0 = no plots, 1 = plots
 mergeplotflag = 0; %for merge: 0 = no plots, 1 = plots
 classplotflag = 0; %for classify: 0 = no plots, 1 = plots
@@ -164,6 +164,7 @@ if doclassify,
     plotflag = classplotflag;
     disp('CLASSIFYING')
     if dobeads,
+        disp('BEADS!')
         datapath = baseprocpath; 
         savepath = [baseprocpath 'beads\']; 
         filetypelist = beadfiletypelist;
@@ -171,6 +172,7 @@ if doclassify,
         %beadbatch6_field 
     end;
     if docells,
+        disp('CELLS!')
         filetypelist = cellfiletypelist;
         cellbatch8d_field
         %cellbatch7_field
@@ -192,5 +194,7 @@ if movieflag
     savepath = '\\sosiknas1\Lab_data\MVCO\FCB\MVCO_movies\together_movies\';
     mvco_movies_avi_format(year2do,groupedpath,mergedpath,savepath)
 end
+
+clearvars -except year2do
 end
    
