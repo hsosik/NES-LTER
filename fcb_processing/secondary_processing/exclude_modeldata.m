@@ -147,13 +147,26 @@ switch year2do
         days2exclude=[days2exclude; [cellstr(num2str((736185:736202)')) repmat({'bad SSC'},18,1)]];
         days2exclude=[days2exclude; {'736208'} {'strange SSC change in middle of day'}];
         
-    case 2016 %none so far!
-        days2exclude=[];
+    case 2016 
+        days2exclude=[{'736545'} {'bad SSC'}];
+        days2exclude=[days2exclude; {'736546'} {'bad SSC'}];
+        days2exclude=[days2exclude; {'736552'} {'bad SSC'}];
+        days2exclude=[days2exclude; {'736600'} {'bad classification?'}];
+        days2exclude=[days2exclude; {'736605'} {'bad data'}];
+        days2exclude=[days2exclude; {'736606'} {'bad data'}];
+        days2exclude=[days2exclude; {'736613'} {'bad data'}];
+        days2exclude=[days2exclude; {'736614'} {'bad data'}];
+        days2exclude=[days2exclude; {'736693'} {'bad classification?'}];
         days2redo=[];
     case 2017 %none so far!
-        days2exclude=[];
+        days2exclude=[{'737012'} {'bad SSC for morning'}];
         days2redo=[];
     case 2018 %none so far!
-        days2exclude=[];
+        days2exclude=[{'737158'} {'too few cells and bad classification'}];
+        days2exclude=[days2exclude; [cellstr(num2str((737160:737164)')) repmat({'too few cells, bad classificaiton'},5,1)]];
+        days2exclude=[days2exclude; [cellstr(num2str((737167: 737175)')) repmat({'too few cells, bad classificaiton'},9,1)]];
+        days2exclude=[days2exclude; [cellstr(num2str((737264: 737282)')) repmat({'bad SSC'},19,1)]];
+        days2exclude=[days2exclude; {'737307'} {'bad SSC at end of day'}];
+
         days2redo=[];
 end

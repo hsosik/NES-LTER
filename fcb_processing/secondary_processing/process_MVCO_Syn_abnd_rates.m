@@ -641,7 +641,7 @@ else
 end
 
 dd=date;
-eval(['save ' savepath 'syndata_current.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate'])
+eval(['save ' savepath 'syndata_current.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate FCBnum'])
 %save a backup copy, if you'd like to return to this later:
-eval(['save ' fullfile(savepath,'older_products/') 'syndata_' dd(1:2) dd(4:6) dd(8:end) '.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate'])
+eval(['save ' fullfile(savepath,'older_products/') 'syndata_' dd(1:2) dd(4:6) dd(8:end) '.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate FCBnum'])
 

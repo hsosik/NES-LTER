@@ -502,6 +502,11 @@ switch year2do
         reason=repmat('For now, exclude... some strangeness with bead values only - bead classification mistake?',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
  
+        ii=find(cellresultsall(:,1)>=datenum('13-Nov-2017 10:00:00') & cellresultsall(:,1)<=datenum('13-Nov-2017 15:00:00')); 
+        reason=repmat('SSC smeared...tending towards 0',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+ 
+        
         [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
         to_use=find(bt_pts==0);
                 
@@ -509,8 +514,8 @@ switch year2do
         %to be determined
         ex_timepts={};
          
-        ii=find(cellresultsall(:,1)>=datenum('29-Jul-2018 18:00:00') & cellresultsall(:,1)<=datenum('10-Aug-2018 21:10:30')); 
-        reason=repmat('Need to investigate further...',length(ii),1);
+        ii=find(cellresultsall(:,1)>=datenum('23-Jul-2018 13:00:00') & cellresultsall(:,1)<=datenum('10-Aug-2018 21:10:30')); 
+        reason=repmat('Bad SSC - smeared and tends to 0',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
  
         ii=find(cellresultsall(:,1)>=datenum('08-Apr-2018 11:00:00') & cellresultsall(:,1)<=datenum('26-Apr-2018 07:00:00')); 
