@@ -1,4 +1,4 @@
-function [] = process_attune_v2(basepath, assign_class_function, plot_flag)
+function [] = process_attune_v2(basepath, assign_class_function, plot_flag, filetype2exclude)
 %function [] = process_attune_v2(basepath, assign_class_function, plot_flag)
 %
 %input: basepath for cruise or project with Attune NxT data
@@ -20,18 +20,26 @@ end
 if plot_flag
     warning off
 end
-%filelist = dir([fpath 'SFD*']);
-%filelist = {filelist.name}';
-
 if exist([outpath 'FCSfileinfo.mat'], 'file')
     Attune = load([outpath 'FCSfileinfo']);
+    [ FCSfileinfo ] = FCS_DateTimeList(fpath, [outpath 'FCSfileinfo']); %check if any new files to append  
 else
     [ FCSfileinfo ] = FCS_DateTimeList(fpath);
-    save([outpath 'FCSfileinfo'], 'FCSfileinfo')
     Attune.FCSfileinfo = FCSfileinfo; clear FCSfileinfo
 end
-filelist = Attune.FCSfileinfo.filelist;
+save([outpath 'FCSfileinfo'], 'FCSfileinfo')
 
+for iii = 1:length(filetype2exclude)    
+    t = strmatch(filetype2exclude{iii}, Attune.FCSfileinfo.filelist);
+    if ~isempty(t)
+        f = fieldnames(Attune.FCSfileinfo);
+        for ii = 1:length(f)
+            Attune.FCSfileinfo.(f{ii})(t) = [];
+        end
+    end
+end
+    
+filelist = Attune.FCSfileinfo.filelist;
 % Creating the variables
 
 temp = NaN(length(filelist),3);
@@ -44,7 +52,7 @@ EukBiovol = temp;
 EukCarbon = temp;
 QC_flowrate = NaN(length(filelist),2);
 
-for count = 1:length(filelist)
+for count = 10:length(filelist)
     if ~rem(count,10)
         disp([num2str(count) ' of ' num2str(length(filelist))])
     end
@@ -52,11 +60,18 @@ for count = 1:length(filelist)
     disp(filename)
     %reading in each FCS file with fca_readfcs
     [fcsdat,fcshdr] =fca_readfcs(filename);
-    t = find(fcsdat(:,12)>500 & fcsdat(:,3)>100);
+    %t = find(fcsdat(:,12)>500 & fcsdat(:,3)>100);  %April 2018
+    t = find(fcsdat(:,12)>200 & fcsdat(:,3)>200);  %RBH??
     QC_flowrate(count,1) = (median(fcsdat(t,3)./fcsdat(t,12)));
     QC_flowrate(count,2) = (std(fcsdat(t,3)./fcsdat(t,12)));
+
+    QC_flag = 0; %default bad
+    if (QC_flowrate(count,2)<2 & QC_flowrate(count,1)<1.5)
+        QC_flag = 1; %set to good 
+    end
     
-    [ class ] = eval([assign_class_function '( fcsdat, fcshdr, plot_flag );']);
+    [~,fname] = fileparts(filename);
+    [ class ] = eval([assign_class_function '( fcsdat, fcshdr, plot_flag, fname, QC_flag );']); clear fname
     
     %compute the cell volume from side scattering (Area, integrated signal)
     temp = fcsdat(:,3); %SSC-A
@@ -123,8 +138,8 @@ for count = 1:length(filelist)
 end
 AttuneTable = sortrows(AttuneTable, 'StartDate');
 
-save([basepath '\Summary\AttuneTable'],'AttuneTable')
+save([outpath '\AttuneTable'],'AttuneTable')
 disp(['Result file saved:'])
-disp([basepath '\Summary\AttuneTable'])
+disp([outpath '\AttuneTable'])
 
 end
