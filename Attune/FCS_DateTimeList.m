@@ -39,13 +39,20 @@ else  %initialize
     b = length(fcslist);
 end
 
-for ii = a+1:a+b
-    if ~rem(ii,10)
-        disp([num2str(ii) ' of ' num2str(a+b)])
+if b > 0
+    for ii = a+1:a+b
+        if ~rem(ii,10)
+            disp([num2str(ii) ' of ' num2str(a+b)])
+        end
+        [~,fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii-a}));
+        FCSfileinfo.matdate_start(ii) = datenum([fcshdr.date ', ' fcshdr.starttime]);
+        FCSfileinfo.matdate_stop(ii) = datenum([fcshdr.date ', ' fcshdr.stoptime]);
+        FCSfileinfo.vol_analyzed(ii) = fcshdr.VOL;
     end
-    [~,fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii-a}));
-    FCSfileinfo.matdate_start(ii) = datenum([fcshdr.date ', ' fcshdr.starttime]);
-    FCSfileinfo.matdate_stop(ii) = datenum([fcshdr.date ', ' fcshdr.stoptime]);
-    FCSfileinfo.vol_analyzed(ii) = fcshdr.VOL;
 end
 
+[~,ind] = sort(FCSfileinfo.matdate_start);
+f = fields(FCSfileinfo)
+for ii = 1:length(f)
+    FCSfileinfo.(f{ii}) = FCSfileinfo.(f{ii})(ind,:);
+end
