@@ -24,10 +24,11 @@ if exist([outpath 'FCSfileinfo.mat'], 'file')
     Attune = load([outpath 'FCSfileinfo']);
     [ FCSfileinfo ] = FCS_DateTimeList(fpath, [outpath 'FCSfileinfo']); %check if any new files to append  
 else
-    [ FCSfileinfo ] = FCS_DateTimeList(fpath);
-    Attune.FCSfileinfo = FCSfileinfo; clear FCSfileinfo
+    [ FCSfileinfo ] = FCS_DateTimeList(fpath); 
 end
+Attune.FCSfileinfo = FCSfileinfo; 
 save([outpath 'FCSfileinfo'], 'FCSfileinfo')
+clear FCSfileinfo
 
 for iii = 1:length(filetype2include)    
     t = strmatch(filetype2include{iii}, Attune.FCSfileinfo.filelist);

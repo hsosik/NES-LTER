@@ -25,9 +25,10 @@ if exist([outpath 'FCSfileinfo.mat'], 'file')
     [ FCSfileinfo ] = FCS_DateTimeList(fpath, [outpath 'FCSfileinfo']); %check if any new files to append  
 else
     [ FCSfileinfo ] = FCS_DateTimeList(fpath);
-    Attune.FCSfileinfo = FCSfileinfo; clear FCSfileinfo
 end
+Attune.FCSfileinfo = FCSfileinfo;
 save([outpath 'FCSfileinfo'], 'FCSfileinfo')
+clear FCSfileinfo
 
 for iii = 1:length(filetype2exclude)    
     t = strmatch(filetype2exclude{iii}, Attune.FCSfileinfo.filelist);
