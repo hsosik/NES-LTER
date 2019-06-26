@@ -1,32 +1,37 @@
 clear
 close all
 
-for year2do = 2018
+for year2do = 2006
 
     disp(num2str(year2do))
-    % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m
-    model_path=fullfile('~/NES-LTER/phyto-division-rate-model/');
-    addpath(fullfile('~/NES-LTER/fcb_processing/miscellaneous/')); %contains helpful scripts :)
+    % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m 
     
     if ~isempty(strfind(computer,'WIN'))
         envpath='\\sosiknas1\lab_data\mvco\EnvironmentalData\';
         rootpath='\\sosiknas1\lab_data\MVCO\FCB\';
+        model_path=fullfile('~/NES-LTER/phyto-division-rate-model/');
+        addpath(fullfile('~/NES-LTER/fcb_processing/miscellaneous/')); %contains helpful scripts :)
+    elseif ~isempty(strfind(computer,'GLNXA64'))
+        envpath='/mnt/Lab_data/MVCO/EnvironmentalData/';
+        rootpath='/mnt/Lab_data/MVCO/FCB/';
+        model_path=fullfile('~/Documents/NES-LTER/phyto-division-rate-model/');
+        addpath(fullfile('~/Documents/NES-LTER/fcb_processing/miscellaneous/')); 
     else
         envpath='/Volumes/Lab_data/MVCO/EnvironmentalData/';
         rootpath='/Volumes/Lab_data/MVCO/FCB/';
+        model_path=fullfile('~/NES-LTER/phyto-division-rate-model/');
+        addpath(fullfile('~/NES-LTER/fcb_processing/miscellaneous/'));
     end
-
-    
     
     do_Solar = 0;
     buoy_flag=0;
     solarplotflag=0;
     
     do_setupdays = 0;
-    folder_tag='Jan2019';
+    folder_tag='June2019';
     do_setupdays_movie = 0;
     
-    do_model = 0;
+    do_model = 1;
     do_modelfit_movie = 1;
     redo_model=0;
     
@@ -70,12 +75,16 @@ for year2do = 2018
 
     %run the model:
     if do_model
-        eval(['addpath ' model_path])
+
         disp(num2str(year2do))
+        
         pathname=fullfile(datapath, ['model/input_beadmean_' folder_tag '/']);
-        savepath=fullfile(datapath,['\model\output_' folder_tag '\']); %Change path to sosiknas here!
+        savepath=fullfile(datapath,['model/output_' folder_tag '/']); %Change path to sosiknas here!
         if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet
-  %      addpath \\sosiknas1\lab_data\mvco\FCB\Syn_divrate_model\onecomp_model_code
+        
+        addpath(model_path)
+        addpath(fullfile(model_path,'model_src/'))
+        
         call_to_opt_mvco
         %cd onecomp_model_code
         %call_to_opt_field_onecomp
