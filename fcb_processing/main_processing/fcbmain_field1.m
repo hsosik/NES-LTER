@@ -13,6 +13,7 @@ domerge = 1;
 doclassify = 0;
 doplotgroup = 00;
 docells = 1;
+
 dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
 timeplotflag = 0; %for time: 0 = no plots, 1 = plots
 mergeplotflag = 0; %for merge: 0 = no plots, 1 = plots
@@ -164,6 +165,7 @@ if doclassify,
     plotflag = classplotflag;
     disp('CLASSIFYING')
     if dobeads,
+        disp('BEADS!')
         datapath = baseprocpath; 
         savepath = [baseprocpath 'beads\']; 
         filetypelist = beadfiletypelist;
@@ -171,6 +173,7 @@ if doclassify,
         %beadbatch6_field 
     end;
     if docells,
+        disp('CELLS!')
         filetypelist = cellfiletypelist;
         cellbatch8d_field
         %cellbatch7_field
@@ -185,11 +188,14 @@ if doplotgroup,
 end;
 
 if movieflag
-    addpath \\sosiknas1\Lab_data\MVCO\FCB\MVCO_movies\code\
+    addpath ..\secondary_processing\
+    %addpath \\sosiknas1\Lab_data\MVCO\FCB\MVCO_movies\code\
     groupedpath = [baseprocpath 'grouped\']; 
     mergedpath = [baseprocpath 'grouped\merged\'];
     savepath = '\\sosiknas1\Lab_data\MVCO\FCB\MVCO_movies\together_movies\';
-    mvco_movies_avi_format4(year2do,groupedpath,mergedpath,savepath)
+    mvco_movies_avi_format(year2do,groupedpath,mergedpath,savepath)
 end
+
+clearvars -except year2do
 end
    

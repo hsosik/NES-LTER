@@ -4,7 +4,7 @@
 %cellbatch5_field created from cellbatch4_field for MVCO data, corrected
 %logic error in pe separation of Syn, junk, cryto (junkind with OR not
 %AND), April 2007 Heidi
-%cellbatch4_field created from cellbatch3_field for MVCO May 2003 data (new
+%cellbatch4_field crbeeated from cellbatch3_field for MVCO May 2003 data (new
 %PE separation since signals for large euks are above baseline), 5/11/03 Heidi
 %cellbatch3_field created from cellbatch3 to handle single sample syringe port (6)
 %cellbatch3 created from cellbatch2_labalt, for new file format, 3/03 Heidi
@@ -676,7 +676,7 @@ for typenum = 1:size(filetypelist,1)
             partialdatmerged = datmerged;  %reset partialdat with file partly completed
         end; %sectionnum = 1:length(timesectionendbin)
         mergedwithclass = allmergedwithclass;
-        
+
         eval(['save ' groupedpath filetypelist(typenum,:) '_' num2str(sectcount) ' beadmatch* cell* classnotes'])
         eval(['save ' mergedpath filetypelist(typenum,:) 'merged_' num2str(sectcount) ' merged*'])
         clear beadmatch cellresults mergedwithclass link* allmergedwithclass cellNUM cellPE cellFLS cellCHL cellSSC cell*mode
