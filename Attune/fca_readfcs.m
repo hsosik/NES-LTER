@@ -74,8 +74,10 @@ function [fcsdat, fcshdr, fcsdatscaled, fcsdatcomp] = fca_readfcs(filename)
 % Minor update to allow FCS3.1 data from Attune NxT to be imported
 % Not sure if it is fully FCS3.1 compliant, 
 % Thanks for Robin Cleveland, Biomedical Engineering, Oxford
-
-
+%
+%Jan 2019
+%updated to read high voltage values from header
+%Heidi M. Sosik, Woods Hole Oceanographic Institution
 
 % if noarg was supplied
 if nargin == 0
@@ -210,6 +212,7 @@ elseif  strcmp(fcsheader_type,'FCS2.0') || strcmp(fcsheader_type,'FCS3.0')  || s
         fcshdr.par(i).name = get_mnemonic_value(['$P',num2str(i),'N'],fcsheader_main, mnemonic_separator);
         fcshdr.par(i).range = str2num(get_mnemonic_value(['$P',num2str(i),'R'],fcsheader_main, mnemonic_separator));
         fcshdr.par(i).bit = str2num(get_mnemonic_value(['$P',num2str(i),'B'],fcsheader_main, mnemonic_separator));
+        fcshdr.par(i).hv = str2num(get_mnemonic_value(['$P',num2str(i),'V'],fcsheader_main, mnemonic_separator));
 
         %==============   Changed way that amplification type is treated 
         par_exponent_str= (get_mnemonic_value(['$P',num2str(i),'E'],fcsheader_main, mnemonic_separator));

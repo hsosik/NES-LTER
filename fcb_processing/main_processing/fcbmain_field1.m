@@ -7,18 +7,18 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = [2008 2010:2105 2018] %2003:2004 %2011, 2005
-
+for year2do = 2019 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
 dotime = 0; %0 = NO, 1 = YES
-domerge = 0;
+domerge = 1;
 doclassify = 0;
-doplotgroup = 0;
-docells = 0;
+doplotgroup = 00;
+docells = 1;
+
 dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
 timeplotflag = 0; %for time: 0 = no plots, 1 = plots
 mergeplotflag = 0; %for merge: 0 = no plots, 1 = plots
 classplotflag = 0; %for classify: 0 = no plots, 1 = plots
-movieflag = 1;
+movieflag = 0;
 beadmovieflag=0;
 syrplotflag=0;
 %%USER CHANGE - above here
@@ -41,6 +41,7 @@ cellfiletypelist = char(regexprep(cellstr(cellfiletypelist), 'XXXX', num2str(yea
 datapath = regexprep('\\sosiknas1\Lab_data\MVCO\FCB\MVCO_JanXXXX\data\', 'XXXX', num2str(year2do));
 %datapath = '\\sosiknas1\Lab_data\MVCO\FCB\FCB_tests\docktest25Aug2016\';
 %datapath = regexprep('C:\work\MVCO_janXXXX\data\', 'XXXX', num2str(year2do));
+datapath = 'C:\temp\FCBtest\';
 
 switch year2do
     case 2003

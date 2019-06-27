@@ -123,7 +123,7 @@ end;
 
 fit = [fitPE; fitFLS; fitCHL; fitSSC1; fitSSC1_2a; fitSSC1_2b];
 
-if 0   %make plots or not
+if 1   %make plots or not
 figure(1)
 clf
 subplot(231)
