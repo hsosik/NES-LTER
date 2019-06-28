@@ -47,7 +47,10 @@
         cellFLSmodeall = [cellFLSmodeall; cellFLSmode(1:size(cellresults,1),:)];
         cellPEmodeall = [cellPEmodeall; cellPEmode(1:size(cellresults,1),:)];
         cellSSCmodeall = [cellSSCmodeall; cellSSCmode(1:size(cellresults,1),:)];
+    
     end;
+    
+    
     [~,sind] = sort(cellresultsall(:,1)); cellresultsall = cellresultsall(sind,:);
     cellCHLall = cellCHLall(sind,:);
     cellFLSall = cellFLSall(sind,:);
