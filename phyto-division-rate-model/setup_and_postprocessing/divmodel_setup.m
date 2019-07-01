@@ -1,7 +1,7 @@
 clear
 close all
 
-for year2do = 2006
+for year2do = 2012
 
     disp(num2str(year2do))
     % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m 

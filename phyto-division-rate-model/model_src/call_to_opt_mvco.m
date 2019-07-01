@@ -45,18 +45,36 @@ elseif exist('valtype','var')
 end
 
 % setup result variables:
-modelresults=zeros(length(filelist),23);
-allmodelruns=cell(length(filelist),2);
+if exist(fullfile(savepath, ['mvco_14par_dmn_' num2str(year2do) '.mat']),'file') == 2 %meaning already a file, probably was interrupted...
+    
+    disp('found a file with this name; load and continue?')
+    keyboard
+    
+    load(fullfile(savepath, ['mvco_14par_dmn_' num2str(year2do) '.mat']))
+    jj=find(modelresults(:,1)==0);
+    
+    if unique(diff(jj))==1 %meaning that there are zeros in date column, but they are sequential
+        start_file_num=jj(1); %begin from
+    else
+        disp('Check to make sure models runs will be done for correct days in this file')
+        keyboard
+    end
+    
+else
+    modelresults=zeros(length(filelist),23);
+    allmodelruns=cell(length(filelist),2);
+    start_file_num=1;
+end
 
 % For 2005 - end of October onward (732607), merging problem - skipping for now
 
 %%
-for filenum=1:length(filelist)
+for filenum=start_file_num:length(filelist)
 
     filename=filelist(filenum).name;
     day=str2num(filename(4:9));
 
-    disp(['optimizing day: ' num2str(day) ' file#: ' num2str(filenum)])
+    disp(['optimizing day: ' num2str(day) ' file#: ' num2str(filenum) ' out of ' num2str(length(filelist))])
     eval(['load ' pathname filename])
 
     %special fix for shorter days, but still have enough hours to fit the model
@@ -175,7 +193,7 @@ for filenum=1:length(filelist)
         flag2 = 1;
     end
 
-    disp(['flag1 = ' num2str(flag1) ' flag2=' num2str(flag2)])
+    disp(['flag1 = ' num2str(flag1) ' flag2=' num2str(flag2) ' for day ' datestr(day) ': ' num2str(filenum) ' out of ' num2str(length(filelist))])
 
     k=1; %batch number
     while ((flag1 || flag2) | size(modelfits,1) <= 20) && k <= 5
@@ -252,7 +270,7 @@ for filenum=1:length(filelist)
         else
             flag2 = 1;
         end
-        disp(['flag1 = ' num2str(flag1) ' flag2=' num2str(flag2)])
+        disp(['flag1 = ' num2str(flag1) ' flag2=' num2str(flag2) ' for day ' datestr(day) ': ' num2str(filenum) ' out of ' num2str(length(filelist))])
 
     end  %while loop
 
