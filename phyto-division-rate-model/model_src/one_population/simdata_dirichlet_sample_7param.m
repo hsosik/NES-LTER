@@ -36,7 +36,7 @@ for t=1:q
     simdist(:,t+1)=Nt(:,t+1)/sum(Nt(:,t+1)); %normalize to get distribution for likelihood
 
     if any(isnan(simdist(:,t+1))) %just in case
-        disp(['DMN 13param...simdist has a nan? theta:' num2str(theta)])
+        disp(['DMN 7 param...simdist has a nan? theta:' num2str(theta)])
 %         keyboard
     end
 end

@@ -16,11 +16,29 @@ restitles={'day';'gmax';'b';'E*';'dmax';'m1';'sigma';'s';'-logL';'mu';'exitflag'
 notes='E* bounds are from 0 to max(Einterp), 7 param-one component model, piece-wise linear gamma function';
 
 % For field data:
+% setup result variables:
+if exist(fullfile(savepath, ['mvco_7par_dmn_' num2str(year2do) '.mat']),'file') == 2 %meaning already a file, probably was interrupted...
+    
+    disp('found a file with this name; load and continue?')
+    keyboard
+    
+    load(fullfile(savepath, ['mvco_7par_dmn_' num2str(year2do) '.mat']))
+    jj=find(modelresults(:,1)==0);
+    
+    if unique(diff(jj))==1 %meaning that there are zeros in date column, but they are sequential
+        start_file_num=jj(1); %begin from
+    else
+        disp('Check to make sure models runs will be done for correct days in this file')
+        keyboard
+    end
+    
+else
+    modelresults=zeros(length(filelist),12);
+    allmodelruns=cell(length(filelist),2);
+    start_file_num=1;
+end
 
 filelist = dir([pathname 'day*data.mat']);
-
-modelresults=zeros(length(filelist),12);
-allmodelruns=cell(length(filelist),2);
 
 
 for filenum=1:length(filelist)
@@ -44,6 +62,11 @@ for filenum=1:length(filelist)
     Einterp = interp1(Edata(nnind,1),Edata(nnind,2),time);
     Einterp(find(isnan(Einterp))) = 0;
 
+    if Edata(1,1) >= 1, Edata=[0 0; Edata]; end %rare case for gaps around dawn that are not caught by getSolar...i.e.Jun-10-2003   
+    [unqE eind]=unique(Edata(:,1));
+    Einterp = interp1(Edata(eind,1),Edata(eind,2),time);
+    Einterp(find(isnan(Einterp))) = 0;
+    
     %Set bounds:
     lb=-[1e-4 1e-4 1e-4 1e-4 10 1 1e-4];
     ub=[1 15 max(Einterp) 1 50 10 1e4];
@@ -118,7 +141,7 @@ for filenum=1:length(filelist)
     end
 
 
-    disp(['flag1 = ' num2str(flag1) ' flag2=' num2str(flag2)])
+    disp(['flag1 = ' num2str(flag1) ' flag2=' num2str(flag2) ' for day ' datestr(day) ': ' num2str(filenum) ' out of ' num2str(length(filelist))])
 
     k=1; %batch number
     while (flag1 || flag2) && k <= 5
@@ -184,6 +207,8 @@ for filenum=1:length(filelist)
         else
             flag2 = 1;
         end
+        
+        disp(['flag1 = ' num2str(flag1) ' flag2=' num2str(flag2) ' for day ' datestr(day) ': ' num2str(filenum) ' out of ' num2str(length(filelist))])
 
     end
     %
@@ -192,7 +217,7 @@ for filenum=1:length(filelist)
     fmin=modelfits(jj(1),8);
     exitflag=modelfits(jj(1),10);
 
-    [mu]=growth_rate_phours_6params_plt(Einterp,volbins,N_dist,xmin(1:6),hr1,hr2);
+    [mu]=growth_rate_phours_6params(Einterp,volbins,N_dist,xmin(1:6),hr1,hr2);
 
     modelresults(filenum,:)=[day xmin fmin mu exitflag length(modelfits)];
     allmodelruns{filenum,1}=modelfits;

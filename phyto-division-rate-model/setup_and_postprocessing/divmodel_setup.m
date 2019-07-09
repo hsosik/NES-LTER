@@ -1,7 +1,7 @@
 clear
 close all
 
-for year2do = 2012
+for year2do = 2003
 
     disp(num2str(year2do))
     % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m 
@@ -32,7 +32,8 @@ for year2do = 2012
     do_setupdays_movie = 0;
     
     do_model = 1;
-    do_modelfit_movie = 1;
+    components=1; %or 1...
+    do_modelfit_movie = 0;
     redo_model=0;
     
     
@@ -75,19 +76,30 @@ for year2do = 2012
 
     %run the model:
     if do_model
-
+        
         disp(num2str(year2do))
-        
         pathname=fullfile(datapath, ['model/input_beadmean_' folder_tag '/']);
-        savepath=fullfile(datapath,['model/output_' folder_tag '/']); %Change path to sosiknas here!
-        if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet
         
-        addpath(model_path)
-        addpath(fullfile(model_path,'model_src/'))
+        switch components
+            case 2
+                savepath=fullfile(datapath,['model/output_' folder_tag '/']); %Change path to sosiknas here!
+                if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet
+                
+                addpath(model_path)
+                addpath(fullfile(model_path,'model_src/two_subpopulation'))
+                
+                call_to_opt_mvco
+                
+            case 1
+                savepath=fullfile(datapath,['model/onecomp_output_' folder_tag '/']); %Change path to sosiknas here!
+                if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet
+                
+                addpath(model_path)
+                addpath(fullfile(model_path,'model_src/one_population'))
+                
+                call_to_opt_mvco_onecomp                
+        end
         
-        call_to_opt_mvco
-        %cd onecomp_model_code
-        %call_to_opt_field_onecomp
     end
 
     %make model result figures:

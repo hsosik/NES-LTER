@@ -40,7 +40,7 @@ for t=1:q %t doesn't corresponding to the actaul hours anymmore
 end
 
 if any(any(isnan(simdist))) %just in case
-    disp(['DMN 13param...simdist has a nan? theta:' num2str(theta)])
+    disp(['DMN 7 param...simdist has a nan? theta:' num2str(theta)])
     %         keyboard
 end
 

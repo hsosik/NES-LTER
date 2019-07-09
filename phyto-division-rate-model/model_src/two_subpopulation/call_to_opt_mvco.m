@@ -100,7 +100,7 @@ for filenum=start_file_num:length(filelist)
         Edata(indh(ind2),2)=0;
      end
      
-     %Fix and Interpolate Light Data:
+    %Fix and Interpolate Light Data:
     time=0:(1/6):25;
     nnind = find(~isnan(Edata(:,2)));
     Edata=Edata(nnind,:);
