@@ -15,6 +15,8 @@ tolvec=[0.01 0.01 100 0.005 0.5 0.5 10];
 restitles={'day';'gmax';'b';'E*';'dmax';'m1';'sigma';'s';'-logL';'mu';'exitflag';'number solver runs'};
 notes='E* bounds are from 0 to max(Einterp), 7 param-one component model, piece-wise linear gamma function';
 
+filelist = dir([pathname 'day*data.mat']);
+
 % For field data:
 % setup result variables:
 if exist(fullfile(savepath, ['mvco_7par_dmn_' num2str(year2do) '.mat']),'file') == 2 %meaning already a file, probably was interrupted...
@@ -38,7 +40,7 @@ else
     start_file_num=1;
 end
 
-filelist = dir([pathname 'day*data.mat']);
+
 
 
 for filenum=1:length(filelist)
