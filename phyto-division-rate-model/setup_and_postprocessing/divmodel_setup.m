@@ -1,7 +1,7 @@
 clear
 close all
 
-for year2do = 2006:2005
+for year2do = 2006:2018
 
     disp(num2str(year2do))
     % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m 
@@ -32,7 +32,7 @@ for year2do = 2006:2005
     do_setupdays_movie = 0;
     
     do_model = 1;
-    components=1; %or 1...
+    components=1; %1 or 2...
     do_modelfit_movie = 0;
     redo_model=0;
     

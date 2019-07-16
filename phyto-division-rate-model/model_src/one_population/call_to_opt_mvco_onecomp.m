@@ -25,7 +25,7 @@ if exist(fullfile(savepath, ['mvco_7par_dmn_' num2str(year2do) '.mat']),'file') 
     keyboard
     
     load(fullfile(savepath, ['mvco_7par_dmn_' num2str(year2do) '.mat']))
-    jj=find(modelresults(:,1)==0);
+    jj=find(modelresults_one(:,1)==0);
     
     if unique(diff(jj))==1 %meaning that there are zeros in date column, but they are sequential
         start_file_num=jj(1); %begin from
@@ -35,8 +35,8 @@ if exist(fullfile(savepath, ['mvco_7par_dmn_' num2str(year2do) '.mat']),'file') 
     end
     
 else
-    modelresults=zeros(length(filelist),12);
-    allmodelruns=cell(length(filelist),2);
+    modelresults_one=zeros(length(filelist),12);
+    allmodelruns_one=cell(length(filelist),2);
     start_file_num=1;
 end
 
@@ -221,13 +221,12 @@ for filenum=1:length(filelist)
 
     [mu]=growth_rate_phours_6params(Einterp,volbins,N_dist,xmin(1:6),hr1,hr2);
 
-    modelresults(filenum,:)=[day xmin fmin mu exitflag length(modelfits)];
-    allmodelruns{filenum,1}=modelfits;
-    allmodelruns{filenum,2}=allstarts;
+    modelresults_one(filenum,:)=[day xmin fmin mu exitflag length(modelfits)];
+    allmodelruns_one{filenum,1}=modelfits;
+    allmodelruns_one{filenum,2}=allstarts;
 
-    eval(['save mvco_7par_dmn_' num2str(year2do) ' modelresults allmodelruns'])
+    eval(['save ' savepath 'mvco_7par_dmn_' num2str(year2do) ' modelresults_one allmodelruns_one restitles notes'])
+    
 end
 
-eval(['modelresults_one' num2str(year2do) '=modelresults;'])
-eval(['allmodelruns_one' num2str(year2do) '=allmodelruns;'])
-eval(['save ' savepath 'mvco_7par_dmn_' num2str(year2do) ' modelresults_one' num2str(year2do) ' allmodelruns_one' num2str(year2do) ' restitles notes'])
+%eval(['save ' savepath 'mvco_7par_dmn_' num2str(year2do) ' modelresults_one' num2str(year2do) ' allmodelruns_one' num2str(year2do) ' restitles notes'])
