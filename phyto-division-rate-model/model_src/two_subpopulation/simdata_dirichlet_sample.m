@@ -1,4 +1,4 @@
-function [dirsample, simdist,Vt1,Vt2]=simdata_dirichlet_sample_plt(Einterp,N_dist,theta,volbins,hr1,hr2)
+function [dirsample, simdist,Vt1,Vt2,Nt1,Nt2]=simdata_dirichlet_sample_plt(Einterp,N_dist,theta,volbins,hr1,hr2)
 
 gmax1=theta(1);
 b1=theta(2);
