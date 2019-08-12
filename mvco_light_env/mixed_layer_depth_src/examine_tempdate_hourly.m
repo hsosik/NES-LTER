@@ -284,6 +284,10 @@ for year=2003:2018
 end
 
 %% record rough dawn and dusks:
+
+addpath ~/mvco_tools/
+unqdays=unique(floor(time_hour-4/24));
+unqdays=unqdays(2:end-1); %remove a dec 31 2002 and Jan 1 2018
 dawn_dusk=nan(length(unqdays),2);
 for q=1:length(unqdays)
     jj=find(floor(solar_time-4/24)==unqdays(q));
