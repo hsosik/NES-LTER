@@ -7,19 +7,21 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = 2019 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+for year2do = 2003 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+    
 dotime = 0; %0 = NO, 1 = YES
-domerge = 1;
-doclassify = 0;
-doplotgroup = 00;
-docells = 1;
+domerge = 0;
+doclassify = 1;
+doplotgroup = 0;
+docells = 0;
 
-dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
+dobeads = 1; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
 timeplotflag = 0; %for time: 0 = no plots, 1 = plots
 mergeplotflag = 0; %for merge: 0 = no plots, 1 = plots
 classplotflag = 0; %for classify: 0 = no plots, 1 = plots
 movieflag = 0;
-beadmovieflag=0;
+beadmovieflag=0; %makes beadmovie as beads are being processed in beadbatch6M
+beadmovieflag2=1; %if need to make bead movies after the fact :) Note that doclassify, and do beads must also be checked!
 syrplotflag=0;
 %%USER CHANGE - above here
 
@@ -166,10 +168,26 @@ if doclassify,
     disp('CLASSIFYING')
     if dobeads,
         disp('BEADS!')
-        datapath = baseprocpath; 
+        if ismac, 
+            datapath = '/Volumes/Lab_data/MVCO/FCB/MVCO_May2003/data/processed/';
+            timepath = '/Volumes/Lab_data/MVCO/FCB/MVCO_May2003/data/processed/time/';
+        else datapath = baseprocpath; 
+        end
         savepath = [baseprocpath 'beads\']; 
         filetypelist = beadfiletypelist;
-        beadbatch6M %temp test for bead movies July 11, 2016
+        
+        if beadmovieflag2==1; %only run if beads have already been processed! 
+            disp('MAKING BEAD MOVIE - NO OTHER PROCESSING!')
+            addpath ..\secondary_processing\
+            if ismac
+                savepath = '/Volumes/Lab_data/MVCO/FCB/MVCO_movies/bead_movies/';
+            else
+                savepath = '\\sosiknas1\Lab_data\MVCO\FCB\MVCO_movies\bead_movies\';
+            end
+            beadmovie
+        else
+            beadbatch6M %temp test for bead movies July 11, 2016
+        end
         %beadbatch6_field 
     end;
     if docells,
@@ -189,7 +207,6 @@ end;
 
 if movieflag
     addpath ..\secondary_processing\
-    %addpath \\sosiknas1\Lab_data\MVCO\FCB\MVCO_movies\code\
     groupedpath = [baseprocpath 'grouped\']; 
     mergedpath = [baseprocpath 'grouped\merged\'];
     savepath = '\\sosiknas1\Lab_data\MVCO\FCB\MVCO_movies\together_movies\';
