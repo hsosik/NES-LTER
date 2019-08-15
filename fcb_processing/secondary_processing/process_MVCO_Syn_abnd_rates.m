@@ -9,7 +9,8 @@ addpath ~/NES-LTER/fcb_processing/miscellaneous/
 
 %% Synechococcus cell abundance, fluorescence and size:
 
-beadplotflag=0; %for QC
+beadplotflag=1; %for QC of beads, SSC, PE and CHL fluorescence
+abnd_plotflag=1; %for QC abundance
 
 allmatdate=[];
 allsynconc=[];
@@ -24,7 +25,7 @@ allsynvol=[];
 allsynvolmode=[];
 FCBnum=[];
 %%
-for year2do=2003:2018
+for year2do=2012
     
     switch year2do
         case 2003
@@ -41,22 +42,12 @@ for year2do=2003:2018
             filelabel='Jan';
     end
     
-    if ismember(year2do,2003:2015) %temporary, until data can QC new data....
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed_July2016/grouped/groupsum.mat'])
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed_July2016/beads/beadresults.mat'])
-        [ss is]=sort(beadresults(:,1)); %sometimes data points are out of order...
-        beadresults=beadresults(is,:);
-    else
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed/grouped/groupsum.mat'])
-        %we won't use beadmatchall just yet as this seems to have some bad
-        %datapoints still in it:
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed/beads/beadresults.mat'])
-        [ss is]=sort(beadresults(:,1)); %sometimes data points are out of order...
-        beadresults=beadresults(is,:);
-    end
-    %eval(['matdate_' num2str(year2do) '=cellresultsall(:,1);'])
-    %eval(['synconc_' num2str(year2do) '=cellNUMall(:,1)./cellresultsall(:,3);'])
-  %   
+    %use the most up-to-date processing:
+    eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed/grouped/groupsum.mat'])
+    eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed/beads/beadresults.mat'])
+    [ss is]=sort(beadresults(:,1)); %sometimes data points are out of order...
+    beadresults=beadresults(is,:);
+
     to_use=exclude_data(cellresultsall,year2do); %ALSO REMOVES NANS!
     
     %known bead outliers:
@@ -103,7 +94,7 @@ for year2do=2003:2018
     
     %and plot to check!
     if beadplotflag==1
-        figure(13)
+        figure(13), clf, set(gcf,'position',[164    55   965   930])
         subplot(3,1,1,'replace'), hold on
         h1=plot(beadresults(:,1),beadresults(:,13),'.--');
         h2=plot(beadresults(:,1),sm_bead_avgSSC,'o');
@@ -112,9 +103,10 @@ for year2do=2003:2018
         sc=max(beadresults(:,13))./max(cellSSCall(to_use,1)./beadmatch);
         h5=plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,13),0.9),'.','color',[0.5 0.5 0.5]); %shows where data is missing
         h4=plot(cellresultsall(to_use,1),sc*cellSSCall(to_use,1)./beadmatch,'.-'); %scaled SSC
+        plot(cellresultsall(to_use,1),sc*cellSSCmodeall(to_use,1)./beadmatch,'.','color',[0 0 0.5]) %scaled SSC
         datetick('x','mm/dd')
-        ylabel('Bead mean SSC')
-        legend([h1(1);h2(1);h3(1);h4(1);h5(1)],'bead data','smoothed bead data','matched data','scaled Syn data','unused data','location','northoutside')
+        ylabel('SSC')
+        legend([h1(1);h2(1);h3(1);h4(1);h5(1)],'bead data','smoothed bead data','matched data','scaled Syn data','unused data','location','Eastoutside')
         title(num2str(year2do))
     
         subplot(3,1,2,'replace'), hold on
@@ -123,9 +115,10 @@ for year2do=2003:2018
         plot(cellresultsall(to_use),beadPEmatch,'.')
         plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,10),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
         sc=max(beadresults(:,10))./max(cellPEall(to_use,1)./beadPEmatch);
-        plot(cellresultsall(to_use,1),sc*cellPEall(to_use,1)./beadPEmatch,'.-') %scaled SSC
+        plot(cellresultsall(to_use,1),sc*cellPEall(to_use,1)./beadPEmatch,'.-') %scaled PE
+        plot(cellresultsall(to_use,1),sc*cellPEmodeall(to_use,1)./beadPEmatch,'.','color',[0 0 0.5])
         datetick('x','mm/dd')
-        ylabel('Bead mean PE')
+        ylabel('PE')
     
         subplot(3,1,3,'replace'), hold on
         plot(beadresults(:,1),beadresults(:,12),'.--')
@@ -133,11 +126,35 @@ for year2do=2003:2018
         plot(cellresultsall(to_use),beadCHLmatch,'.')
         plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,12),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
         sc=max(beadresults(:,12))./max(cellCHLall(to_use,1)./beadCHLmatch);
-        plot(cellresultsall(to_use,1),sc*cellCHLall(to_use,1)./beadCHLmatch,'.-') %scaled SSC
- 
+        plot(cellresultsall(to_use,1),sc*cellCHLall(to_use,1)./beadCHLmatch,'.-') %scaled CHL
+        plot(cellresultsall(to_use,1),sc*cellCHLmodeall(to_use,1)./beadCHLmatch,'.','color',[0 0 0.5])
         datetick('x','mm/dd')
-        ylabel('Bead mean CHL')
+        ylabel('CHL')
 %     
+        figure(14) %raw values...
+        subplot(2,2,1,'replace')
+        plot(cellPEmodeall(:,1),cellPEall(:,1),'.','color',[1 0.5 0])
+        title('PE'), xlabel('mode'), ylabel('mean')
+        subplot(2,2,2,'replace')
+        plot(cellCHLmodeall(:,1),cellCHLall(:,1),'.','color',[1 0 0])
+        title('CHL'), xlabel('mode'), ylabel('mean')
+        subplot(2,2,3,'replace')
+        plot(cellSSCmodeall(:,1),cellSSCall(:,1),'.','color',[0 0.8 0])
+        title('SSC'), xlabel('mode'), ylabel('mean')
+        subplot(2,2,4,'replace')
+        plot(cellPEall(:,1),cellCHLall(:,1),'.')
+        xlabel('PE')
+        ylabel('CHL')
+        
+        keyboard
+    end
+    
+    if abnd_plotflag==1
+        
+        figure(6)
+        plot(cellresultsall(:,1),cellNUMall(:,1)./cellresultsall(:,3),'.-')
+        datetick('x','mm/dd')
+        
         keyboard
     end
     %normalize if needed and record:
@@ -209,14 +226,9 @@ for year2do=2003:2018
             filelabel='Jan';
     end
     
-    rootpath='/Volumes/Lab_data/MVCO/FCB/';
-    
-    if ismember(year2do,2016:2018)%exist(fullfile(rootpath,['MVCO_' filelabel num2str(year2do) '/model/output_Jan2019/']))
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_Jan2019/mvco_14par_dmn_' num2str(year2do) '.mat'])       
-    else
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_July2016/mvco_14par_dmn_' num2str(year2do) '.mat'])        
-    end
-    
+    rootpath='/Volumes/Lab_data/MVCO/FCB/';   
+    eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_June2019/mvco_14par_dmn_' num2str(year2do) '.mat'])       
+ 
     [days2redo, days2exclude]=exclude_modeldata(year2do);
     
     if ~isempty(days2exclude)

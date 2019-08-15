@@ -7,7 +7,7 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = 2003 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+for year2do = 2012:2018 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
     
 dotime = 0; %0 = NO, 1 = YES
 domerge = 0;
@@ -43,7 +43,7 @@ cellfiletypelist = char(regexprep(cellstr(cellfiletypelist), 'XXXX', num2str(yea
 datapath = regexprep('\\sosiknas1\Lab_data\MVCO\FCB\MVCO_JanXXXX\data\', 'XXXX', num2str(year2do));
 %datapath = '\\sosiknas1\Lab_data\MVCO\FCB\FCB_tests\docktest25Aug2016\';
 %datapath = regexprep('C:\work\MVCO_janXXXX\data\', 'XXXX', num2str(year2do));
-datapath = 'C:\temp\FCBtest\';
+%datapath = 'C:\temp\FCBtest\';
 
 switch year2do
     case 2003
@@ -169,8 +169,10 @@ if doclassify,
     if dobeads,
         disp('BEADS!')
         if ismac, 
-            datapath = '/Volumes/Lab_data/MVCO/FCB/MVCO_May2003/data/processed/';
-            timepath = '/Volumes/Lab_data/MVCO/FCB/MVCO_May2003/data/processed/time/';
+            datapath=regexprep(baseprocpath,'\\sosiknas1','Volumes');
+            datapath=regexprep(datapath,'\\','/');
+            timepath = fullfile(datapath,'time/');
+         %   keyboard
         else datapath = baseprocpath; 
         end
         savepath = [baseprocpath 'beads\']; 
