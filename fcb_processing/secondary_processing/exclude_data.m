@@ -1,4 +1,4 @@
-function to_use=exclude_data(cellresultsall,year2do)
+function [to_use, to_use_SSC, to_use_PE]=exclude_data(cellresultsall,year2do)
 %data to exclude for now (and ideally fix later)
 
 %Issues include:
@@ -212,86 +212,59 @@ switch year2do
         ex_timepts={};
         
         i1=find(cellresultsall(:,1)>=datenum('1-06-14 17:00:00') & cellresultsall(:,1)<=datenum('1-06-14 20:00:00'));
-        i2=find(cellresultsall(:,1)>=datenum('1-10-14 06:00:00') & cellresultsall(:,1)<=datenum('1-10-14 07:00:00'));
-        i3=find(cellresultsall(:,1)>=datenum('1-10-14 09:00:00') & cellresultsall(:,1)<=datenum('1-10-14 12:00:00'));
-        i4=find(cellresultsall(:,1)>=datenum('5-09-14 10:00:00') & cellresultsall(:,1)<=datenum('5-09-14 11:00:00'));
-        ii=[i1;i2;i3;i4];
+        i2=find(cellresultsall(:,1)>=datenum('1-10-14 11:00:00') & cellresultsall(:,1)<=datenum('1-10-14 12:00:00'));
+        i3=find(cellresultsall(:,1)>=datenum('5-09-14 10:00:00') & cellresultsall(:,1)<=datenum('5-09-14 11:00:00'));
+        ii=[i1;i2;i3];
         reason=repmat('Noise classified as Syn',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
-        i1=find(cellresultsall(:,1)>=datenum('1-08-14 01:00:00') & cellresultsall(:,1)<=datenum('1-08-14 06:00:00'));
-        i2=find(cellresultsall(:,1)>=datenum('1-08-14 14:00:00') & cellresultsall(:,1)<=datenum('1-08-14 15:00:00'));
-        i3=find(cellresultsall(:,1)>=datenum('1-14-14 13:00:00') & cellresultsall(:,1)<=datenum('1-14-14 15:00:00'));
-        ii=[i1;i2;i3];
-        reason=repmat('Bad signatures/data?',length(ii),1);
+        ii=find(cellresultsall(:,1)>=datenum('1-08-14 00:00:00') & cellresultsall(:,1)<=datenum('1-08-14 20:00:00'));
+        reason=repmat('A few bad syringes left in?',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-        %
-        ii=find(cellresultsall(:,1)>=datenum('Nov-11-14 09:00:00') & cellresultsall(:,1)<=datenum('Nov-11-14 10:00:00')); %after 9:30 - bad acq?
-        reason=repmat('Bad acquisition times?',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+        
+        ii=find(cellresultsall(:,1)>=datenum('17-Jan-2014 19:00:00') & cellresultsall(:,1)<=datenum('01-Mar-2014 21:00:00')); %from 19:00 - 20:30 - syr pump doesn't reach max
+        reason=repmat('This data should probably be added to skip file....',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)]; 
         
         i1=find(cellresultsall(:,1)>=datenum('Apr-03-14 00:00:00') & cellresultsall(:,1)<=datenum('Apr-03-14 01:00:00'));
         i2=find(cellresultsall(:,1)>=datenum('Apr-04-14 23:00:00') & cellresultsall(:,1)<=datenum('Apr-05-14 00:00:00'));
         i3=find(cellresultsall(:,1)>=datenum('Apr-05-14 21:00:00') & cellresultsall(:,1)<=datenum('Apr-05-14 22:00:00'));
         i4=find(cellresultsall(:,1)>=datenum('Apr-07-14 22:00:00') & cellresultsall(:,1)<=datenum('Apr-07-14 23:00:00'));
-        i5=find(cellresultsall(:,1)>=datenum('Apr-30-14 20:00:00') & cellresultsall(:,1)<=datenum('Apr-30-14 21:00:00'));
-        ii=[i1;i2;i3;i4;i5];
-        reason=repmat('Cryptos classified as Syn',length(ii),1);
+        ii=[i1;i2;i3;i4];
+        reason=repmat('Bad Syn classification',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
         ii=find(cellresultsall(:,1)>=datenum('Nov-10-14 19:00:00') & cellresultsall(:,1)<=datenum('Nov-10-14 20:00:00')); %from 19:00 - 20:30 - syr pump doesn't reach max
-        reason=repmat('Clogged syringe?',length(ii),1);
+        reason=repmat('Bad syringe left in?',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-        
-        ii=find(cellresultsall(:,1)>=datenum('17-Jan-2014 19:00:00') & cellresultsall(:,1)<=datenum('01-Mar-2014 21:00:00')); %from 19:00 - 20:30 - syr pump doesn't reach max
-        reason=repmat('instrument start up weirdness?',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-      
-
-        i1=find(cellresultsall(:,1)>=datenum('03-Apr-2014 06:29:00') & cellresultsall(:,1)<=datenum('03-Apr-2014 06:30:00')); %from 19:00 - 20:30 - syr pump doesn't reach max
-        i2=find(cellresultsall(:,1)>=datenum('02-Apr-2014 18:53:00') & cellresultsall(:,1)<=datenum('02-Apr-2014 18:54:00'));       
-        i3=find(cellresultsall(:,1)>=datenum('06-Apr-2014 08:29:00') & cellresultsall(:,1)<=datenum('06-Apr-2014 08:30:00'));        
-        i4=find(cellresultsall(:,1)>=datenum('07-Apr-2014 05:31:00') & cellresultsall(:,1)<=datenum('07-Apr-2014 05:32:00'));        
-        i5=find(cellresultsall(:,1)>=datenum('27-Apr-2014 21:35:00') & cellresultsall(:,1)<=datenum('27-Apr-2014 21:36:00'));
-        i6=find(cellresultsall(:,1)>=datenum('02-May-2014 06:29:00') &  cellresultsall(:,1)<=datenum('02-May-2014 06:30:00'));
-        
-        i7=find(cellresultsall(:,1)>=datenum('05-May-2014 07:30:00') & cellresultsall(:,1)<=datenum('05-May-2014 07:31:00'));
-        i8=find(cellresultsall(:,1)>=datenum('07-May-2014 08:30:00') & cellresultsall(:,1)<=datenum('07-May-2014 08:31:00'));
-        i9=find(cellresultsall(:,1)>=datenum('10-May-2014 03:24:00') & cellresultsall(:,1)<=datenum('10-May-2014 03:25:00'));
-        i10=find(cellresultsall(:,1)>=datenum('19-May-2014 19:29:00') & cellresultsall(:,1)<=datenum('19-May-2014 19:30:00'));  
-        i11=find(cellresultsall(:,1)>=datenum('19-May-2014 20:30:00') & cellresultsall(:,1)<=datenum('19-May-2014 20:31:00'));
-        i12=find(cellresultsall(:,1)>=datenum('04-Sep-2014 05:28:00') & cellresultsall(:,1)<=datenum('04-Sep-2014 05:29:00'));
-        i13=find(cellresultsall(:,1)>=datenum('04-Sep-2014 06:29:00') & cellresultsall(:,1)<=datenum('04-Sep-2014 06:30:00'));  
-        ii=[i1;i2;i3;i4;i5;i6;i7;i8;i9;i10;i11;i12;i13];
-        reason=repmat('ssc weirdness? classification issues?',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-                  
+               
         [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
         to_use=find(bt_pts==0);
+        
+        %PE mode not tracking:
+        i1=find(cellresultsall(:,1)>=datenum('29-Mar-2014 14:00:00') & cellresultsall(:,1)<=datenum('Mar-29-2014 20:00:00'));
+        i2=find(cellresultsall(:,1)>=datenum('30-Mar-2014 05:00:00') & cellresultsall(:,1)<=datenum('Mar-30-2014 08:00:00'));
+        i3=find(cellresultsall(:,1)>=datenum('31-Mar-2014 07:00:00') & cellresultsall(:,1)<=datenum('Apr-02-2014 12:00:00'));
+        ii=[i1;i2;i3];
+        reason=repmat('Low mode for PE....too few cells?',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+     
+        [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
+        to_use_PE=find(bt_pts==0);
         
     case 2015
         
         ex_timepts={};
-        ii=find(cellresultsall(:,1)>=datenum('3-25-15 15:00:00') & cellresultsall(:,1)<=datenum('3-25-15 16:00:00'));
+        i1=find(cellresultsall(:,1)>=datenum('3-25-15 15:00:00') & cellresultsall(:,1)<=datenum('3-25-15 17:00:00'));
+        i2=find(cellresultsall(:,1)>=datenum('03-Apr-2015 14:00:00') & cellresultsall(:,1)<=datenum('03-Apr-2015 15:00:00'));
+        ii=[i1;i2];
         reason=repmat('Beads classified as Syn',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+                   
+        ii=find(cellresultsall(:,1)>=datenum('5-17-15 01:00:00') & cellresultsall(:,1)<=datenum('5-17-15 02:00:00'));
+        reason=repmat('Bad SSC; bad syringe left in?',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
-        i1=find(cellresultsall(:,1)>=datenum('06-Jun-2015 18:00:00') & cellresultsall(:,1)<=datenum('07-Jun-2015 15:00:00'));
-        i2=find(cellresultsall(:,1)>=datenum('30-Jun-2015 00:00:00') & cellresultsall(:,1)<=datenum('30-Jun-2015 20:00:00'));
-        i3=find(cellresultsall(:,1)>=datenum('06-Apr-2015 11:00:00') & cellresultsall(:,1)<=datenum('07-Apr-2015 10:00:00'));
-        ii=[i1;i2;i3];
-        reason=repmat('strange ssc drop',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-
-                
-        i1=find(cellresultsall(:,1)>=datenum('25-Mar-2015 16:29:00') & cellresultsall(:,1)<=datenum('25-Mar-2015 16:30:32'));
-        i2=find(cellresultsall(:,1)>=datenum('03-Apr-2015 14:29:00') & cellresultsall(:,1)<=datenum('03-Apr-2015 14:31:00'));
-        i3=find(cellresultsall(:,1)>=datenum('03-Apr-2015 09:30:00') & cellresultsall(:,1)<=datenum('03-Apr-2015 09:31:24'));
-        i4=find(cellresultsall(:,1)>=datenum('14-Apr-2015 12:29:00') & cellresultsall(:,1)<=datenum('14-Apr-2015 12:30:53'));
-        ii=[i1;i2;i3;i4];
-        reason=repmat('ssc weirdness',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-    
         i1=find(cellresultsall(:,1)>=datenum('3-30-15 07:00:00') & cellresultsall(:,1)<=datenum('3-30-15 08:00:00'));
         i2=find(cellresultsall(:,1)>=datenum('6-08-15 07:00:00') & cellresultsall(:,1)<=datenum('6-08-15 08:00:00'));
         i3=find(cellresultsall(:,1)>=datenum('6-11-15 03:00:00') & cellresultsall(:,1)<=datenum('6-11-15 04:00:00'));
@@ -303,72 +276,60 @@ switch year2do
         reason=repmat('Noise classified as Syn',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
-        ii=find(cellresultsall(:,1)>=datenum('5-17-15 01:00:00') & cellresultsall(:,1)<=datenum('5-17-15 02:00:00'));
-        reason=repmat('Strange data patterns',length(ii),1);
+        ii=find(cellresultsall(:,1)>=datenum('30-Jun-2015 01:00:00') & cellresultsall(:,1)<=datenum('30-Jun-2015 06:00:00'));
+        reason=repmat('strange ssc drop',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
         i1=find(cellresultsall(:,1)>=datenum('11-18-15 19:00:00') & cellresultsall(:,1)<=datenum('11-18-15 20:00:00'));
         i2=find(cellresultsall(:,1)>=datenum('11-28-15 19:00:00') & cellresultsall(:,1)<=datenum('11-28-15 20:00:00'));
         ii=[i1;i2];
-        reason=repmat('Strange acquisition times?',length(ii),1);
+        reason=repmat('Bad syringes left in?',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
-        %         ii=cell2mat(ex_timepts(:,1));
-        %         [~, ia, ib] =intersect(ii,cellresultsall(:,1));
-        %
         [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
         to_use=find(bt_pts==0);
+        
+        %ugh...abnd estiamtes may be okay, but SSC is just so bad...
+        ii=find(cellresultsall(:,1)>=datenum('20-Jul-2015 00:00:00') & cellresultsall(:,1)<=datenum('11-Sept-2015 00:00:00'));
+        reason=repmat('Smeared SSC',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+     
+        [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
+        to_use_SSC=find(bt_pts==0);
+        
         
     case 2016
         
         ex_timepts={};
         
         %Jan 14-15, most bad data removed -some left in good files, remove:
-        i1=find(cellresultsall(:,1)>=datenum('1-14-16 22:00:00') & cellresultsall(:,1)<=datenum('1-14-16 23:00:00'));
-        i2=find(cellresultsall(:,1)>=datenum('1-15-16 16:00:00') & cellresultsall(:,1)<=datenum('1-15-16 17:50:00')); %really only up unitl '1-15-16 17:30:00'
-        ii=[i1;i2];
-        reason=repmat('Strange acquisition times?',length(ii),1);
+        ii=find(cellresultsall(:,1)>=datenum('1-14-16 22:00:00') & cellresultsall(:,1)<=datenum('1-14-16 23:00:00'));  
+        reason=repmat('Just one left over bad syringe',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-        
+                  
         ii=find(cellresultsall(:,1)>=datenum('Apr-5-16 11:00:00') & cellresultsall(:,1)<=datenum('Apr-5-16 12:00:00'));
         reason=repmat('Noise classified as Syn',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
-        ii=find(cellresultsall(:,1)>=datenum('24-May-2016 14:00:00') & cellresultsall(:,1)<=datenum('26-May-2016 21:00:00'));
-        reason=repmat('Noise classified as Syn',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-        
-        
-        i1=find(cellresultsall(:,1)>=datenum('May-9-16 04:00:00') & cellresultsall(:,1)<=datenum('May-9-16 06:00:00'));
-        i2=find(cellresultsall(:,1)>=datenum('5-31-16 03:00:00') & cellresultsall(:,1)<=datenum('5-31-16 04:00:00')); %this one is probably tail end of bad data....
-        i3=find(cellresultsall(:,1)>=datenum('6-15-16 12:00:00') & cellresultsall(:,1)<=datenum('6-20-16 00:00:00')); %mess of signatures - THERE MAYBE STILL GOOD FILES IN HERE THOUGH!
-
-%         i3=find(cellresultsall(:,1)>=datenum('6-15-16 12:00:00') & cellresultsall(:,1)<=datenum('6-16-16 01:00:00')); %mess of signatures 
-%         i4=find(cellresultsall(:,1)>=datenum('6-16-16 14:00:00') & cellresultsall(:,1)<=datenum('6-16-16 23:00:00')); %mess of signatures 
-%         i5=find(cellresultsall(:,1)>=datenum('6-17-16 11:00:00') & cellresultsall(:,1)<=datenum('6-19-16 05:00:00')); %mess of signatures 
+        i1=find(cellresultsall(:,1)>=datenum('May-9-16 03:00:00') & cellresultsall(:,1)<=datenum('May-9-16 06:00:00'));        
+        i2=find(cellresultsall(:,1)>=datenum('5-31-16 02:45:00') & cellresultsall(:,1)<=datenum('5-31-16 04:00:00')); %this one is probably tail end of bad data....
+        i3=find(cellresultsall(:,1)>=datenum('6-16-16 12:00:00') & cellresultsall(:,1)<=datenum('6-20-16 00:00:00')); %mess of signatures - THERE MAYBE STILL GOOD FILES IN HERE THOUGH!
         ii=[i1;i2;i3];
-        reason=repmat('Bad signatures',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-        
+        reason=repmat('Syring issues? Strange signatures',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];    
+
         ii=find(cellresultsall(:,1)>=datenum('Aug-3-2016 19:00:00') & cellresultsall(:,1)<=datenum('Aug-3-2016 23:00:00')); 
         reason=repmat('Strange spread and weird classfications',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-        
-        
-        ii=find(cellresultsall(:,1)>=datenum('9-22-16 00:00:00') & cellresultsall(:,1)<=datenum('10-05-16 10:00:00')); 
-        reason=repmat('Remove for now, should come back and investigate later, a bead calling issue?',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-        
-        %moved into skipped now:
-        ii=find(cellresultsall(:,1)>=datenum('10-03-16 22:00:00') & cellresultsall(:,1)<=datenum('10-04-16 17:00:00')); 
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];              
+
+        ii=find(cellresultsall(:,1)>=datenum('10-02-16 20:00:00') & cellresultsall(:,1)<=datenum('10-04-16 19:00:00')); 
         reason=repmat('SSC spread - bad signatures',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
         
-        %moved into skipped now:
         ii=find(cellresultsall(:,1)>=datenum('10-11-16 05:00:00') & cellresultsall(:,1)<=datenum('10-11-16 15:00:00')); 
         reason=repmat('Bad signatures - spread on both PE and SSC',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
-       
+
         ii=find(cellresultsall(:,1)>=datenum('11-08-16 07:00:00') & cellresultsall(:,1)<=datenum('11-08-16 08:00:00')); 
         reason=repmat('Bottom end of Syn cloud classified as picoeuk',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
@@ -380,19 +341,24 @@ switch year2do
         [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
         to_use=find(bt_pts==0);
         
+        
+        %ugh...abnd estiamtes should be okay, but SSC is bad...
+        ii=find(cellresultsall(:,1)>=datenum('Sept-22-2016 22:00:00') & cellresultsall(:,1)<=datenum('04-Oct-2016 20:00:00'));
+        reason=repmat('Smeared SSC',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+     
+        [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
+        to_use_SSC=find(bt_pts==0);
+        
+        
     case 2017
-        %to be determined
+        
         ex_timepts={};
          
-        ii=find(cellresultsall(:,1)>=datenum('27-Aug-2017 07:00:00') & cellresultsall(:,1)<=datenum('07-Sep-2017 23:10:30')); 
-        reason=repmat('For now, exclude... some strangeness with bead values only - bead classification mistake?',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
- 
         ii=find(cellresultsall(:,1)>=datenum('13-Nov-2017 10:00:00') & cellresultsall(:,1)<=datenum('13-Nov-2017 15:00:00')); 
         reason=repmat('SSC smeared...tending towards 0',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
- 
-        
+
         [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
         to_use=find(bt_pts==0);
                 
@@ -400,20 +366,45 @@ switch year2do
         %to be determined
         ex_timepts={};
          
-        ii=find(cellresultsall(:,1)>=datenum('23-Jul-2018 13:00:00') & cellresultsall(:,1)<=datenum('10-Aug-2018 21:10:30')); 
+         i1=find(cellresultsall(:,1)>=datenum('08-Apr-2018 22:00:00') & cellresultsall(:,1)<=datenum('08-Apr-2018 23:00:00')); 
+         i2=find(cellresultsall(:,1)>=datenum('10-Apr-2018 18:00:00') & cellresultsall(:,1)<=datenum('10-Apr-2018 19:00:00'));
+         i3=find(cellresultsall(:,1)>=datenum('11-Apr-2018 07:00:00') & cellresultsall(:,1)<=datenum('11-Apr-2018 08:00:00'));
+         i4=find(cellresultsall(:,1)>=datenum('11-Apr-2018 11:00:00') & cellresultsall(:,1)<=datenum('11-Apr-2018 14:00:00'));
+         i5=find(cellresultsall(:,1)>=datenum('12-Apr-2018 11:00:00') & cellresultsall(:,1)<=datenum('11-Apr-2018 18:00:00'));
+         i6=find(cellresultsall(:,1)>=datenum('13-Apr-2018 12:00:00') & cellresultsall(:,1)<=datenum('13-Apr-2018 18:00:00'));
+         i7=find(cellresultsall(:,1)>=datenum('14-Apr-2018 01:00:00') & cellresultsall(:,1)<=datenum('14-Apr-2018 05:00:00'));
+         i8=find(cellresultsall(:,1)>=datenum('16-Apr-2018 14:00:00') & cellresultsall(:,1)<=datenum('16-Apr-2018 15:00:00'));
+         i9=find(cellresultsall(:,1)>=datenum('18-Apr-2018 19:00:00') & cellresultsall(:,1)<=datenum('18-Apr-2018 20:00:00'));
+         i10=find(cellresultsall(:,1)>=datenum('19-Apr-2018 00:00:00') & cellresultsall(:,1)<=datenum('19-Apr-2018 01:00:00'));
+         i11=find(cellresultsall(:,1)>=datenum('19-Apr-2018 09:00:00') & cellresultsall(:,1)<=datenum('19-Apr-2018 11:00:00'));
+         i12=find(cellresultsall(:,1)>=datenum('20-Apr-2018 07:00:00') & cellresultsall(:,1)<=datenum('20-Apr-2018 09:00:00'));
+         i13=find(cellresultsall(:,1)>=datenum('20-Apr-2018 19:00:00') & cellresultsall(:,1)<=datenum('21-Apr-2018 04:00:00'));
+         i14=find(cellresultsall(:,1)>=datenum('21-Apr-2018 10:00:00') & cellresultsall(:,1)<=datenum('24-Apr-2018 18:00:00'));  %Numbers are just too low for good classification with current algorithm
+        ii=[i1;i2;i3;i4;i5;i6;i7;i8;i9;i10;i11;i12;i13;i14];
+         reason=repmat('Noise classified as Syn; numbers are just too low for good classfication',length(ii),1);
+        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
+ 
+        ii=find(cellresultsall(:,1)>=datenum('31-Jul-2018 00:00:00') & cellresultsall(:,1)<=datenum('10-Aug-2018 15:00:00')); 
         reason=repmat('Bad SSC - smeared and tends to 0',length(ii),1);
         ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
- 
-        ii=find(cellresultsall(:,1)>=datenum('08-Apr-2018 11:00:00') & cellresultsall(:,1)<=datenum('26-Apr-2018 07:00:00')); 
-        reason=repmat('SSC weirdness, needs to be investigated further...',length(ii),1);
-        ex_timepts=[ex_timepts; num2cell(cellresultsall(ii,1)) cellstr(reason)];
- 
-        
+      
         [bt_pts]=ismember(cellresultsall(:,1),cell2mat(ex_timepts(:,1))); %returns 0 if not in the time points to exclude!
         to_use=find(bt_pts==0);
 end
 
 to_use=to_use0(to_use);
+
+if exist('to_use_SSC','var')
+    to_use_SSC=to_use0(to_use_SSC);
+else
+    to_use_SSC=to_use;
+end
+
+if exist('to_use_PE','var')
+    to_use_PE=to_use0(to_use_PE);
+else
+    to_use_PE=to_use;
+end
 
 if any(isnan(cellresultsall(to_use,1)))
     keyboard

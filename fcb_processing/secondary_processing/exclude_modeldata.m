@@ -91,46 +91,45 @@ switch year2do
             %[cellstr(num2str((735318:735336)')) repmat({'too few cells plus noise!'},19,1)]];
                     
     case 2014
-        days2redo=[{'735690'} {'too high winter growth rate?'}];
-        days2exclude=[];
+        
+         days2redo=[{'735754'} {'Did not find global max?'}];
         
     case 2015
-        days2redo=[{'736057'} {'too high growth rate? some SSC noise problems?'}];
-        days2redo=[days2redo; {'736066'} {'too low growth rate? not found global max?'}];
-        days2redo=[days2redo; {'736074'} {'too high growth rate? not found global max?'}];
-        days2redo=[days2redo; {'736123'} {'too low growth rate? not found global max?'}];
         
-        days2exclude=[{'736106'} {'bad SSC in middle of day?'}];
-        days2exclude=[days2exclude; {'736060'} {'bad SSC changes in middle of day'}];
-        days2exclude=[days2exclude; {'736110'} {'bad SSC'}];
-        days2exclude=[days2exclude; {'736112'} {'bad SSC'}];
-        days2exclude=[days2exclude; {'736165'} {'bad SSC'}];
-        days2exclude=[days2exclude; {'736168'} {'bad SSC'}];
-        days2exclude=[days2exclude; {'736177'} {'bad SSC'}];
-        days2exclude=[days2exclude; {'736181'} {'bad SSC'}];
-        days2exclude=[days2exclude; [cellstr(num2str((736185:736202)')) repmat({'bad SSC'},18,1)]];
-        days2exclude=[days2exclude; {'736208'} {'strange SSC change in middle of day'}];
+        days2redo=[{'736057'} {'Has not found global max?'};
+            {'736060'} {'bad SSC changes in middle of day'}
+            {'736074'} {'Has not found global max?'};
+            {'736086'} {'Has not found global max?'}
+            {'736088'} {'Has not found global max?'};
+            {'736106'} {'bad SSC in middle of day?'};
+            {'736110'} {'bad SSC'};
+            {'736112'} {'bad SSC'};
+            {'736123'} {'Has not found global max'};
+            {'736144'} {'bad SSC'};
+             [cellstr(num2str((736164:736216)')) repmat({'bad SSC'},53,1)]]; %so, so very sad :(
         
     case 2016 
-        days2exclude=[{'736545'} {'bad SSC'}];
-        days2exclude=[days2exclude; {'736546'} {'bad SSC'}];
-        days2exclude=[days2exclude; {'736552'} {'bad SSC'}];
-        days2exclude=[days2exclude; {'736600'} {'bad classification?'}];
-        days2exclude=[days2exclude; {'736605'} {'bad data'}];
-        days2exclude=[days2exclude; {'736606'} {'bad data'}];
-        days2exclude=[days2exclude; {'736613'} {'bad data'}];
-        days2exclude=[days2exclude; {'736614'} {'bad data'}];
-        days2exclude=[days2exclude; {'736693'} {'bad classification?'}];
-        days2redo=[];
-    case 2017 
-        days2exclude=[{'737012'} {'bad SSC for morning'}];
-        days2redo=[];
-    case 2018 
-        days2exclude=[{'737158'} {'too few cells and bad classification'}];
-        days2exclude=[days2exclude; [cellstr(num2str((737160:737164)')) repmat({'too few cells, bad classificaiton'},5,1)]];
-        days2exclude=[days2exclude; [cellstr(num2str((737167: 737175)')) repmat({'too few cells, bad classificaiton'},9,1)]];
-        days2exclude=[days2exclude; [cellstr(num2str((737264: 737282)')) repmat({'bad SSC'},19,1)]];
-        days2exclude=[days2exclude; {'737307'} {'bad SSC at end of day'}];
+        
+        days2redo=[{'736600'} {'bad SSC'};
+            {'736605'} {'bad SSC'};
+             {'736606'} {'bad SSC'};
+             {'736613'} {'bad SSC'};
+             {'736693'} {'bad SSC / classification'}];
 
-        days2redo=[];
+    case 2017 
+         
+        days2redo=[{'736785'} {'Found global max?'};
+             {'736992'} {'Found global max?'}];
+                 
+    case 2018 
+        
+         days2redo=[{'737114'} {'Found global max?'};
+                [cellstr(num2str((737160:737163)')) repmat({'too few cells, bad classificaiton'},4,1)];
+                [cellstr(num2str((737165:737175)')) repmat({'too few cells, bad classificaiton'},11,1)];
+                {'737239'} {'Found global max?'};
+                {'737258'} {'Found global max?'};
+                {'737267'} {'Fair case for model?'};
+                [cellstr(num2str((737271: 737280)')) repmat({'bad SSC'},10,1)];
+                {'737307'} {'bad SSC at end of day'}];
+
 end
