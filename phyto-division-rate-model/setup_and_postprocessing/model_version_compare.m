@@ -6,7 +6,7 @@
 %% Old vs. New Processing:
 
 
-for year2do=2003:2018
+for year2do=2010 %2003:2018
     
     switch year2do
         case 2003
@@ -37,11 +37,12 @@ for year2do=2003:2018
     [~,io,in] = intersect(modelres_old(:,1),modelres_new(:,1)); %days may have changed with new processing
     
     subplot(4,4,year2do-2002)
+    line([0 2],[0 2],'color',[0.5 0.5 0.5],'linewidth',2), hold on
     plot(modelres_old(io,17),modelres_new(in,17),'.')
     xlabel('Old processing')
-    ylabel('New processing')
-    line([0 2],[0 2])
+    ylabel('New processing')   
     title(num2str(year2do))
+    axis([0 2 0 2])
 end
 
 
