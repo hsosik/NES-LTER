@@ -2,7 +2,7 @@ clear
 close all
 offline=0;
 
-for year2do = 2014:2018
+for year2do = 2003:2005
 
     disp(num2str(year2do))
     % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m
@@ -143,8 +143,11 @@ for year2do = 2014:2018
 
         if ~isempty(days2redo)
             qq=find(cellfun('isempty',regexp(days2redo(:,2),'max|global|found|find'))==0); %some days are not fair to give model, don't redo those
-            days2redo=str2num(cell2mat(days2redo(qq,1))) %turn cell array into day list
-            call_to_opt_mvco
+            
+            if ~isempty(qq)
+                days2redo=str2num(cell2mat(days2redo(qq,1))) %turn cell array into day list
+                call_to_opt_mvco
+            end
         end
     end
 

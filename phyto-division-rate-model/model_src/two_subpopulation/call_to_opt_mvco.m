@@ -54,19 +54,15 @@ switch datatype
         
     case 'redo'
         
-        if year2do >= 2006
-            disp(num2str(year2do))
-            filelist = dir([pathname 'day*data.mat']); %find the input files
-            temp=char({filelist(:).name}'); temp=temp(:,4:9); temp=str2num(temp);
-            qq=find(ismember(temp,days2redo));
-            filelist=filelist(qq);
-            
-            modelresults=zeros(length(filelist),23);
-            allmodelruns=cell(length(filelist),2);
-            start_file_num=1;
-        else
-            keyboard
-        end
+        disp(num2str(year2do))
+        filelist = dir([pathname 'day*data.mat']); %find the input files
+        temp=char({filelist(:).name}'); temp=temp(:,4:9); temp=str2num(temp);
+        qq=find(ismember(temp,days2redo));
+        filelist=filelist(qq);
+        
+        modelresults=zeros(length(filelist),23);
+        allmodelruns=cell(length(filelist),2);
+        start_file_num=1;
         
     case 'benchtop'
         %indexes of 'good days' to run:
