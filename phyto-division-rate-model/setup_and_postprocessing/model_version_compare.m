@@ -93,4 +93,52 @@ end
 
 % HMmmmmm...would seem that two components are important! Woot!
 
+%% Model runs and re-runs:
+
+for year2do=2017:2018 %[2003 2004 2006:2014 2017:2018]
+    
+    switch year2do
+        case 2003
+            filelabel='May';
+        case 2004
+            filelabel='Apr';
+        case 2005
+            filelabel='Apr';
+        case 2006
+            filelabel='May';
+        case 2007
+            filelabel='Mar';
+        otherwise
+            filelabel='Jan';
+    end
+    
+    redo_file=['/Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_June2019/mvco_14par_dmn_' num2str(year2do) '_redos.mat'];
+    
+    if exist(redo_file,'file')==2
+        load(redo_file)
+        modelres_redo = modelresults;
+        allmodelruns_redos=allmodelruns;
+        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_June2019/mvco_14par_dmn_' num2str(year2do) '.mat'])
+        modelres = modelresults;
+        %
+        ii = find(ismember(modelres(:,1),modelres_redo(:,1))); %days may have changed with new processing
+        
+        %subplot(4,4,year2do-2002)
+        line([0 2],[0 2],'color',[0.5 0.5 0.5],'linewidth',2), hold on
+        plot(modelres(ii,17),modelres_redo(:,17),'o')
+        xlabel('Original processing')
+        ylabel('Redo processing')
+        title(num2str(year2do))
+        axis([0 2 0 2])
+        
+        r=[];
+        for j=1:size(allmodelruns_redos,1)
+            r=[r; size(allmodelruns_redos{j,1},1)];
+        end
+        r
+        
+        keyboard
+    end
+end
+
 

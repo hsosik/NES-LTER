@@ -9,7 +9,7 @@ addpath ~/NES-LTER/fcb_processing/miscellaneous/
 
 %% Synechococcus cell abundance, fluorescence and size:
 
-beadplotflag=0; %for QC of beads, SSC, PE and CHL fluorescence
+beadplotflag=1; %for QC of beads, SSC, PE and CHL fluorescence
 abnd_plotflag=0; %for QC abundance
 
 allmatdate=[];
@@ -27,7 +27,7 @@ allsynvol=[];
 allsynvolmode=[];
 FCBnum=[];
 %%
-for year2do=2003:2018
+for year2do=2018
     
     switch year2do
         case 2003
@@ -117,27 +117,32 @@ for year2do=2003:2018
     if beadplotflag==1
         figure(13), clf, set(gcf,'position',[164    55   965   930])
         subplot(3,1,1,'replace'), hold on
-        h1=plot(beadresults(:,1),beadresults(:,13),'.--');
+        h1=plot(beadresults(:,1),beadresults(:,13),'.--','color',[0.3 0.3 0.3]);
         h2=plot(beadresults(:,1),sm_bead_avgSSC,'o');
         h3=plot(cellresultsall(to_use_SSC),beadmatch,'.');
+        
         %check the syn!
-        sc=max(beadresults(:,13))./max(cellSSCall(to_use_SSC,1)./beadmatch);
-        h5=plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,13),0.9),'.','color',[0.5 0.5 0.5]); %shows where data is missing
-        h4=plot(cellresultsall(to_use_SSC,1),sc*cellSSCall(to_use_SSC,1)./beadmatch,'.-'); %scaled SSC
-        plot(cellresultsall(to_use_SSC,1),sc*cellSSCmodeall(to_use_SSC,1)./beadmatch,'.','color',[0 0 0.5]) %scaled SSC
+        sc=max(beadresults(:,13))./max(cellSSCall(to_use_SSC,1)./beadmatch);       
+        h4=plot(cellresultsall(:,1),sc*cellSSCall(:,1)./mvco_interpolation(beadresults(:,1),sm_bead_avgSSC,cellresultsall(:,1),1),'.-','color',[0.6 0.6 0.6]); %scaled SSC, just for plotting - not recorded
+        %h5=plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,13),0.9),'.','color',[0.5 0.5 0.5]); %shows where data is missing  
+        h5=plot(cellresultsall(to_use_SSC,1),sc*cellSSCall(to_use_SSC,1)./beadmatch,'b.'); %scaled SSC
+        h6=plot(cellresultsall(to_use_SSC,1),sc*cellSSCmodeall(to_use_SSC,1)./beadmatch,'.','color',[0 0.5 1]); %scaled SSC
         datetick('x','mm/dd')
         ylabel('SSC')
-        legend([h1(1);h2(1);h3(1);h4(1);h5(1)],'bead data','smoothed bead data','matched data','scaled Syn data','unused data','location','Eastoutside')
+        legend([h1(1);h2(1);h3(1);h4(1);h5(1);h6(1)],'all bead data','smoothed bead data','matched data','all Syn data - mean','used scaled Syn data - mean','uesd scaled Syn data -mode','location','Eastoutside')
         title(num2str(year2do))
         
         subplot(3,1,2,'replace'), hold on
         plot(beadresults(:,1),beadresults(:,10),'.--')
         plot(beadresults(:,1),sm_bead_avgPE,'o')
         plot(cellresultsall(to_use_PE),beadPEmatch,'.')
-        plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,10),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
+        %plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,10),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
+        %check the syn!
         sc=max(beadresults(:,10))./max(cellPEall(to_use_PE,1)./beadPEmatch);
-        plot(cellresultsall(to_use_PE,1),sc*cellPEall(to_use_PE,1)./beadPEmatch,'.-') %scaled PE
-        plot(cellresultsall(to_use_PE,1),sc*cellPEmodeall(to_use_PE,1)./beadPEmatch,'.','color',[0 0 0.5])
+        plot(cellresultsall(:,1),sc*cellPEall(:,1)./ mvco_interpolation(beadresults(:,1),sm_bead_avgPE,cellresultsall(:,1),1),'.-','color',[0.6 0.6 0.6]) %scaled PE
+       
+        plot(cellresultsall(to_use_PE,1),sc*cellPEall(to_use_PE,1)./beadPEmatch,'b.') %scaled PE
+        plot(cellresultsall(to_use_PE,1),sc*cellPEmodeall(to_use_PE,1)./beadPEmatch,'.','color',[0 0.5 1])
         datetick('x','mm/dd')
         ylabel('PE')
         
@@ -145,10 +150,13 @@ for year2do=2003:2018
         plot(beadresults(:,1),beadresults(:,12),'.--')
         plot(beadresults(:,1),sm_bead_avgCHL,'o')
         plot(cellresultsall(to_use),beadCHLmatch,'.')
-        plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,12),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
+        %plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,12),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
+        %check the Syn
         sc=max(beadresults(:,12))./max(cellCHLall(to_use,1)./beadCHLmatch);
-        plot(cellresultsall(to_use,1),sc*cellCHLall(to_use,1)./beadCHLmatch,'.-') %scaled CHL
-        plot(cellresultsall(to_use,1),sc*cellCHLmodeall(to_use,1)./beadCHLmatch,'.','color',[0 0 0.5])
+        plot(cellresultsall(:,1),sc*cellCHLall(:,1)./mvco_interpolation(beadresults(:,1),sm_bead_avgCHL,cellresultsall(:,1),1),'.-','color',[0.6 0.6 0.6]) %scaled CHL
+
+        plot(cellresultsall(to_use,1),sc*cellCHLall(to_use,1)./beadCHLmatch,'b.') %scaled CHL
+        plot(cellresultsall(to_use,1),sc*cellCHLmodeall(to_use,1)./beadCHLmatch,'.','color',[0 0.5 1])
         datetick('x','mm/dd')
         ylabel('CHL')
         %
@@ -252,14 +260,40 @@ for year2do=2003:2018
             filelabel='Jan';
     end
     
+    
     rootpath='/Volumes/Lab_data/MVCO/FCB/';
     eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_June2019/mvco_14par_dmn_' num2str(year2do) '.mat'])
     
-    [days2redo]=exclude_modeldata(year2do); %eventually will get to redo those days!
+    %Some sorting out of division rates for now:
+    % Incoporate any re-do days, but still screen out days that had bad SSC:
     
-    if ~isempty(days2redo)
-        days2redo=str2num(cell2mat(days2redo(:,1)));
+    [days2redo]=exclude_modeldata(year2do); %list of troublesome days
+    days2redo=str2num(cell2mat(days2redo(:,1))); %every year has at least one day....
+    
+    if ~isempty(days2redo) %check if some of these days were rerun?
+         
+        %IF WANT TO SWAP IN MODEL RUN REDOS:
+%          redo_file=['/Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_June2019/mvco_14par_dmn_' num2str(year2do) '_redos.mat'];  
+%          
+%          if exist(redo_file,'file')==2 %if so, check likelihoods and swap out!
+%              
+%              temp = load(redo_file,'mat','modelresults');
+%              modelres_redo = temp.modelresults;
+%                           
+%              ii = find(ismember(modelresults(:,1),modelres_redo(:,1))); %match up days
+%              
+%              for q=1:size(modelres_redo,1)
+%                 if modelres_redo(q,16) < modelresults(ii(q),16) && modelres_redo(q,1)==modelresults(ii(q),1) %a double check to make sure days match!
+%                    modelresults(ii(q),:)=modelres_redo(q,:); %replace!
+%                    disp([num2str(q) ': Replacing mu for day ' datestr(modelresults(ii(q),1)) ' from ' num2str(modelresults(ii(q),17)) ' with ' num2str(modelres_redo(q,17))])
+%                    days2redo=setxor(modelresults(ii(q),1),days2redo); 
+%                 end
+%              end
+%              
+%          end
+     
         to_use=find(ismember(modelresults(:,1),days2redo)==0);
+    
     else
         to_use=find(~isnan(modelresults(:,1)) & modelresults(:,1)~=0); %just in case ;)
     end
