@@ -74,10 +74,10 @@ for year2do=2018
             ind=find(beadresults(:,10) > 1.8e4); %PE outlier
             beadresults(ind,:)=NaN;
         case 2015
-            ind=find(floor(beadresults(:,1))>=datenum('5-19-15') &floor(beadresults(:,1))<=datenum('5-21-15')); %bad bead values for these days
-            beadresults(ind,:)=NaN;
-            ind=find(beadresults(:,1)>= (datenum('5-24-15')+23/24) & beadresults(:,1)<=datenum('5-30-15')); %bad bead values for these days
-            beadresults(ind,:)=NaN;
+            ind1=find(floor(beadresults(:,1))>=datenum('5-19-15') &floor(beadresults(:,1))<=datenum('5-21-15')); %bad bead values for these days
+            ind2=find(beadresults(:,1)>= (datenum('5-24-15')+23/24) & beadresults(:,1)<=datenum('5-30-15')); %bad bead values for these days
+            ind3=find(beadresults(:,1)>= (datenum('June-6-15')+12/24) & beadresults(:,1)<=datenum('June-8-15')); %just weird bead values for these days
+            beadresults([ind1;ind2;ind3],:)=NaN;
         case 2016
             ind=find(floor(beadresults(:,1))==datenum('9-23-16') | floor(beadresults(:,1))==datenum('9-24-16')); %bad bead values for these days
             beadresults(ind,:)=NaN;
