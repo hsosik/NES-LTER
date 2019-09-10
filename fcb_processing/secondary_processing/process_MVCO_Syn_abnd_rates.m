@@ -9,7 +9,7 @@ addpath ~/NES-LTER/fcb_processing/miscellaneous/
 
 %% Synechococcus cell abundance, fluorescence and size:
 
-beadplotflag=1; %for QC of beads, SSC, PE and CHL fluorescence
+beadplotflag=0; %for QC of beads, SSC, PE and CHL fluorescence
 abnd_plotflag=0; %for QC abundance
 
 allmatdate=[];
@@ -27,7 +27,7 @@ allsynvol=[];
 allsynvolmode=[];
 FCBnum=[];
 %%
-for year2do=2018
+for year2do=2003:2018
     
     switch year2do
         case 2003
@@ -514,53 +514,12 @@ loss_std=nanstd(daily_loss,0,2);
 [loss_avg_wk, loss_std_wk] = dy2wkmn_climatology(daily_loss, synyears);
 [loss_med_wk] = dy2wkmn_medclimatology(daily_loss, synyears);
 
-%% we need volume and fluorescence to match up to light, which was calc on local time:
 
-%from hourly mean values (already bead normalized):
-% [time_PE, daily_PE] = timeseries2ydmat(allmatdate-4/24, allsynPE); %Syn PE fluorescence
-% [time_SSC, daily_SSC] = timeseries2ydmat(allmatdate-4/24, allsynSSC); %SSC, bead normalized
-% [time_vol, daily_vol] = timeseries2ydmat(allmatdate-4/24, allsynvol); %Cell volume from SSC-bead normalized
-% [time_CHL, daily_CHL] = timeseries2ydmat(allmatdate-4/24, allsynCHL); %Syn CHL fluorescence
-%
-% PE_avg=nanmean(daily_PE,2);
-% PE_med=nanmedian(daily_PE,2);
-% SSC_avg=nanmean(daily_SSC,2);
-% SSC_med=nanmedian(daily_SSC,2);
-% vol_avg=nanmean(daily_vol,2);
-% vol_med=nanmedian(daily_vol,2);
-% CHL_avg=nanmean(daily_CHL,2);
-% CHL_med=nanmedian(daily_CHL,2);
-%
-% [PE_avg_wk, PE_std_wk] = dy2wkmn_climatology(daily_PE, synyears);
-% [CHL_avg_wk, CHL_std_wk] = dy2wkmn_climatology(daily_CHL, synyears);
-% [SSC_avg_wk, SSC_std_wk] = dy2wkmn_climatology(daily_SSC, synyears);
-% [vol_avg_wk, vol_std_wk] = dy2wkmn_climatology(daily_vol, synyears);
-%
-% %from hourly mode values:
-% [time_PEmode, daily_PEmode] = timeseries2ydmat(allmatdate-4/24, allsynPEmode); %Syn PE fluorescence
-% [time_SSCmode, daily_SSCmode] = timeseries2ydmat(allmatdate-4/24, allsynSSCmode); %smoothed abundance
-% [time_volmode, daily_volmode] = timeseries2ydmat(allmatdate-4/24, allsynvolmode); %smoothed abundance
-% [time_CHLmode, daily_CHLmode] = timeseries2ydmat(allmatdate-4/24, allsynCHLmode); %Syn CHL fluorescence
-%
-% PE_mode_avg=nanmean(daily_PEmode,2);
-% SSC_mode_avg=nanmean(daily_SSCmode,2);
-% vol_mode_avg=nanmean(daily_volmode,2);
-% CHL_mode_avg=nanmean(daily_CHLmode,2);
-%
-% [PE_mode_avg_wk, PE_mode_std_wk] = dy2wkmn_climatology(daily_PEmode, synyears);
-% [SSC_mode_avg_wk, SSC_mode_std_wk] = dy2wkmn_climatology(daily_SSCmode, synyears);
-% [vol_mode_avg_wk, vol_mode_std_wk] = dy2wkmn_climatology(daily_volmode, synyears);
-% [CHL_mode_avg_wk, CHL_mode_std_wk] = dy2wkmn_climatology(daily_CHLmode, synyears);
-
-%medians and max/min from the mode values:
-% [time_vol_Q, daily_vol_Q10] = timeseries2ydmat_quantile(allmatdate, allsynvolmode, .10);
-% [time_vol_Q, daily_vol_Q90] = timeseries2ydmat_quantile(allmatdate, allsynvolmode, .90);
-% [time_vol_Q, daily_vol_Q50] = timeseries2ydmat_quantile(allmatdate, allsynvolmode, .50);
-%[time_vol_Q, daily_vol_max] = timeseries2ydmat_quantile(allmatdate-4/24, allsynvolmode, 1);
-%% So...we also want the minimum cell volume and then the corresponding PE fluorscence that goes with it as metrics:
+%% MINIMUM AND MAXIMUM CELL VOLUME:
 
 unqdays=unique(floor(allmatdate));
-minvol=nan(length(unqdays),4); maxvol=nan(length(unqdays),4);  minPE=nan(length(unqdays),4); maxPE=nan(length(unqdays),4);
+minvol=nan(length(unqdays),4); maxvol=nan(length(unqdays),4);  %minPE=nan(length(unqdays),4); maxPE=nan(length(unqdays),4);
+
 for q=1:length(unqdays)
     day=unqdays(q);
     ww=find(dawnhours(:,1)==day);
@@ -573,6 +532,7 @@ for q=1:length(unqdays)
     end
     
     qq=find(allmatdateSSC >= day+dawn/24 & allmatdateSSC < day+1+dawn/24); %should be dawn to dawn window...
+    
     if length(qq) > 22  %we also really only want mins from complete days...
         
         [mm, im]=min(allsynvolmode(qq));
@@ -587,32 +547,43 @@ for q=1:length(unqdays)
         maxvol(q,3)=(allmatdateSSC(qq(im))-day-dawn/24)*24; %hours after or before dawn
         maxvol(q,4)=allmatdateSSC(qq(im));
     end
-    
-    qq=find(allmatdatePE >= day+dawn/24 & allmatdatePE < day+1+dawn/24); %should be dawn to dawn window...
-    if length(qq) > 22  %we also really only want mins from complete days...
-   
-        [mm, im]=min(allsynPEmode(qq));
-        minPE(q,1)=mm; %min volu
-        minPE(q,2)=qq(im);  %index back for date and other matrices
-        minPE(q,3)=(allmatdatePE(qq(im))-day-dawn/24)*24; %hours after or before dawn
-        minPE(q,4)=allmatdatePE(qq(im));
-        
-        [mm, im]=max(allsynPEmode(qq));
-        maxPE(q,1)=mm; %min volu
-        maxPE(q,2)=qq(im);  %index back for date and other matrices
-        maxPE(q,3)=(allmatdatePE(qq(im))-day-dawn/24)*24; %hours after or before dawn
-        maxPE(q,4)=allmatdatePE(qq(im));
-    end
+%     
+%     qq=find(allmatdatePE >= day+dawn/24 & allmatdatePE < day+1+dawn/24); %should be dawn to dawn window...
+%     if length(qq) > 22  %we also really only want mins from complete days...
+%    
+%         [mm, im]=min(allsynPEmode(qq));
+%         minPE(q,1)=mm; %min volu
+%         minPE(q,2)=qq(im);  %index back for date and other matrices
+%         minPE(q,3)=(allmatdatePE(qq(im))-day-dawn/24)*24; %hours after or before dawn
+%         minPE(q,4)=allmatdatePE(qq(im));
+%         
+%         [mm, im]=max(allsynPEmode(qq));
+%         maxPE(q,1)=mm; %min volu
+%         maxPE(q,2)=qq(im);  %index back for date and other matrices
+%         maxPE(q,3)=(allmatdatePE(qq(im))-day-dawn/24)*24; %hours after or before dawn
+%         maxPE(q,4)=allmatdatePE(qq(im));
+%     end
 end
 
 
-%% IF WANT MEASUREMENT AROUND DAWN FOR EACH DAY:
-%One could also imagine just taking the metrics of the before dawn hour of each day...
-%find predawn hour of each day:
+%% PE, VOLUME, AND SYN AROUND DAWN: 
+
+%could have probably incorporated this above during net growth rate calculations...
+
+% Find predawn hour of each day:
+
 unqdays=unique(floor(allmatdate));
-dawnPE=nan(length(unqdays),5);
+
+dawnPE=nan(length(unqdays),7);
+dawnPEmode=nan(length(unqdays),7);
+dawn_syn=nan(length(unqdays),6);
+dawn_vol=nan(length(unqdays),6); %this is the mode!!!
+
+
 for q=1:length(unqdays)
+    
     day=unqdays(q);
+    
     ww=find(dawnhours(:,1)==day);
     if isempty(ww) %use median value of dawn instead
         jj=find_yearday(day);
@@ -625,62 +596,97 @@ for q=1:length(unqdays)
     qq=find(allmatdatePE >= day+dawn/24-1.5/24 & allmatdatePE <= day+dawn/24+1.5/24); %3 hours around dawn
     
     if ~isempty(qq)
-        [mm, im]=min(allsynPE(qq)); %min(allsynvolmode(qq));
+        [mm, im]=min(allsynPE(qq)); %min(allsynvolmode(qq));       
         dawnPE(q,1)=mm; %min mean PE value around dawn
         dawnPE(q,2)=qq(im);  %index back for date and other matrices
         dawnPE(q,3)=(allmatdatePE(qq(im))-day)*24-dawn; %hours after or before 'dawn'
         dawnPE(q,4)=mean(allsynPE(qq));
-        dawnPE(q,5)=allmatdatePE(qq(im)); %raw date!
+        dawnPE(q,5)=day+dawn/24; %raw date!
+        dawnPE(q,6)=length(qq); %how many hours?
+        
+        [mm, im]=min(allsynPEmode(qq)); %why not do an average?
+        dawnPEmode(q,1)=mm; %min mean PE value around dawn
+        dawnPEmode(q,2)=qq(im);  %index back for date and other matrices
+        dawnPEmode(q,3)=(allmatdatePE(qq(im))-day)*24-dawn; %hours after or before 'dawn'
+        dawnPEmode(q,4)=mean(allsynPEmode(qq));
+        dawnPEmode(q,5)=day+dawn/24; %raw date!
+        dawnPEmode(q,6)=length(qq); %how many hours?
+        
+        %find corresponding hours in allmatdateSSC:
+        ww=nan(length(qq),1);
+        for i=1:length(qq)
+            rr=find(allmatdateSSC == allmatdatePE(qq(i)));  
+            if ~isempty(rr)
+                ww(i)=find(allmatdateSSC == allmatdatePE(qq(i)));  
+            end
+        end
+        ww=ww(~isnan(ww));       
+        if ~isempty(ww)
+            dawnPEmode(q,7)=nanmean(allsynvolmode(ww));
+            dawnPE(q,7)=nanmean(allsynvolmode(ww));
+        end
     end
+    
+    qq1=find(allmatdateSSC >= day+dawn/24-1.5/24 & allmatdateSSC <= day+dawn/24+1.5/24); %3 hours around dawn
+    
+    if ~isempty(qq1)
+        [mm, im]=min(allsynvolmode(qq1)); %min(allsynvolmode(qq));
+        dawn_vol(q,1)=mm; %min mean PE value around dawn
+        dawn_vol(q,2)=qq1(im);  %index back for date and other matrices
+        dawn_vol(q,3)=(allmatdateSSC(qq1(im))-day)*24-dawn; %hours after or before 'dawn'
+        dawn_vol(q,4)=mean(allsynvolmode(qq1));
+        dawn_vol(q,5)=day+dawn/24; %raw date!
+        dawn_vol(q,6)=length(qq1); %how many hours?
+    end
+    
+    %A separate calculation for dawn volume as could have SSC but not PE and vice versa:    
+    qq2=find(allmatdate >= day+dawn/24-1.5/24 & allmatdate <= day+dawn/24+1.5/24); %3 hours around dawn
+    
+    if ~isempty(qq2)
+        [mm, im]=min(synrunavg(qq2)); %min(allsynvolmode(qq));
+        dawn_syn(q,1)=mm; %min mean PE value around dawn
+        dawn_syn(q,2)=qq2(im);  %index back for date and other matrices
+        dawn_syn(q,3)=(allmatdate(qq2(im))-day)*24-dawn; %hours after or before 'dawn'
+        dawn_syn(q,4)=mean(synrunavg(qq2));
+        dawn_syn(q,5)=day+dawn/24; %dawn date!
+        dawn_syn(q,6)=length(qq2); %how many hours?
+    end
+    
 end
 
 
-
-%%
-minvol=minvol(~isnan(minvol(:,1)),:); %remove nan's
+%% 
+minvol=minvol(~isnan(minvol(:,1)),:); %remove nan's and collapse
 maxvol=maxvol(~isnan(maxvol(:,1)),:);
-minPE=minPE(~isnan(minPE(:,1)),:); %min PE over day
-dawnPE=dawnPE(~isnan(dawnPE(:,1)),:); %min PE around dawn
+
+dawnPEmode=dawnPEmode(~isnan(dawnPEmode(:,1)),:); 
+dawn_syn=dawn_syn(~isnan(dawn_syn(:,1)),:); 
+dawn_vol=dawn_vol(~isnan(dawn_vol(:,1)),:);
 
 %% into matrices:
 
 [time_volmin,daily_vol_min]=timeseries2ydmat_quantile(allmatdateSSC(minvol(:,2)),minvol(:,1),0); %at this point, just using the script to bin into matrix for timeseries
 [time_volmax,daily_vol_max]=timeseries2ydmat_quantile(allmatdateSSC(maxvol(:,2)),maxvol(:,1),0); %at this point, just using the script to bin into matrix for timeseries
 
-[time_PEmin,daily_PE_min]=timeseries2ydmat(allmatdatePE(minPE(:,2)),minPE(:,1)); %at this point, just using the script to bin into matrix for timeseries
-[time_PE_dawn,daily_PE_dawn]=timeseries2ydmat(allmatdatePE(dawnPE(:,2)),dawnPE(:,4));
-%%
+[time_PE_dawn,daily_PE_dawn]=timeseries2ydmat(dawnPEmode(:,5),dawnPEmode(:,4)); %these use the averages around dawn!
+[time_syn_dawn,daily_syn_dawn]=timeseries2ydmat(dawn_syn(:,5),dawn_syn(:,4));
+[time_vol_dawn,daily_vol_dawn]=timeseries2ydmat(dawn_vol(:,5),dawn_vol(:,4));
+
 % normalize PE by volume:
-[~, ipe,ivol]=intersect(minPE(:,4),allmatdateSSC); %must match up time between PE and SSC!
-[time_PEmin,daily_PEminvol_ratio]=timeseries2ydmat(minPE(ipe,4),minPE(ipe,1)./allsynvolmode(ivol)); %at this point, just using the script to bin into matrix for timeseries
-%%
-[~, ipe,ivol]=intersect(dawnPE(:,5),allmatdateSSC); %must match up time between PE and SSC!
-[time_PEmin_dawn,daily_PEvol_ratio_dawn]=timeseries2ydmat(dawnPE(ipe,5),dawnPE(ipe,1)./allsynvolmode(ivol));
+[time_PEmin_dawn,daily_PEvol_ratio_dawn]=timeseries2ydmat(dawnPEmode(:,5),dawnPEmode(:,4)./dawnPEmode(:,7)); %also averages
 
-%%
-%[time_vol_Q, daily_vol_min] = timeseries2ydmat_quantile(allmatdate-4/24, allsynvolmode, 0);
-%[time_vol_Q, daily_vol_max] = timeseries2ydmat_quantile(allmatdate-4/24, allsynvolmode, 1);
-
-% [time_PE, daily_PE_min] = timeseries2ydmat_quantile(allmatdate-4/24, allsynPEmode,0); %Syn PE fluorescence
-% [time_PE, daily_PE_max] = timeseries2ydmat_quantile(allmatdate-4/24, allsynPEmode,1); %Syn PE fluorescence
+%% and averages:
 
 vol_avgmax=nanmean(daily_vol_max,2);
 vol_avgmin=nanmean(daily_vol_min,2);
 
-%PE_avgmax=nanmean(daily_PE_max,2);
-PE_avgmin=nanmean(daily_PE_min,2);
 PE_avgdawn=nanmean(daily_PE_dawn,2);
-PEminvol_ratio_avg=nanmean(daily_PEminvol_ratio,2);
 PEdawnvol_ratio_avg=nanmean(daily_PEvol_ratio_dawn,2);
 
-[PEmin_wkmed] = dy2wkmn_medclimatology(daily_PE_min, synyears);
 [PEdawn_wkmed] = dy2wkmn_medclimatology(daily_PE_dawn, synyears);
-%[PEmax_wkmed] = dy2wkmn_medclimatology(daily_PE_max, synyears);
 [volmin_wkmed] = dy2wkmn_medclimatology(daily_vol_min, synyears);
 
 %%
-
-% eval(['save /Users/kristenhunter-cevera/Documents/MATLAB/MVCO_Syn_analysis/syndata_TEMP_' dd(1:2) dd(4:6) dd(8:end) '.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate'])
 
 if exist('/Volumes/Lab_data/MVCO/','dir')
     savepath=fullfile('/Volumes/Lab_data/MVCO/FCB/Syn_and_MVCO_packaged_data/');
