@@ -679,6 +679,8 @@ dawn_vol=dawn_vol(~isnan(dawn_vol(:,1)),:);
 
 vol_avgmax=nanmean(daily_vol_max,2);
 vol_avgmin=nanmean(daily_vol_min,2);
+vol_dawn_avg = nanmean(daily_vol_dawn,2);
+syn_dawn_avg = nanmean(daily_syn_dawn,2);
 
 PE_avgdawn=nanmean(daily_PE_dawn,2);
 PEdawnvol_ratio_avg=nanmean(daily_PEvol_ratio_dawn,2);
