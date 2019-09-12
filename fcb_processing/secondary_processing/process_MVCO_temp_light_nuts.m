@@ -208,7 +208,7 @@ light_std=nanstd(light_int,0,2);
 %% Nutrients!
 %--------------------------------------------------------------------------------------------------------
 if ismac
-load /Users/kristenhunter-cevera/Documents/MATLAB/MVCO_Syn_analysis/MVCO_environmental_data/nut_data_reps.mat
+    load ~/seasons_of_syn_paper/nut_data_reps.mat %latest nutrients, but probably not the greatest location for them!
 elseif isunix
     load ~/Documents/seasons_of_syn_paper/matlab_scripts/nut_data_reps.mat
 end
