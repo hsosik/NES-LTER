@@ -1,3 +1,4 @@
+
 function B=matrix_const_plateau(hr,Einterp,volbins,b,dmax,E_star,Ymax)
 
 %Construct matrix A(t) for each time step within an hour based on delta and
