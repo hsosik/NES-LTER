@@ -45,9 +45,11 @@ if b > 0
             disp([num2str(ii) ' of ' num2str(a+b)])
         end
         [~,fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii-a}));
-        FCSfileinfo.matdate_start(ii) = datenum([fcshdr.date ', ' fcshdr.starttime]);
-        FCSfileinfo.matdate_stop(ii) = datenum([fcshdr.date ', ' fcshdr.stoptime]);
-        FCSfileinfo.vol_analyzed(ii) = fcshdr.VOL;
+        if ~(fcshdr.TotalEvents==0)
+            FCSfileinfo.matdate_start(ii) = datenum([fcshdr.date ', ' fcshdr.starttime]);
+            FCSfileinfo.matdate_stop(ii) = datenum([fcshdr.date ', ' fcshdr.stoptime]);
+            FCSfileinfo.vol_analyzed(ii) = fcshdr.VOL;
+        end
     end
 end
 
