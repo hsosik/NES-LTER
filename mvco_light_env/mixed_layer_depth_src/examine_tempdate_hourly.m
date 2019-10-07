@@ -284,6 +284,10 @@ for year=2003:2018
 end
 
 %% record rough dawn and dusks:
+
+addpath ~/mvco_tools/
+unqdays=unique(floor(time_hour-4/24));
+unqdays=unqdays(2:end-1); %remove a dec 31 2002 and Jan 1 2018
 dawn_dusk=nan(length(unqdays),2);
 for q=1:length(unqdays)
     jj=find(floor(solar_time-4/24)==unqdays(q));
@@ -356,7 +360,7 @@ rec=nan(length(wk_days),12);
 for w=1:length(wk_days)-1
     jj=find(unq_yrdy >= wk_days(w) &  unq_yrdy < wk_days(w+1) & ~isnan(above_06(:,2)) & (above_06(:,2)./above_06(:,3) > 0.6));
     %find yearday within week and only consider days where at least 0.6 of the hours of the day were available
-    rec(w,1:11)=histc(above_06(jj,1)./above_06(jj,2),0:0.1:1)';
+    rec(w,1:11)=histc(above_06(jj,1)./above_06(jj,2),[0:0.1:0.9 1.1])';
     rec(w,12)=sum(rec(w,1:11));
 end
 
@@ -380,7 +384,7 @@ rec=nan(366,12);
 for j=1:366
     jj=find(unq_yrdy ==j & ~isnan(above_06(:,2)) & (above_06(:,2)./above_06(:,3) > 0.8));
     %find yearday and only consider days where at least 0.8 of the hours of the day are available
-    rec(j,1:11)=histc(above_06(jj,1)./above_06(jj,2),0:0.1:1)';
+    rec(j,1:11)=histc(above_06(jj,1)./above_06(jj,2),[0:0.1:0.9 1.1])';
     rec(j,12)=sum(rec(j,1:11));
 end
 

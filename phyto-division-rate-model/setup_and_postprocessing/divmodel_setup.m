@@ -1,41 +1,49 @@
 clear
 close all
+offline=0;
 
-for year2do = 2012
+for year2do = 2003:2005
 
     disp(num2str(year2do))
-    % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m 
-    
+    % addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools/ %has cytosub_SSC2vol.m
+
     if ~isempty(strfind(computer,'WIN'))
         envpath='\\sosiknas1\lab_data\mvco\EnvironmentalData\';
         rootpath='\\sosiknas1\lab_data\MVCO\FCB\';
         model_path=fullfile('~/NES-LTER/phyto-division-rate-model/');
         addpath(fullfile('~/NES-LTER/fcb_processing/miscellaneous/')); %contains helpful scripts :)
-    elseif ~isempty(strfind(computer,'GLNXA64'))
+    elseif ~isempty(strfind(computer,'GLNXA64')) %Linux machine
+        if offline %temporary process copied files when not connected to sosiknas
+           rootpath='~/Documents/temp/';
+        else
         envpath='/mnt/Lab_data/MVCO/EnvironmentalData/';
         rootpath='/mnt/Lab_data/MVCO/FCB/';
+        end
         model_path=fullfile('~/Documents/NES-LTER/phyto-division-rate-model/');
-        addpath(fullfile('~/Documents/NES-LTER/fcb_processing/miscellaneous/')); 
+        addpath(fullfile('~/Documents/NES-LTER/fcb_processing/miscellaneous/'));
+
     else
         envpath='/Volumes/Lab_data/MVCO/EnvironmentalData/';
         rootpath='/Volumes/Lab_data/MVCO/FCB/';
         model_path=fullfile('~/NES-LTER/phyto-division-rate-model/');
         addpath(fullfile('~/NES-LTER/fcb_processing/miscellaneous/'));
+        addpath(fullfile('~/NES-LTER/fcb_processing/secondary_processing/'));
     end
-    
+
     do_Solar = 0;
     buoy_flag=0;
     solarplotflag=0;
-    
+
     do_setupdays = 0;
     folder_tag='June2019';
     do_setupdays_movie = 0;
-    
-    do_model = 1;
-    do_modelfit_movie = 1;
-    redo_model=0;
-    
-    
+
+    do_model = 0;
+    components=2; %1 or 2...
+    do_modelfit_movie = 0;
+    redo_model=1;
+
+
     switch year2do
         case 2003
             datapath = fullfile(rootpath,'MVCO_May2003/');
@@ -54,7 +62,7 @@ for year2do = 2012
     if do_Solar
         solarsavepath=fullfile(datapath, '/model/');
         if ~exist(solarsavepath, 'dir'), mkdir(solarsavepath), end
-        getSolar     
+        getSolar
     end
 
     if do_setupdays
@@ -76,18 +84,39 @@ for year2do = 2012
     %run the model:
     if do_model
 
+        datatype = 'field'; %for call_to_opt_mvco
         disp(num2str(year2do))
-        
         pathname=fullfile(datapath, ['model/input_beadmean_' folder_tag '/']);
-        savepath=fullfile(datapath,['model/output_' folder_tag '/']); %Change path to sosiknas here!
-        if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet
-        
-        addpath(model_path)
-        addpath(fullfile(model_path,'model_src/'))
-        
-        call_to_opt_mvco
-        %cd onecomp_model_code
-        %call_to_opt_field_onecomp
+        if offline
+             pathname=fullfile(rootpath,num2str(year2do),['/input_beadmean_' folder_tag '/']);
+             savepath=fullfile(rootpath,num2str(year2do),['/output_' folder_tag '/']);
+        else
+            pathname=fullfile(datapath, ['model/input_beadmean_' folder_tag '/']);
+            savepath=fullfile(datapath,['model/output_' folder_tag '/']); %Change path to sosiknas here!
+        end
+
+        if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet  
+
+        switch components
+            case 2
+                savepath=fullfile(datapath,['model/output_' folder_tag '/']); %Change path to sosiknas here!
+                if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet
+
+                addpath(model_path)
+                addpath(fullfile(model_path,'model_src/two_subpopulation'))
+
+                call_to_opt_mvco
+
+            case 1
+                savepath=fullfile(datapath,['model/onecomp_output_' folder_tag '/']); %Change path to sosiknas here!
+                if ~exist(savepath,'dir'), mkdir(savepath), end % make directory if doesn't exist yet
+
+                addpath(model_path)
+                addpath(fullfile(model_path,'model_src/one_population'))
+
+                call_to_opt_mvco_onecomp
+        end
+
     end
 
     %make model result figures:
@@ -100,19 +129,28 @@ for year2do = 2012
     end
 
     %rerun specified additional days
-    if redo_model
+    if redo_model %only for two-subcomponent model right now....
+        
+        datatype='redo';
         disp(['Redoing days in ' num2str(year2do)])
-        input_path=fullfile(datapath,'/model/input_beadmean_July2016/'); %path to setup_days input
-        savepath=fullfile(datapath,'/model/output_July2016/');  %path to model results
-        if ~exist(savepath,'dir'), mkdir(savepath), end %make directory if doesn't exist yet
+        
+        addpath(model_path)
+        addpath(fullfile(model_path,'model_src/two_subpopulation'))
+        pathname=fullfile(datapath, ['model/input_beadmean_' folder_tag '/']);
+        savepath=fullfile(datapath,['model/output_' folder_tag '/']); %Change path to sosiknas here!
+                      
         [days2redo]=exclude_modeldata(year2do); % get the list of days to redo
 
         if ~isempty(days2redo)
-            days2redo=str2num(cell2mat(days2redo(:,1))); %turn cell array into day list
-            call_to_opt_redo120
+            qq=find(cellfun('isempty',regexp(days2redo(:,2),'max|global|found|find'))==0); %some days are not fair to give model, don't redo those
+            
+            if ~isempty(qq)
+                days2redo=str2num(cell2mat(days2redo(qq,1))) %turn cell array into day list
+                call_to_opt_mvco
+            end
         end
     end
 
-    %clearvars -except year2do
+    clearvars -except year2do
     % close all
 end

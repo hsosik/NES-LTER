@@ -9,9 +9,12 @@ addpath ~/NES-LTER/fcb_processing/miscellaneous/
 
 %% Synechococcus cell abundance, fluorescence and size:
 
-beadplotflag=0; %for QC
+beadplotflag=0; %for QC of beads, SSC, PE and CHL fluorescence
+abnd_plotflag=0; %for QC abundance
 
 allmatdate=[];
+allmatdateSSC=[];
+allmatdatePE=[];
 allsynconc=[];
 allbeads=[];
 allsynSSC=[];
@@ -41,23 +44,13 @@ for year2do=2003:2018
             filelabel='Jan';
     end
     
-    if ismember(year2do,2003:2015) %temporary, until data can QC new data....
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed_July2016/grouped/groupsum.mat'])
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed_July2016/beads/beadresults.mat'])
-        [ss is]=sort(beadresults(:,1)); %sometimes data points are out of order...
-        beadresults=beadresults(is,:);
-    else
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed/grouped/groupsum.mat'])
-        %we won't use beadmatchall just yet as this seems to have some bad
-        %datapoints still in it:
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed/beads/beadresults.mat'])
-        [ss is]=sort(beadresults(:,1)); %sometimes data points are out of order...
-        beadresults=beadresults(is,:);
-    end
-    %eval(['matdate_' num2str(year2do) '=cellresultsall(:,1);'])
-    %eval(['synconc_' num2str(year2do) '=cellNUMall(:,1)./cellresultsall(:,3);'])
-  %   
-    to_use=exclude_data(cellresultsall,year2do); %ALSO REMOVES NANS!
+    %use the most up-to-date processing:
+    eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed/grouped/groupsum.mat'])
+    eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/data/processed/beads/beadresults.mat'])
+    [ss is]=sort(beadresults(:,1)); %sometimes data points are out of order...
+    beadresults=beadresults(is,:);
+    
+    [to_use,to_use_SSC,to_use_PE]=exclude_data(cellresultsall,year2do); %ALSO REMOVES NANS!
     
     %known bead outliers:
     switch year2do
@@ -74,17 +67,36 @@ for year2do=2003:2018
             ind=find(beadresults(:,13) > 7e4); %SSC outlier
             beadresults(ind,:)=NaN;
         case 2013
+            ind=find(floor(beadresults(:,1))==datenum('5-9-13') | floor(beadresults(:,1))==datenum('5-8-13')); %bad bead values for this day
+            beadresults(ind,:)=NaN;
             ind=find(beadresults(:,13) > 10e4); %SSC outlier
             beadresults(ind,:)=NaN;
             ind=find(beadresults(:,10) > 1.8e4); %PE outlier
             beadresults(ind,:)=NaN;
+        case 2015
+            ind1=find(floor(beadresults(:,1))>=datenum('5-19-15') &floor(beadresults(:,1))<=datenum('5-21-15')); %bad bead values for these days
+            ind2=find(beadresults(:,1)>= (datenum('5-24-15')+23/24) & beadresults(:,1)<=datenum('5-30-15')); %bad bead values for these days
+            ind3=find(beadresults(:,1)>= (datenum('June-6-15')+12/24) & beadresults(:,1)<=datenum('June-8-15')); %just weird bead values for these days
+            beadresults([ind1;ind2;ind3],:)=NaN;
         case 2016
+            ind=find(floor(beadresults(:,1))==datenum('9-23-16') | floor(beadresults(:,1))==datenum('9-24-16')); %bad bead values for these days
+            beadresults(ind,:)=NaN;
+            ind=find(floor(beadresults(:,1))==datenum('10-11-16')); %bad bead values for these days
+            beadresults(ind,:)=NaN;
             ind=find(beadresults(:,13) > 8e5); %SSC outlier
             beadresults(ind,:)=NaN;
             ind=find(beadresults(:,10) > 4e4); %PE outlier
             beadresults(ind,:)=NaN;
         case 2017
+            ind1=find(beadresults(:,1)>=datenum('8-28-17') & beadresults(:,1)<=datenum('8-29-17')+12/24); %did not find beads!
+            ind2=find(floor(beadresults(:,1))==datenum('8-30-17')); %did not find beads!
+            ind3=find(floor(beadresults(:,1))==datenum('9-1-17')); %did not find beads!
+            ind4=find(floor(beadresults(:,1))==datenum('9-5-17')); %did not find beads!
+            beadresults([ind1;ind2;ind3;ind4],:)=NaN;
             ind=find(beadresults(:,10) > 1.5e4); %PE/CHL outlier
+            beadresults(ind,:)=NaN;
+        case 2018
+            ind=find(floor(beadresults(:,1))==datenum('7-30-18')); %did not find beads!
             beadresults(ind,:)=NaN;
     end
     
@@ -97,61 +109,100 @@ for year2do=2003:2018
     %make sure that for a given day, the same value is used...
     
     % INTERPOLATED BEAD VALUES:
-    beadmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgSSC,cellresultsall(to_use,1),1); %one day as a gap
-    beadPEmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgPE,cellresultsall(to_use,1),1);
+    beadmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgSSC,cellresultsall(to_use_SSC,1),1); %one day as a gap
+    beadPEmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgPE,cellresultsall(to_use_PE,1),1);
     beadCHLmatch=mvco_interpolation(beadresults(:,1),sm_bead_avgCHL,cellresultsall(to_use,1),1);
     
     %and plot to check!
     if beadplotflag==1
-        figure(13)
+        figure(13), clf, set(gcf,'position',[164    55   965   930])
         subplot(3,1,1,'replace'), hold on
-        h1=plot(beadresults(:,1),beadresults(:,13),'.--');
+        h1=plot(beadresults(:,1),beadresults(:,13),'.--','color',[0.3 0.3 0.3]);
         h2=plot(beadresults(:,1),sm_bead_avgSSC,'o');
-        h3=plot(cellresultsall(to_use),beadmatch,'.');
+        h3=plot(cellresultsall(to_use_SSC),beadmatch,'.');
+        
         %check the syn!
-        sc=max(beadresults(:,13))./max(cellSSCall(to_use,1)./beadmatch);
-        h5=plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,13),0.9),'.','color',[0.5 0.5 0.5]); %shows where data is missing
-        h4=plot(cellresultsall(to_use,1),sc*cellSSCall(to_use,1)./beadmatch,'.-'); %scaled SSC
+        sc=max(beadresults(:,13))./max(cellSSCall(to_use_SSC,1)./beadmatch);       
+        h4=plot(cellresultsall(:,1),sc*cellSSCall(:,1)./mvco_interpolation(beadresults(:,1),sm_bead_avgSSC,cellresultsall(:,1),1),'.-','color',[0.6 0.6 0.6]); %scaled SSC, just for plotting - not recorded
+        %h5=plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,13),0.9),'.','color',[0.5 0.5 0.5]); %shows where data is missing  
+        h5=plot(cellresultsall(to_use_SSC,1),sc*cellSSCall(to_use_SSC,1)./beadmatch,'b.'); %scaled SSC
+        h6=plot(cellresultsall(to_use_SSC,1),sc*cellSSCmodeall(to_use_SSC,1)./beadmatch,'.','color',[0 0.5 1]); %scaled SSC
         datetick('x','mm/dd')
-        ylabel('Bead mean SSC')
-        legend([h1(1);h2(1);h3(1);h4(1);h5(1)],'bead data','smoothed bead data','matched data','scaled Syn data','unused data','location','northoutside')
+        ylabel('SSC')
+        legend([h1(1);h2(1);h3(1);h4(1);h5(1);h6(1)],'all bead data','smoothed bead data','matched data','all Syn data - mean','used scaled Syn data - mean','uesd scaled Syn data -mode','location','Eastoutside')
         title(num2str(year2do))
-    
+        
         subplot(3,1,2,'replace'), hold on
         plot(beadresults(:,1),beadresults(:,10),'.--')
         plot(beadresults(:,1),sm_bead_avgPE,'o')
-        plot(cellresultsall(to_use),beadPEmatch,'.')
-        plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,10),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
-        sc=max(beadresults(:,10))./max(cellPEall(to_use,1)./beadPEmatch);
-        plot(cellresultsall(to_use,1),sc*cellPEall(to_use,1)./beadPEmatch,'.-') %scaled SSC
+        plot(cellresultsall(to_use_PE),beadPEmatch,'.')
+        %plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,10),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
+        %check the syn!
+        sc=max(beadresults(:,10))./max(cellPEall(to_use_PE,1)./beadPEmatch);
+        plot(cellresultsall(:,1),sc*cellPEall(:,1)./ mvco_interpolation(beadresults(:,1),sm_bead_avgPE,cellresultsall(:,1),1),'.-','color',[0.6 0.6 0.6]) %scaled PE
+       
+        plot(cellresultsall(to_use_PE,1),sc*cellPEall(to_use_PE,1)./beadPEmatch,'b.') %scaled PE
+        plot(cellresultsall(to_use_PE,1),sc*cellPEmodeall(to_use_PE,1)./beadPEmatch,'.','color',[0 0.5 1])
         datetick('x','mm/dd')
-        ylabel('Bead mean PE')
-    
+        ylabel('PE')
+        
         subplot(3,1,3,'replace'), hold on
         plot(beadresults(:,1),beadresults(:,12),'.--')
         plot(beadresults(:,1),sm_bead_avgCHL,'o')
         plot(cellresultsall(to_use),beadCHLmatch,'.')
-        plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,12),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
+        %plot(cellresultsall(setxor(to_use,1:length(cellresultsall)),1),quantile(beadresults(:,12),0.9),'.','color',[0.5 0.5 0.5]) %shows where data is missing
+        %check the Syn
         sc=max(beadresults(:,12))./max(cellCHLall(to_use,1)./beadCHLmatch);
-        plot(cellresultsall(to_use,1),sc*cellCHLall(to_use,1)./beadCHLmatch,'.-') %scaled SSC
- 
+        plot(cellresultsall(:,1),sc*cellCHLall(:,1)./mvco_interpolation(beadresults(:,1),sm_bead_avgCHL,cellresultsall(:,1),1),'.-','color',[0.6 0.6 0.6]) %scaled CHL
+
+        plot(cellresultsall(to_use,1),sc*cellCHLall(to_use,1)./beadCHLmatch,'b.') %scaled CHL
+        plot(cellresultsall(to_use,1),sc*cellCHLmodeall(to_use,1)./beadCHLmatch,'.','color',[0 0.5 1])
         datetick('x','mm/dd')
-        ylabel('Bead mean CHL')
-%     
+        ylabel('CHL')
+        %
+        figure(14) %raw values...
+        subplot(2,2,1,'replace')
+        plot(cellPEmodeall(:,1),cellPEall(:,1),'.','color',[1 0.5 0])
+        title('PE'), xlabel('mode'), ylabel('mean')
+        subplot(2,2,2,'replace')
+        plot(cellCHLmodeall(:,1),cellCHLall(:,1),'.','color',[1 0 0])
+        title('CHL'), xlabel('mode'), ylabel('mean')
+        subplot(2,2,3,'replace')
+        plot(cellSSCmodeall(:,1),cellSSCall(:,1),'.','color',[0 0.8 0])
+        title('SSC'), xlabel('mode'), ylabel('mean')
+        subplot(2,2,4,'replace')
+        plot(cellPEall(:,1),cellCHLall(:,1),'.')
+        xlabel('PE')
+        ylabel('CHL')
+        
         keyboard
     end
+    
+    if abnd_plotflag==1
+        
+        figure(6)
+        plot(cellresultsall(:,1),cellNUMall(:,1)./cellresultsall(:,3),'.-'), hold on
+        plot(cellresultsall(to_use,1),cellNUMall(to_use,1)./cellresultsall(to_use,3),'.')
+        datetick('x','mm/dd')
+        
+        keyboard
+    end
+    
     %normalize if needed and record:
     allmatdate=[allmatdate; cellresultsall(to_use,1)];
+    allmatdateSSC=[allmatdateSSC; cellresultsall(to_use_SSC,1)];
+    allmatdatePE=[allmatdatePE; cellresultsall(to_use_PE,1)];
+    
     allsynconc=[allsynconc; cellNUMall(to_use,1)./cellresultsall(to_use,3)]; %syn cell counts
     
-    allsynSSC=[allsynSSC; cellSSCall(to_use,1)./beadmatch]; %SSC
-    allsynSSCmode=[allsynSSCmode; cellSSCmodeall(to_use,1)./beadmatch];
+    allsynSSC=[allsynSSC; cellSSCall(to_use_SSC,1)./beadmatch]; %SSC
+    allsynSSCmode=[allsynSSCmode; cellSSCmodeall(to_use_SSC,1)./beadmatch];
     
-    allsynvol = [allsynvol; cytosub_SSC2vol(cellSSCall(to_use,1)./beadmatch)]; %volume calc
-    allsynvolmode = [allsynvolmode; cytosub_SSC2vol(cellSSCmodeall(to_use,1)./beadmatch)];
+    allsynvol = [allsynvol; cytosub_SSC2vol(cellSSCall(to_use_SSC,1)./beadmatch)]; %volume calc
+    allsynvolmode = [allsynvolmode; cytosub_SSC2vol(cellSSCmodeall(to_use_SSC,1)./beadmatch)];
     
-    allsynPE=[allsynPE; cellPEall(to_use,1)./beadPEmatch]; %PE
-    allsynPEmode=[allsynPEmode; cellPEmodeall(to_use,1)./beadPEmatch];
+    allsynPE=[allsynPE; cellPEall(to_use_PE,1)./beadPEmatch]; %PE
+    allsynPEmode=[allsynPEmode; cellPEmodeall(to_use_PE,1)./beadPEmatch];
     
     allsynCHL=[allsynCHL; cellCHLall(to_use,1)./beadCHLmatch]; %CHL
     allsynCHLmode=[allsynCHLmode; cellCHLmodeall(to_use,1)./beadCHLmatch];
@@ -165,7 +216,7 @@ end
 %smooth the abundance data over 48 hours, with data separated by 1 day treated as separate chunks:
 synrunavg=mvco_running_average(allmatdate, allsynconc,48,1);
 
-clearvars -except synrunavg allmatdate allsynconc allsynSSC* allsynPE* allsynvol* allsynCHL* FCBnum
+clearvars -except synrunavg allmatdat* allsynconc allsynSSC* allsynPE* allsynvol* allsynCHL* FCBnum
 
 %% bin syn cell abundance:
 
@@ -209,29 +260,43 @@ for year2do=2003:2018
             filelabel='Jan';
     end
     
+    
     rootpath='/Volumes/Lab_data/MVCO/FCB/';
+    eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_June2019/mvco_14par_dmn_' num2str(year2do) '.mat'])
     
-    if ismember(year2do,2016:2018)%exist(fullfile(rootpath,['MVCO_' filelabel num2str(year2do) '/model/output_Jan2019/']))
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_Jan2019/mvco_14par_dmn_' num2str(year2do) '.mat'])       
-    else
-        eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_July2016/mvco_14par_dmn_' num2str(year2do) '.mat'])        
-    end
+    %Some sorting out of division rates for now:
+    % Incoporate any re-do days, but still screen out days that had bad SSC:
     
-    [days2redo, days2exclude]=exclude_modeldata(year2do);
+    [days2redo]=exclude_modeldata(year2do); %list of troublesome days
+    days2redo=str2num(cell2mat(days2redo(:,1))); %every year has at least one day....
     
-    if ~isempty(days2exclude)
-        days2exclude=str2num(cell2mat(days2exclude(:,1)));
-        to_use=find(ismember(modelresults(:,1),days2exclude)==0);
+    if ~isempty(days2redo) %check if some of these days were rerun?
+         
+        %IF WANT TO SWAP IN MODEL RUN REDOS:
+%          redo_file=['/Volumes/Lab_data/MVCO/FCB/MVCO_' filelabel num2str(year2do) '/model/output_June2019/mvco_14par_dmn_' num2str(year2do) '_redos.mat'];  
+%          
+%          if exist(redo_file,'file')==2 %if so, check likelihoods and swap out!
+%              
+%              temp = load(redo_file,'mat','modelresults');
+%              modelres_redo = temp.modelresults;
+%                           
+%              ii = find(ismember(modelresults(:,1),modelres_redo(:,1))); %match up days
+%              
+%              for q=1:size(modelres_redo,1)
+%                 if modelres_redo(q,16) < modelresults(ii(q),16) && modelres_redo(q,1)==modelresults(ii(q),1) %a double check to make sure days match!
+%                    modelresults(ii(q),:)=modelres_redo(q,:); %replace!
+%                    disp([num2str(q) ': Replacing mu for day ' datestr(modelresults(ii(q),1)) ' from ' num2str(modelresults(ii(q),17)) ' with ' num2str(modelres_redo(q,17))])
+%                    days2redo=setxor(modelresults(ii(q),1),days2redo); 
+%                 end
+%              end
+%              
+%          end
+     
+        to_use=find(ismember(modelresults(:,1),days2redo)==0);
+    
     else
         to_use=find(~isnan(modelresults(:,1)) & modelresults(:,1)~=0); %just in case ;)
     end
-    
-    %     clf,
-    %     plot(modelresults(:,1),modelresults(:,17),'r.','markersize',20)
-    %     hold on
-    %     plot(modelresults(to_use,1),modelresults(to_use,17),'.','color',[0.2081    0.1663    0.5292],'markersize',20)
-    %     title(num2str(year2do))
-    %     pause
     
     allgrowthrates=[allgrowthrates; modelresults(to_use,17)];
     modelallmatdate=[modelallmatdate; modelresults(to_use,1)];
@@ -239,24 +304,7 @@ for year2do=2003:2018
     
 end
 
-%
-% remove days that don't have a rate (model run didn't work...)
-% ind=find(modelallmatdate==0);
-% ii=setdiff(1:length(modelallmatdate),ind);
-% modelallmatdate=modelallmatdate(ii);
-% allgrowthrates=allgrowthrates(ii);
-% allMR=allMR(ii,:);
-
-%% and those above 2 per day?
-ind=find(allgrowthrates > 2);
-allgrowthrates(ind)=NaN;
-
-% % exclude spurious mu's based on temperature data:
-% [mdate_mu, daily_mu, yearlist, ydmu ] = timeseries2ydmat(modelallmatdate, allgrowthrates);
-% daily_mu=[nan(366,1) daily_mu]; %just if don't have 2003 data yet...
-% jj=find((daily_mu > 0.5 & Tday < 8) | (daily_mu > 0.4 & Tday < 4)) % | (daily_mu > 0.3 & Tday < 6));
-% daily_mu(jj)=nan;
-
+%% modelresults above 2 per day should have been already excluded!
 clearvars 'modelresults*' 'allmodelruns*' ii ind MR filelist filename %remove individual years from workspace
 %clearvars -except synrunavg allmatdate allsynconc allgrowthrates allMR modelallmatdate
 
@@ -264,30 +312,23 @@ clearvars 'modelresults*' 'allmodelruns*' ii ind MR filelist filename %remove in
 [time_mu, daily_mu, muyears] = timeseries2ydmat(modelallmatdate, allgrowthrates);
 
 % %exclude suspicious mu's baesd on temperature?
-[smu, new_mu_est, no_new_est]=replace_suspicious_mus(time_mu,daily_mu,0); %1 or 0 for plotflag!
+extraflag= 0;  %this flag is used in repalce_suspicious_mus; looks into second best likelihood options, [smu, new_mu_est, no_new_est]
+[smu]=replace_suspicious_mus(time_mu,daily_mu,0,0); %1 or 0 for plotflag!
 
-%%
+%% Compare with temperature!
 
-
-if exist('/Volumes/Lab_data/MVCO/','dir')
+if ismac
     rootpath='/Volumes/Lab_data/MVCO/FCB/';
     load(fullfile(rootpath,'/Syn_and_MVCO_packaged_data/mvco_envdata_current.mat'),'Tbeam_corr')
 else
     rootpath='\\sosiknas\Lab_data\MVCO\FCB\';
-   load(fullfile(rootpath,'\Syn_and_MVCO_packaged_data/mvco_envdata_current.mat'),'Tbeam_corr');
+    load(fullfile(rootpath,'\Syn_and_MVCO_packaged_data\mvco_envdata_current.mat'),'Tbeam_corr');
 end
-%load('~/MVCO_light_at_depth/syn_data_analysis/mvco_envdata_29Jan2018.mat', 'Tbeam_corr') %mvco_envdata_16Aug2016.mat
 
 figure, plot(Tbeam_corr,daily_mu,'.','color',[0.4 0.4 0.4])
-hold on, plot(Tbeam_corr(new_mu_est(:,1)),daily_mu(new_mu_est(:,1)),'rp')
-plot(Tbeam_corr(no_new_est(:,1)),daily_mu(no_new_est(:,1)),'bp')
-% plot(Tbeam_corr(new_mu_est(:,1)),new_mu_est(:,2),'kp')
-plot(Tbeam_corr(no_new_est(:,1)),no_new_est(:,3),'cp')
+hold on, plot(Tbeam_corr(smu),daily_mu(smu),'rp')
+daily_mu(smu)=nan; %only a handful! Good!
 
-%% Here, have the choice to replace suspicious mus with close estimates, but for now, let's just set those to nan:
-daily_mu(new_mu_est(:,1))=nan; %new_mu_est(:,2);
-daily_mu(no_new_est(:,1))=nan;
-%%
 % adjust size for mu matrix that may not have all the years yet:
 [yearsmissing, iy] = setdiff(synyears,muyears);
 if ~isempty(yearsmissing)
@@ -337,7 +378,7 @@ for year2do=2003:2018;
     if ismember(year2do,[2005:2007 2010:2013])
         eval(['load ' rootpath 'MVCO_' filelabel num2str(year2do) '/model/solar' num2str(year2do) '_w_buoy.mat'])
     else
-    eval(['load ' rootpath 'MVCO_' filelabel num2str(year2do) '/model/solar' num2str(year2do) '.mat'])
+        eval(['load ' rootpath 'MVCO_' filelabel num2str(year2do) '/model/solar' num2str(year2do) '.mat'])
     end
     
     %eval(['load /Volumes/Lab_data/MVCO/FCB/MVCO_' year2do num2str(year) '/model/solar' num2str(year) '.mat;']) %Change path here!
@@ -473,53 +514,12 @@ loss_std=nanstd(daily_loss,0,2);
 [loss_avg_wk, loss_std_wk] = dy2wkmn_climatology(daily_loss, synyears);
 [loss_med_wk] = dy2wkmn_medclimatology(daily_loss, synyears);
 
-%% we need volume and fluorescence to match up to light, which was calc on local time:
 
-%from hourly mean values (already bead normalized):
-% [time_PE, daily_PE] = timeseries2ydmat(allmatdate-4/24, allsynPE); %Syn PE fluorescence
-% [time_SSC, daily_SSC] = timeseries2ydmat(allmatdate-4/24, allsynSSC); %SSC, bead normalized
-% [time_vol, daily_vol] = timeseries2ydmat(allmatdate-4/24, allsynvol); %Cell volume from SSC-bead normalized
-% [time_CHL, daily_CHL] = timeseries2ydmat(allmatdate-4/24, allsynCHL); %Syn CHL fluorescence
-% 
-% PE_avg=nanmean(daily_PE,2);
-% PE_med=nanmedian(daily_PE,2);
-% SSC_avg=nanmean(daily_SSC,2);
-% SSC_med=nanmedian(daily_SSC,2);
-% vol_avg=nanmean(daily_vol,2);
-% vol_med=nanmedian(daily_vol,2);
-% CHL_avg=nanmean(daily_CHL,2);
-% CHL_med=nanmedian(daily_CHL,2);
-% 
-% [PE_avg_wk, PE_std_wk] = dy2wkmn_climatology(daily_PE, synyears);
-% [CHL_avg_wk, CHL_std_wk] = dy2wkmn_climatology(daily_CHL, synyears);
-% [SSC_avg_wk, SSC_std_wk] = dy2wkmn_climatology(daily_SSC, synyears);
-% [vol_avg_wk, vol_std_wk] = dy2wkmn_climatology(daily_vol, synyears);
-% 
-% %from hourly mode values:
-% [time_PEmode, daily_PEmode] = timeseries2ydmat(allmatdate-4/24, allsynPEmode); %Syn PE fluorescence
-% [time_SSCmode, daily_SSCmode] = timeseries2ydmat(allmatdate-4/24, allsynSSCmode); %smoothed abundance
-% [time_volmode, daily_volmode] = timeseries2ydmat(allmatdate-4/24, allsynvolmode); %smoothed abundance
-% [time_CHLmode, daily_CHLmode] = timeseries2ydmat(allmatdate-4/24, allsynCHLmode); %Syn CHL fluorescence
-% 
-% PE_mode_avg=nanmean(daily_PEmode,2);
-% SSC_mode_avg=nanmean(daily_SSCmode,2);
-% vol_mode_avg=nanmean(daily_volmode,2);
-% CHL_mode_avg=nanmean(daily_CHLmode,2);
-% 
-% [PE_mode_avg_wk, PE_mode_std_wk] = dy2wkmn_climatology(daily_PEmode, synyears);
-% [SSC_mode_avg_wk, SSC_mode_std_wk] = dy2wkmn_climatology(daily_SSCmode, synyears);
-% [vol_mode_avg_wk, vol_mode_std_wk] = dy2wkmn_climatology(daily_volmode, synyears);
-% [CHL_mode_avg_wk, CHL_mode_std_wk] = dy2wkmn_climatology(daily_CHLmode, synyears);
-
-%medians and max/min from the mode values:
-% [time_vol_Q, daily_vol_Q10] = timeseries2ydmat_quantile(allmatdate, allsynvolmode, .10);
-% [time_vol_Q, daily_vol_Q90] = timeseries2ydmat_quantile(allmatdate, allsynvolmode, .90);
-% [time_vol_Q, daily_vol_Q50] = timeseries2ydmat_quantile(allmatdate, allsynvolmode, .50);
-%[time_vol_Q, daily_vol_max] = timeseries2ydmat_quantile(allmatdate-4/24, allsynvolmode, 1);
-%% So...we also want the minimum cell volume and then the corresponding PE fluorscence that goes with it as metrics:
+%% MINIMUM AND MAXIMUM CELL VOLUME:
 
 unqdays=unique(floor(allmatdate));
-minvol=nan(length(unqdays),3); maxvol=nan(length(unqdays),3);  minPE=nan(length(unqdays),3); maxPE=nan(length(unqdays),3);
+minvol=nan(length(unqdays),4); maxvol=nan(length(unqdays),4);  %minPE=nan(length(unqdays),4); maxPE=nan(length(unqdays),4);
+
 for q=1:length(unqdays)
     day=unqdays(q);
     ww=find(dawnhours(:,1)==day);
@@ -531,40 +531,59 @@ for q=1:length(unqdays)
         dawn=dawnhours(ww,2);
     end
     
-    qq=find(allmatdate >= day+dawn/24 & allmatdate < day+1+dawn/24); %should be dawn to dawn window...
+    qq=find(allmatdateSSC >= day+dawn/24 & allmatdateSSC < day+1+dawn/24); %should be dawn to dawn window...
+    
     if length(qq) > 22  %we also really only want mins from complete days...
         
         [mm, im]=min(allsynvolmode(qq));
         minvol(q,1)=mm; %min volu
         minvol(q,2)=qq(im);  %index back for date and other matrices
-        minvol(q,3)=(allmatdate(qq(im))-day-dawn/24)*24; %hours after or before dawn
+        minvol(q,3)=(allmatdateSSC(qq(im))-day-dawn/24)*24; %hours after or before dawn
+        minvol(q,4)=allmatdateSSC(qq(im));
         
         [mm, im]=max(allsynvolmode(qq));
         maxvol(q,1)=mm; %min volu
         maxvol(q,2)=qq(im);  %index back for date and other matrices
-        maxvol(q,3)=(allmatdate(qq(im))-day-dawn/24)*24; %hours after or before dawn
-        
-        [mm, im]=min(allsynPEmode(qq));
-        minPE(q,1)=mm; %min volu
-        minPE(q,2)=qq(im);  %index back for date and other matrices
-        minPE(q,3)=(allmatdate(qq(im))-day-dawn/24)*24; %hours after or before dawn
-        
-        [mm, im]=max(allsynPEmode(qq));
-        maxPE(q,1)=mm; %min volu
-        maxPE(q,2)=qq(im);  %index back for date and other matrices
-        maxPE(q,3)=(allmatdate(qq(im))-day-dawn/24)*24; %hours after or before dawn
-        
+        maxvol(q,3)=(allmatdateSSC(qq(im))-day-dawn/24)*24; %hours after or before dawn
+        maxvol(q,4)=allmatdateSSC(qq(im));
     end
+%     
+%     qq=find(allmatdatePE >= day+dawn/24 & allmatdatePE < day+1+dawn/24); %should be dawn to dawn window...
+%     if length(qq) > 22  %we also really only want mins from complete days...
+%    
+%         [mm, im]=min(allsynPEmode(qq));
+%         minPE(q,1)=mm; %min volu
+%         minPE(q,2)=qq(im);  %index back for date and other matrices
+%         minPE(q,3)=(allmatdatePE(qq(im))-day-dawn/24)*24; %hours after or before dawn
+%         minPE(q,4)=allmatdatePE(qq(im));
+%         
+%         [mm, im]=max(allsynPEmode(qq));
+%         maxPE(q,1)=mm; %min volu
+%         maxPE(q,2)=qq(im);  %index back for date and other matrices
+%         maxPE(q,3)=(allmatdatePE(qq(im))-day-dawn/24)*24; %hours after or before dawn
+%         maxPE(q,4)=allmatdatePE(qq(im));
+%     end
 end
 
 
-%% IF WANT MEASUREMENT AROUND DAWN FOR EACH DAY:
-%One could also imagine just taking the metrics of the before dawn hour of each day...
-%find predawn hour of each day:
+%% PE, VOLUME, AND SYN AROUND DAWN: 
+
+%could have probably incorporated this above during net growth rate calculations...
+
+% Find predawn hour of each day:
+
 unqdays=unique(floor(allmatdate));
-dawnPE=nan(length(unqdays),4);
+
+dawnPE=nan(length(unqdays),7);
+dawnPEmode=nan(length(unqdays),7);
+dawn_syn=nan(length(unqdays),6);
+dawn_vol=nan(length(unqdays),6); %this is the mode!!!
+
+
 for q=1:length(unqdays)
+    
     day=unqdays(q);
+    
     ww=find(dawnhours(:,1)==day);
     if isempty(ww) %use median value of dawn instead
         jj=find_yearday(day);
@@ -574,65 +593,102 @@ for q=1:length(unqdays)
         dawn=dawnhours(ww,2);
     end
     
-    qq=find(allmatdate >= day+dawn/24-1.5/24 & allmatdate <= day+dawn/24+1.5/24); %3 hours around dawn
+    qq=find(allmatdatePE >= day+dawn/24-1.5/24 & allmatdatePE <= day+dawn/24+1.5/24); %3 hours around dawn
     
     if ~isempty(qq)
-        [mm, im]=min(allsynPE(qq)); %min(allsynvolmode(qq));
+        [mm, im]=min(allsynPE(qq)); %min(allsynvolmode(qq));       
         dawnPE(q,1)=mm; %min mean PE value around dawn
         dawnPE(q,2)=qq(im);  %index back for date and other matrices
-        dawnPE(q,3)=(allmatdate(qq(im))-day)*24-dawn; %hours after or before 'dawn'
+        dawnPE(q,3)=(allmatdatePE(qq(im))-day)*24-dawn; %hours after or before 'dawn'
         dawnPE(q,4)=mean(allsynPE(qq));
+        dawnPE(q,5)=day+dawn/24; %raw date!
+        dawnPE(q,6)=length(qq); %how many hours?
+        
+        [mm, im]=min(allsynPEmode(qq)); %why not do an average?
+        dawnPEmode(q,1)=mm; %min mean PE value around dawn
+        dawnPEmode(q,2)=qq(im);  %index back for date and other matrices
+        dawnPEmode(q,3)=(allmatdatePE(qq(im))-day)*24-dawn; %hours after or before 'dawn'
+        dawnPEmode(q,4)=mean(allsynPEmode(qq));
+        dawnPEmode(q,5)=day+dawn/24; %raw date!
+        dawnPEmode(q,6)=length(qq); %how many hours?
+        
+        %find corresponding hours in allmatdateSSC:
+        ww=nan(length(qq),1);
+        for i=1:length(qq)
+            rr=find(allmatdateSSC == allmatdatePE(qq(i)));  
+            if ~isempty(rr)
+                ww(i)=find(allmatdateSSC == allmatdatePE(qq(i)));  
+            end
+        end
+        ww=ww(~isnan(ww));       
+        if ~isempty(ww)
+            dawnPEmode(q,7)=nanmean(allsynvolmode(ww));
+            dawnPE(q,7)=nanmean(allsynvolmode(ww));
+        end
     end
+    
+    qq1=find(allmatdateSSC >= day+dawn/24-1.5/24 & allmatdateSSC <= day+dawn/24+1.5/24); %3 hours around dawn
+    
+    if ~isempty(qq1)
+        [mm, im]=min(allsynvolmode(qq1)); %min(allsynvolmode(qq));
+        dawn_vol(q,1)=mm; %min mean PE value around dawn
+        dawn_vol(q,2)=qq1(im);  %index back for date and other matrices
+        dawn_vol(q,3)=(allmatdateSSC(qq1(im))-day)*24-dawn; %hours after or before 'dawn'
+        dawn_vol(q,4)=mean(allsynvolmode(qq1));
+        dawn_vol(q,5)=day+dawn/24; %raw date!
+        dawn_vol(q,6)=length(qq1); %how many hours?
+    end
+    
+    %A separate calculation for dawn volume as could have SSC but not PE and vice versa:    
+    qq2=find(allmatdate >= day+dawn/24-1.5/24 & allmatdate <= day+dawn/24+1.5/24); %3 hours around dawn
+    
+    if ~isempty(qq2)
+        [mm, im]=min(synrunavg(qq2)); %min(allsynvolmode(qq));
+        dawn_syn(q,1)=mm; %min mean PE value around dawn
+        dawn_syn(q,2)=qq2(im);  %index back for date and other matrices
+        dawn_syn(q,3)=(allmatdate(qq2(im))-day)*24-dawn; %hours after or before 'dawn'
+        dawn_syn(q,4)=mean(synrunavg(qq2));
+        dawn_syn(q,5)=day+dawn/24; %dawn date!
+        dawn_syn(q,6)=length(qq2); %how many hours?
+    end
+    
 end
 
 
-
-%%
-minvol=minvol(~isnan(minvol(:,1)),:); %remove nan's
+%% 
+minvol=minvol(~isnan(minvol(:,1)),:); %remove nan's and collapse
 maxvol=maxvol(~isnan(maxvol(:,1)),:);
-minPE=minPE(~isnan(minPE(:,1)),:); %min PE over day
-dawnPE=dawnPE(~isnan(dawnPE(:,1)),:); %min PE around dawn
 
-%keyboard
+dawnPEmode=dawnPEmode(~isnan(dawnPEmode(:,1)),:); 
+dawn_syn=dawn_syn(~isnan(dawn_syn(:,1)),:); 
+dawn_vol=dawn_vol(~isnan(dawn_vol(:,1)),:);
+
 %% into matrices:
-[time_volmin,daily_vol_min]=timeseries2ydmat_quantile(allmatdate(minvol(:,2)),minvol(:,1),0); %at this point, just using the script to bin into matrix for timeseries
-[time_volmax,daily_vol_max]=timeseries2ydmat_quantile(allmatdate(maxvol(:,2)),maxvol(:,1),0); %at this point, just using the script to bin into matrix for timeseries
 
-%normalize PE by volume:
-[time_PEmin,daily_PE_min]=timeseries2ydmat(allmatdate(minPE(:,2)),minPE(:,1)); %at this point, just using the script to bin into matrix for timeseries
-[time_PEmin,daily_PEminvol_ratio]=timeseries2ydmat(allmatdate(minPE(:,2)),allsynPEmode(minPE(:,2))./allsynvolmode(minPE(:,2))); %at this point, just using the script to bin into matrix for timeseries
+[time_volmin,daily_vol_min]=timeseries2ydmat_quantile(allmatdateSSC(minvol(:,2)),minvol(:,1),0); %at this point, just using the script to bin into matrix for timeseries
+[time_volmax,daily_vol_max]=timeseries2ydmat_quantile(allmatdateSSC(maxvol(:,2)),maxvol(:,1),0); %at this point, just using the script to bin into matrix for timeseries
 
-%PE around dawn:
+[time_PE_dawn,daily_PE_dawn]=timeseries2ydmat(dawnPEmode(:,5),dawnPEmode(:,4)); %these use the averages around dawn!
+[time_syn_dawn,daily_syn_dawn]=timeseries2ydmat(dawn_syn(:,5),dawn_syn(:,4));
+[time_vol_dawn,daily_vol_dawn]=timeseries2ydmat(dawn_vol(:,5),dawn_vol(:,4));
 
-%MEAN of MEAN PE's
-%RATIO THOUGH IS MIN PE AROUND DAWN divided by that volue...
-[time_PE_dawn,daily_PE_dawn]=timeseries2ydmat(allmatdate(dawnPE(:,2)),dawnPE(:,4)); 
-[time_PEmin_dawn,daily_PEvol_ratio_dawn]=timeseries2ydmat(allmatdate(dawnPE(:,2)),dawnPE(:,1)./allsynvolmode(dawnPE(:,2))); 
+% normalize PE by volume:
+[time_PEmin_dawn,daily_PEvol_ratio_dawn]=timeseries2ydmat(dawnPEmode(:,5),dawnPEmode(:,4)./dawnPEmode(:,7)); %also averages
 
-%%
-%[time_vol_Q, daily_vol_min] = timeseries2ydmat_quantile(allmatdate-4/24, allsynvolmode, 0);
-%[time_vol_Q, daily_vol_max] = timeseries2ydmat_quantile(allmatdate-4/24, allsynvolmode, 1);
-
-% [time_PE, daily_PE_min] = timeseries2ydmat_quantile(allmatdate-4/24, allsynPEmode,0); %Syn PE fluorescence
-% [time_PE, daily_PE_max] = timeseries2ydmat_quantile(allmatdate-4/24, allsynPEmode,1); %Syn PE fluorescence
+%% and averages:
 
 vol_avgmax=nanmean(daily_vol_max,2);
 vol_avgmin=nanmean(daily_vol_min,2);
+vol_dawn_avg = nanmean(daily_vol_dawn,2);
+syn_dawn_avg = nanmean(daily_syn_dawn,2);
 
-%PE_avgmax=nanmean(daily_PE_max,2);
-PE_avgmin=nanmean(daily_PE_min,2);
 PE_avgdawn=nanmean(daily_PE_dawn,2);
-PEminvol_ratio_avg=nanmean(daily_PEminvol_ratio,2);
 PEdawnvol_ratio_avg=nanmean(daily_PEvol_ratio_dawn,2);
 
-[PEmin_wkmed] = dy2wkmn_medclimatology(daily_PE_min, synyears);
 [PEdawn_wkmed] = dy2wkmn_medclimatology(daily_PE_dawn, synyears);
-%[PEmax_wkmed] = dy2wkmn_medclimatology(daily_PE_max, synyears);
 [volmin_wkmed] = dy2wkmn_medclimatology(daily_vol_min, synyears);
 
 %%
-
-% eval(['save /Users/kristenhunter-cevera/Documents/MATLAB/MVCO_Syn_analysis/syndata_TEMP_' dd(1:2) dd(4:6) dd(8:end) '.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate'])
 
 if exist('/Volumes/Lab_data/MVCO/','dir')
     savepath=fullfile('/Volumes/Lab_data/MVCO/FCB/Syn_and_MVCO_packaged_data/');
@@ -641,7 +697,7 @@ else
 end
 
 dd=date;
-eval(['save ' savepath 'syndata_current.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate FCBnum'])
+eval(['save ' savepath 'syndata_current.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdat* FCBnum'])
 %save a backup copy, if you'd like to return to this later:
-eval(['save ' fullfile(savepath,'older_products/') 'syndata_' dd(1:2) dd(4:6) dd(8:end) '.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdate FCBnum'])
+eval(['save ' fullfile(savepath,'older_products/') 'syndata_' dd(1:2) dd(4:6) dd(8:end) '.mat *syn* *mu* *net* *loss* *PE* *SSC* *vol* *CHL* allgrowthrates allMR modelallmatdate allmatdat* FCBnum'])
 

@@ -2,12 +2,16 @@
 
 % MAKE SURE CONNECTED TO SOSIKNAS FIRST!!!
 
-addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools
-
-if exist('/Volumes/Lab_data/MVCO/','dir')
+if ismac 
     envpath=fullfile('/Volumes/Lab_data/MVCO/EnvironmentalData/');
     solarpath=fullfile('/Volumes/Lab_data/MVCO/FCB/');
     savepath=fullfile('/Volumes/Lab_data/MVCO/FCB/Syn_and_MVCO_packaged_data/');
+    addpath /Users/kristenhunter-cevera/Documents/MATLAB/mvco_tools
+elseif isunix
+    addpath ~/Documents/mvco_tools 
+    envpath=fullfile('/mnt/Lab_data/MVCO/EnvironmentalData/');
+    solarpath=fullfile('/mnt/Lab_data/MVCO/FCB/');
+    savepath=fullfile('/mnt/Lab_data/MVCO/FCB/Syn_and_MVCO_packaged_data/');
 else
    envpath=fullfile('\\sosiknas\Lab_data\MVCO\EnvironmentalData\');
    solarpath=fullfile('\\sosiknas\Lab_data\MVCO\FCB\');
@@ -203,9 +207,12 @@ light_std=nanstd(light_int,0,2);
 
 %% Nutrients!
 %--------------------------------------------------------------------------------------------------------
-
-load /Users/kristenhunter-cevera/Documents/MATLAB/MVCO_Syn_analysis/MVCO_environmental_data/nut_data_reps.mat
-
+if ismac
+    load ~/seasons_of_syn_paper/nut_data_reps.mat %latest nutrients, but probably not the greatest location for them!
+elseif isunix
+    load ~/Documents/seasons_of_syn_paper/matlab_scripts/nut_data_reps.mat
+end
+    
 % find tower or node stations:
 
 tower_ind=find(station4nut==4 | station4nut==5); %4 is tower, 5 is node I believe....
