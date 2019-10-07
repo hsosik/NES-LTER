@@ -41,13 +41,13 @@ for iii = 1:length(filetype2exclude)
 end
 
 %use this loop to view just one type
-% t = strmatch('SPIROPA_RB1904_Grazer12', Attune.FCSfileinfo.filelist);
-% if ~isempty(t)
-%     f = fieldnames(Attune.FCSfileinfo);
-%     for ii = 1:length(f)
-%         Attune.FCSfileinfo.(f{ii}) = Attune.FCSfileinfo.(f{ii})(t);
-%     end
-% end
+%   t = strmatch('SPIROPA_TN368_Grazer12', Attune.FCSfileinfo.filelist);
+%    if ~isempty(t)
+%        f = fieldnames(Attune.FCSfileinfo);
+%        for ii = 1:length(f)
+%            Attune.FCSfileinfo.(f{ii}) = Attune.FCSfileinfo.(f{ii})(t);
+%        end
+%    end
 
 filelist = Attune.FCSfileinfo.filelist;
 AttuneTable = table(Attune.FCSfileinfo.filelist, datetime(Attune.FCSfileinfo.matdate_start, 'ConvertFrom', 'datenum'), datetime(Attune.FCSfileinfo.matdate_stop, 'ConvertFrom', 'datenum'), Attune.FCSfileinfo.vol_analyzed/1e6, 'VariableNames', {'Filename' 'StartDate' 'StopDate' 'VolAnalyzed_ml'});
@@ -72,7 +72,7 @@ for count = 1:length(filelist) %2830
     filename = [fpath filelist{count}];
     disp(filename)
     %reading in each FCS file with fca_readfcs
-    [fcsdat,fcshdr] =fca_readfcs(filename);
+    [fcsdat,fcshdr] = fca_readfcs(filename);
     %t = find(fcsdat(:,12)>500 & fcsdat(:,3)>100);  %April 2018
     t = find(fcsdat(:,12)>200 & fcsdat(:,3)>200);  %RBH??
     QC_flowrate(count,1) = (median(fcsdat(t,3)./fcsdat(t,12)));
@@ -85,7 +85,6 @@ for count = 1:length(filelist) %2830
     
     [~,fname] = fileparts(filename);
     [ class ] = eval([assign_class_function '( fcsdat, fcshdr, plot_flag, fname, QC_flag, Attune.FCSfileinfo.matdate_start(count) );']); clear fname
-    
     %compute the cell volume from side scattering (Area, integrated signal)
     temp = fcsdat(:,3); %SSC-A
     temp(temp<0) = NaN; %FIGURE OUT LATER -- why are there SSC-A < 0 !!!???
