@@ -21,8 +21,7 @@ function [ class ] = assign_class_spiropa( fcsdat, fcshdr, plot_flag, filename, 
     %simple rectangle for syn main gate
     %gsyn_11_19 = [1 300 ; 1e4 2e5]; %[Xmin Ymin; Xmax Ymax]
     gsyn_11_19 = [100 500 ; 8e3 500; 8e3 4e5; 100 4e5]; %[Xmin Ymin; Xmax Ymax]
-   % if strmatch('SPIROPA_RB1904_Grazer',filename)
-   % end
+ 
     eukminX = 500;
     geuk_15_19 = [eukminX 300; 10000 300; 1100000 11000; 1100000 1; eukminX 1];
     
@@ -122,7 +121,7 @@ function [ class ] = assign_class_spiropa( fcsdat, fcshdr, plot_flag, filename, 
         line(ax9, xlim(ax9), xlim(ax9)*1.2)
         line(ax9, xlim(ax9), xlim(ax9)*.6)
         make_plot(ax10,11,12, mylim1)
-        pause (.01)
+        pause %(.01)
     end
         
     function make_plot(ax, nparX, nparY, mylim)
