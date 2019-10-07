@@ -1,10 +1,17 @@
 function [] = process_attune_v3(basepath, assign_class_function, plot_flag, filetype2exclude)
 %function [] = process_attune_v3(basepath, assign_class_function, plot_flag)
 %
-%input: basepath for cruise or project with Attune NxT data
+%input: basepath for cruise or project with Attune NxT data (assumes 'FSC' folder exists at basepath location)
 %       assign_class_function: name of function specifying gating details for class boundaries
 %       plot_flag: true to plot cytograms with classes by color
+%       filetype2exclude: cell array of leading strings for any file names to ignore    
+%
 %output: results stored to data file in summary folder under basepath
+%
+%For example:
+%filetype2exclude = {'FCB_bead_check' 'Cultures'};s 
+%process_attune_v3('\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\', 'assign_class_spiropa_TN368', true, filetype2exclude)
+
 %
 %Heidi M. Sosik, Woods Hole Oceanographic Institution, Jan 2019
 
