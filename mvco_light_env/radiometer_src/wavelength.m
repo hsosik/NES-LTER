@@ -3,6 +3,8 @@
 %below is a bit convoluted...lots of different thigns recorded, etc...not
 %the easiest to deal with or revisit...
 
+
+%SAVED AS wv-lite.mat!
 %% A time series plot of K_d values!
 
 %sourcepath=fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\processed_radiometer_files\'); % path to folders with raw data...
@@ -196,6 +198,8 @@ end
 
 wv_record=[find_yearday(wv_record(:,1)) wv_record];
 
+%SAVED AS WV-LITE.MAT!!!
+
 %% recode for easier station finding:
 approx_station_loc=[4 -70.567 41.325; %tower
     3 -70.5564 41.3366; %node
@@ -388,9 +392,14 @@ set(hbar,'location','northoutside')
 %Ooh! and then and then put the lambda specific wavelengths next to them!
 
 
-%% An example plot of solar and wavelengths for 4m, 8m, 12m depths
-q=30;
-figure,hold on
+%% An example plot of solar and wavelengths for 4m, 8m, 12m depths for different days:
+
+%at node/tower locations
+clf
+y=find(cellfun('isempty',wv_spectra(tn,5))==0); %for now, look at ones that have deeper casts
+
+q=tn(4);
+subplot(1,4,1,'replace'),hold on
 %spectra at depth:
 plot(wv,wv_spectra{q,1},'.-','color',[0 0.6 1])
 plot(wv,wv_spectra{q,3},'.-','color',[0 0.3 1])
@@ -400,3 +409,56 @@ plot(wv,wv_spectra{q,2},'.-','color',[0.6 0.6 0.6])
 plot(wv,wv_spectra{q,4},'.-','color',[0.4 0.4 0.4])
 plot(wv,wv_spectra{q,6},'.-','color',[0.2 0.2 0.2])
 
+ylim([-2 125])
+xlim([348 803])
+title(datestr(wv_record(q,2)))
+set(gca,'box','on')
+ylabel('\muW cm^{−2} nm^{−1}')
+
+subplot(1,4,2,'replace'),hold on
+q=tn(3);
+%spectra at depth:
+plot(wv,wv_spectra{q,1},'.-','color',[0 0.6 1])
+plot(wv,wv_spectra{q,3},'.-','color',[0 0.3 1])
+plot(wv,wv_spectra{q,5},'.-','color',[0 0 0.6])
+%solar spectra:
+plot(wv,wv_spectra{q,2},'.-','color',[0.6 0.6 0.6])
+plot(wv,wv_spectra{q,4},'.-','color',[0.4 0.4 0.4])
+plot(wv,wv_spectra{q,6},'.-','color',[0.2 0.2 0.2])
+
+ylim([-2 125])
+xlim([348 803])
+title(datestr(wv_record(q,2)))
+set(gca,'box','on')
+
+subplot(1,4,3,'replace'),hold on
+q=tn(12);
+%spectra at depth:
+plot(wv,wv_spectra{q,1},'.-','color',[0 0.6 1])
+plot(wv,wv_spectra{q,3},'.-','color',[0 0.3 1])
+plot(wv,wv_spectra{q,5},'.-','color',[0 0 0.6])
+%solar spectra:
+plot(wv,wv_spectra{q,2},'.-','color',[0.6 0.6 0.6])
+plot(wv,wv_spectra{q,4},'.-','color',[0.4 0.4 0.4])
+plot(wv,wv_spectra{q,6},'.-','color',[0.2 0.2 0.2])
+
+ylim([-2 125])
+xlim([348 803])
+title(datestr(wv_record(q,2)))
+set(gca,'box','on')
+
+subplot(1,4,4,'replace'),hold on
+q=tn(23);
+%spectra at depth:
+plot(wv,wv_spectra{q,1},'.-','color',[0 0.6 1])
+plot(wv,wv_spectra{q,3},'.-','color',[0 0.3 1])
+plot(wv,wv_spectra{q,5},'.-','color',[0 0 0.6])
+%solar spectra:
+plot(wv,wv_spectra{q,2},'.-','color',[0.6 0.6 0.6])
+plot(wv,wv_spectra{q,4},'.-','color',[0.4 0.4 0.4])
+plot(wv,wv_spectra{q,6},'.-','color',[0.2 0.2 0.2])
+
+ylim([-2 125])
+xlim([348 803])
+title(datestr(wv_record(q,2)))
+set(gca,'box','on')

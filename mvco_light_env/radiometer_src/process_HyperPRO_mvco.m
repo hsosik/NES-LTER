@@ -391,20 +391,35 @@ for foldernum = 1:length(datafolders)
             [~, i400]=min(abs(lambdas_solarstd-400)); %indexes of closest wv to 400
             [~, i700]=min(abs(lambdas_solarstd-700)); %indexes of closest wv to 700
             
-            photons = repmat((1e-9/(h*c))*lambdas_solarstd(i400:i700)',size(adj_esl(:,i400:i700),1),1)*(1e-6).*adj_esl(:,i400:i700); % number of photons per cm2 per second
-            esl_PAR = (6.02214e-23)*1e6*100*trapz(lambdas_solarstd(i400:i700),photons,2); %in micromol photons/m^2/s (converts to moles, to micromoles, then from cm2 to m2)
-            
-            clearvars i400 i700 photons
+            %OLD and incorrect:
+%             photons = repmat((1e-9/(h*c))*lambdas_solarstd(i400:i700)',size(adj_esl(:,i400:i700),1),1)*(1e-6).*adj_esl(:,i400:i700); % number of photons per cm2 per second
+%             esl_PAR = (6.02214e-23)*1e6*100*trapz(lambdas_solarstd(i400:i700),photons,2); %in micromol photons/m^2/s (converts to moles, to micromoles, then from cm2 to m2)
+%           
+            energy_per_photon = (h*c)./ (lambdas_solarstd(i400:i700)'*1e-9); %Joules
+            energy_obs = 0.01*adj_esl(:,i400:i700); %convert uW/cm2/nm to W/m2/nm
+            photons_per_area_per_time = energy_obs ./ repmat(energy_per_photon,size(adj_esl(:,i400:i700),1),1); %number photons per m2 per s
+            esl_PAR = (1/6.02214e23)*1e6*trapz(lambdas_solarstd(i400:i700),photons_per_area_per_time,2); %in micromol photons/m^2/s (converts to moles with avagadro's num, then to micromoles)
+
+            clearvars i400 i700 energy_per_photon energy_obs photons_per_area_per_time
             
             [~, i400]=min(abs(lambdas_downwell-400)); %indexes of closest wv to 400
             [~, i700]=min(abs(lambdas_downwell-700)); %indexes of closest wv to 700
             
-            photons = repmat((1e-9/(h*c))*lambdas_downwell(i400:i700)',size(adj_edl(:,i400:i700),1),1)*(1e-6).*adj_edl(:,i400:i700); % number of photons per cm2 per second
-            edl_PAR = (6.02214e-23)*1e6*100*trapz(lambdas_downwell(i400:i700),photons,2); %in micromol photons/m^2/s (converts to moles, to micromoles, then from cm2 to m2)
-            
+            %OLD and incorrect:
+%             photons = repmat((1e-9/(h*c))*lambdas_downwell(i400:i700)',size(adj_edl(:,i400:i700),1),1)*(1e-6).*adj_edl(:,i400:i700); % number of photons per cm2 per second
+%             edl_PAR = (6.02214e-23)*1e6*100*trapz(lambdas_downwell(i400:i700),photons,2); %in micromol photons/m^2/s (converts to moles, to micromoles, then from cm2 to m2)
+
+            energy_per_photon = (h*c)./ (lambdas_downwell(i400:i700)'*1e-9); %Joules
+            energy_obs = 0.01*adj_edl(:,i400:i700); %convert uW/cm2/nm to W/m2/nm
+            photons_per_area_per_time = energy_obs ./ repmat(energy_per_photon,size(adj_edl(:,i400:i700),1),1); %number photons per m2 per s
+            edl_PAR = (1/6.02214e23)*1e6*trapz(lambdas_downwell(i400:i700),photons_per_area_per_time,2); %in micromol photons/m^2/s (converts to moles with avagadro's num, then to micromoles)
+
+            % ALSO OLD; integrating directly from uW/cm2/nm:
             %             edl_PAR = trapz(edl_lambdas(i400:i700),adj_edl(:,i400:i700),2); %in uW/cm^2
             %             edl_PAR = (1e4/1e6)*edl_PAR;  %in W/m^2
-            
+           
+           clearvars i400 i700 energy_per_photon energy_obs photons_per_area_per_time
+
             
             if (max(esl_PAR)-min(esl_PAR))/max(esl_PAR) > 0.10 %10% variation?
                 solarstd_flag=1;
