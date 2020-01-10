@@ -12,11 +12,15 @@ clear all;
 close all; %for any open files
 
 plot_flag=1;
-do_satcon=1; %if do not need to run satcon and want to only work wth preprocessed txt files, set to 0
+do_satcon=0; %if do not need to run satcon and want to only work wth preprocessed txt files, set to 0
 
 %Load in initial screeing comments, if haven't made this file yet, script will ask you to screen now:
 try
-    load(fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\','initial_data_notes.mat'))
+    if strcmp(computer,'MACI64')
+        load(fullfile('/Volumes/Lab_data/MVCO/HyperPro_Radiometer/','initial_data_notes.mat'))
+    else
+        load(fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\','initial_data_notes.mat'))
+    end
     comment_flag=0; %notes/comments have been made and loaded
 catch
     fprintf(['Hmmm...looks like there are not any initial comments on the data...\n Initiating plots for screening and entering comments\n'])
@@ -26,12 +30,17 @@ catch
     plot_flag=1; %Automatically changed it
 end
 
-mastersourcepath=fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\raw_data\'); % path to folders with raw data...
-%mastersourcepath=fullfile(pwd);%'/Volumes/Lab_data/SummerStudents/2013_Marco/MVCO_hyperpro'; %top level directory
-masteroutpath=fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\','processed_radiometer_files'); %where you'd like final folders to be stored
+if strcmp(computer,'MACI64')
+    mastersourcepath=fullfile('/Volumes/Lab_data/MVCO/HyperPro_Radiometer/raw_data/'); % path to folders with raw data...
+    masteroutpath=fullfile('/Volumes/Lab_data/MVCO/HyperPro_Radiometer/','processed_radiometer_files'); %where you'd like final folders to be stored
+    calfiledir = fullfile('/Volumes/Lab_data/MVCO/HyperPro_Radiometer/', 'calibration_files/CD_Nov2008/Calibration_Files/'); %where the calibration files are located
 
-%calfiledir = fullfile(pwd, 'calibration_files'); %where the calibration files are located
-calfiledir = fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\', 'calibration_files\CD_Nov2008\Calibration_Files\');
+else
+    mastersourcepath=fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\raw_data\'); % path to folders with raw data...
+    masteroutpath=fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\','processed_radiometer_files'); %where you'd like final folders to be stored
+    calfiledir = fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\', 'calibration_files\CD_Nov2008\Calibration_Files\'); %where the calibration files are located
+end
+
 
 % Raw files for MVCO casts are stored in different folders labeled by date
 %To find the correct files in each folder:
@@ -127,7 +136,7 @@ for foldernum = 1:length(datafolders)
         fprintf('Processing %s into text into matlab files\n', sourcefiles(filenum).name);
         empty_flag=0;
         
-        for sensortype = 1:5,
+        for sensortype = 1:5
             
             switch sensortype
                 
@@ -166,7 +175,7 @@ for foldernum = 1:length(datafolders)
                     fclose all;
                 return;
                     
-            end;
+            end
             
             
             % need to satcon these data into temp files -----------------------------------------------------------
@@ -252,11 +261,11 @@ for foldernum = 1:length(datafolders)
             eval([sensor '_data=dataArray;'])
             eval([sensor '_hdr=column_headers;'])
             
-            clear dataArray column_headers txtfile
+            clear dataArray column_headers txtfile 
             
             %GATHER SATFILE HEADER INFORMATION: PRESSURE TARE, LAT/LON, OPERATOR
             
-            if ftype==1 %just do this once :)
+            if sensortype==1 %just do this once :)
                 
                 delimiter = ' ';
                 endRow = 19;
@@ -297,19 +306,29 @@ for foldernum = 1:length(datafolders)
                     %of this as the pressure tare:
                     %figure, plot(mpr_data{:,7})
                     %set(gca,'YDir','reverse')
-                    
-                    %for 2008-255-183514.raw, this became:
-                    %tempstruc(filenum).pressure_tare=nanmean(mpr_data{:,7}(2960:3060))
-                    
-                    %for 2007-346-191403.raw, 2008-267-163905.raw, 2009-116-214302.raw, 2009-116-214414.raw  these aren't a cast so just used:
-                    %tempstruc(filenum).pressure_tare=min(mpr_data{:,7})
+                    switch sourcefiles(filenum).name
+                        case '2008-255-183514.raw'
+                            tempstruc(filenum).pressure_tare=nanmean(mpr_data{:,7}(2960:3060)); %shoule be around 9.33
+                        case '2007-346-191403.raw' %the following aren't a cast so just used:
+                            tempstruc(filenum).pressure_tare=min(mpr_data{:,7});
+                        case '2008-267-163905.raw'
+                            tempstruc(filenum).pressure_tare=min(mpr_data{:,7});
+                        case '2009-116-214302.raw'
+                            tempstruc(filenum).pressure_tare=min(mpr_data{:,7});
+                        case '2009-116-214323.raw'
+                            tempstruc(filenum).pressure_tare=min(mpr_data{:,7});
+                        case '2009-116-214414.raw'
+                            tempstruc(filenum).pressure_tare=min(mpr_data{:,7});
+                        otherwise
+                            keyboard                 
+                    end
                 end
                 
-                pressure_tare=tempstruc(filenum).pressure_tare; %for use later on in teh script
+                pressure_tare=tempstruc(filenum).pressure_tare; %for use later on in the script
                 
             end %if ftype==1
             
-        end; % of ftype, and all available variables should be loaded in
+        end % of ftype, and all available variables should be loaded in workspace
         
         %
         %PHASE 2 - CLEANING UP AND PROCESSING OF DATA:
@@ -327,7 +346,7 @@ for foldernum = 1:length(datafolders)
         sensors={'mpr','edl','edd','esl','esd'};
         
         if empty_flag==0
-            for q=2:5;
+            for q=2:5
                 eval(['hdr=' sensors{q} '_hdr;'])
                 temp=regexp(hdr,'\d{3}\.\d{2}','match');
                 ind=find(cellfun('isempty',temp)==0);
@@ -341,10 +360,10 @@ for foldernum = 1:length(datafolders)
             end
             
             %Check that all wavelengths are the same!
-            if sum(edl_lambdas-edd_lambdas) < 0.01;
+            if sum(edl_lambdas-edd_lambdas) < 0.01
                 lambdas_downwell=edl_lambdas;
             end
-            if sum(esl_lambdas-esd_lambdas) < 0.01;
+            if sum(esl_lambdas-esd_lambdas) < 0.01
                 lambdas_solarstd=esl_lambdas;
             end
             
@@ -377,8 +396,9 @@ for foldernum = 1:length(datafolders)
             % CALCULATE PAR
             %--------------------------------------------------------------------------------------------------
             
-            h=6.625e-34; %Planck's constant
-            c=3e8; %speed of light
+            h=6.625e-34; %Planck's constant (kg m2/s)
+            c=3e8; %speed of light (m/s)
+            avo=6.02214e23; %Avogardro's number (number per mol)
             
             %Equation from ProSoft manual:
             %Integral from 400 to 700 (nm) of (lambda/hc)*E(lambda)*dlambda
@@ -391,20 +411,35 @@ for foldernum = 1:length(datafolders)
             [~, i400]=min(abs(lambdas_solarstd-400)); %indexes of closest wv to 400
             [~, i700]=min(abs(lambdas_solarstd-700)); %indexes of closest wv to 700
             
-            photons = repmat((1e-9/(h*c))*lambdas_solarstd(i400:i700)',size(adj_esl(:,i400:i700),1),1)*(1e-6).*adj_esl(:,i400:i700); % number of photons per cm2 per second
-            esl_PAR = (6.02214e-23)*1e6*100*trapz(lambdas_solarstd(i400:i700),photons,2); %in micromol photons/m^2/s (converts to moles, to micromoles, then from cm2 to m2)
-            
-            clearvars i400 i700 photons
+            %OLD and incorrect:
+%             photons = repmat((1e-9/(h*c))*lambdas_solarstd(i400:i700)',size(adj_esl(:,i400:i700),1),1)*(1e-6).*adj_esl(:,i400:i700); % number of photons per cm2 per second
+%             esl_PAR = (6.02214e-23)*1e6*100*trapz(lambdas_solarstd(i400:i700),photons,2); %in micromol photons/m^2/s (converts to moles, to micromoles, then from cm2 to m2)
+%           
+            energy_per_photon = (h*c)./ (lambdas_solarstd(i400:i700)'*1e-9); %Joules, 1e-9 converts from nm to m
+            energy_obs = 0.01*adj_esl(:,i400:i700); %0.01 converts uW/cm2/nm to W/m2/nm
+            photons_per_area_per_time = energy_obs ./ repmat(energy_per_photon,size(adj_esl(:,i400:i700),1),1); %number photons per m2 per s
+            esl_PAR = (1/avo)*1e6*trapz(lambdas_solarstd(i400:i700),photons_per_area_per_time,2); %in micromol photons/m^2/s (converts to moles with avogadro's num, then to micromoles)
+
+            clearvars i400 i700 energy_per_photon energy_obs photons_per_area_per_time
             
             [~, i400]=min(abs(lambdas_downwell-400)); %indexes of closest wv to 400
             [~, i700]=min(abs(lambdas_downwell-700)); %indexes of closest wv to 700
             
-            photons = repmat((1e-9/(h*c))*lambdas_downwell(i400:i700)',size(adj_edl(:,i400:i700),1),1)*(1e-6).*adj_edl(:,i400:i700); % number of photons per cm2 per second
-            edl_PAR = (6.02214e-23)*1e6*100*trapz(lambdas_downwell(i400:i700),photons,2); %in micromol photons/m^2/s (converts to moles, to micromoles, then from cm2 to m2)
-            
+            %OLD and incorrect:
+%             photons = repmat((1e-9/(h*c))*lambdas_downwell(i400:i700)',size(adj_edl(:,i400:i700),1),1)*(1e-6).*adj_edl(:,i400:i700); % number of photons per cm2 per second
+%             edl_PAR = (6.02214e-23)*1e6*100*trapz(lambdas_downwell(i400:i700),photons,2); %in micromol photons/m^2/s (converts to moles, to micromoles, then from cm2 to m2)
+
+            energy_per_photon = (h*c)./ (lambdas_downwell(i400:i700)'*1e-9); %Joules
+            energy_obs = 0.01*adj_edl(:,i400:i700); %convert uW/cm2/nm to W/m2/nm
+            photons_per_area_per_time = energy_obs ./ repmat(energy_per_photon,size(adj_edl(:,i400:i700),1),1); %number photons per m2 per s
+            edl_PAR = (1/avo)*1e6*trapz(lambdas_downwell(i400:i700),photons_per_area_per_time,2); %in micromol photons/m^2/s (converts to moles with avagadro's num, then to micromoles)
+
+            % ALSO OLD; integrating directly from uW/cm2/nm:
             %             edl_PAR = trapz(edl_lambdas(i400:i700),adj_edl(:,i400:i700),2); %in uW/cm^2
             %             edl_PAR = (1e4/1e6)*edl_PAR;  %in W/m^2
-            
+           
+           clearvars i400 i700 energy_per_photon energy_obs photons_per_area_per_time
+
             
             if (max(esl_PAR)-min(esl_PAR))/max(esl_PAR) > 0.10 %10% variation?
                 solarstd_flag=1;
@@ -530,9 +565,9 @@ for foldernum = 1:length(datafolders)
                 end
                 
             else
-                ii=find(strcmp(filename, raw_data_log(:,2))==1);
+                ii=find(strcmp(filename, data_notes(:,2))==1);
                 
-                if strcmp(raw_data_log{ii,4},'not a cast')
+                if strcmp(data_notes{ii,4},'not a cast')
                     tempstruc(filenum).emptyflag = 2;
                 else %good casts
                     tempstruc(filenum).emptyflag = 0;
@@ -543,7 +578,8 @@ for foldernum = 1:length(datafolders)
             %SAVE THAT DATA!
             %--------------------------------------------------------------------------------------------------
             %eval(['save ' outfile ' *mpr* *edl* *esl* *edd* *esd* solarstd_flag *PAR* pressure_tare depth *time*'])
-            eval(['save ' outfile ' mpr_data edl_data esl_data edd_data satfile_hdr'])    %save the rawer products as matrices
+            keyboard
+            eval(['save ' outfile ' mpr_data edl_data esl_data edd_data satfile_hdr mpr_hdr edl_hdr esl_hdr edd_hdr'])    %save the rawer products as matrices
             
             %but the products in the structure?
             tempstruc(filenum).adj_esl=adj_esl;
@@ -565,15 +601,19 @@ for foldernum = 1:length(datafolders)
             end
         end % empty_flag
         
-        clearvars -except numfiles sourcefiles matoutdir txtoutdir numfiles mastersourcepath masteroutpath calfiledir datafolders filenum tempstruc foldernum tempdatasource plot_flag raw_data_log
+        clearvars -except numfiles sourcefiles matoutdir txtoutdir numfiles mastersourcepath masteroutpath calfiledir datafolders filenum tempstruc foldernum tempdatasource plot_flag do_satcon comment_flag data_note*
         
-    end;   % of filenum
+    end   % of filenum
     
     eval(['data_' datafolders{foldernum} '=tempstruc;'])
-    eval(['save ' matoutdir '\data_' datafolders{foldernum} '.mat ' 'data_' datafolders{foldernum}])
+    if strcmp(computer,'MACI64')
+        eval(['save ' matoutdir '/data_' datafolders{foldernum} '.mat ' 'data_' datafolders{foldernum}])
+    else
+        eval(['save ' matoutdir '\data_' datafolders{foldernum} '.mat ' 'data_' datafolders{foldernum}])
+    end
     clear tempstruc
     
-end;  %of foldernum
+end  %of foldernum
 
 if comment_flag==1
     save initial_data_notesB data_note_titles data_notes
