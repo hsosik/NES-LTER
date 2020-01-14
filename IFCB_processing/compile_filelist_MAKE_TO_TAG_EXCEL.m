@@ -3,6 +3,7 @@
 %doc for manual tagging
 clear all
 
+ifcb = 'IFCB127';
 % start = '23 Mar 2018';
 start = '1 Feb 2019';
  stop = '6 Feb 2019';
@@ -21,7 +22,10 @@ pick = input('Pick the dashboard to tag by entering the number of the count list
 dashboard2tag = char(dashboards2choose(pick));
 dir2save = ['\\sosiknas1\IFCB_data\' dashboard2tag '\to_tag\'];
 fprintf('\n')
-cruise = input('What cruise tag should be applied? (example: cruise_AR24A):   ','s');
+fprintf(['For the ' dashboard2tag, ' dashboard with cruise dates:  ' start '  to  ' stop]);
+fprintf('\n')
+cruise = input('What cruise label should be applied? (example: AR24A):   ','s');
+    cruise = upper(cruise);
     fprintf('\n')
     fprintf('\n')
     disp(['The cruise tag will be: ' cruise])
@@ -33,7 +37,7 @@ cruise = input('What cruise tag should be applied? (example: cruise_AR24A):   ',
         error('YOU DID NOT ANSWER Y OR N DUMMY!!');
     end
 
-excelfile2save = [dir2save dashboard2tag '_' cruise(8:end) '_to_tag_incomplete'];
+excelfile2save = [dir2save dashboard2tag '_' cruise '_to_tag_incomplete'];
 fprintf('\n')
 disp('Tag file being created is named: ');
 disp(excelfile2save);
@@ -58,7 +62,7 @@ files = {};
 file_size = [];
 for j=1:length(dirlist)
     roidir      = [dirpath cell2mat(dirlist(j))];
-    roifiles    = dir([roidir '\*IFCB127.roi']);
+    roifiles    = dir([roidir '\*' ifcb '.roi']);
     temp={roifiles.name}';
     temp = char(temp);
     temp=temp(:,1:end-4);
@@ -67,41 +71,44 @@ for j=1:length(dirlist)
     clear temp
 end
 % files = char(files);
-cruise_tag = repmat({cruise},length(files),1);
-going2dashboard = repmat({dashboard2tag},length(files),1);
+cruise_field = repmat({cruise},length(files),1);
+%find which files are empty and should be skipped
+ind= find(file_size == 0);
+toskip = repmat({''},length(files),1);
+toskip(ind) = {'y'};
 
 fprintf('\n')
 fprintf('\n')
-answer = input('Would you like to apply a 2nd tag (such as "underway") TO THE ENTIRE LIST OF FILES besides the cruise tag? (y/n)','s');
+answer = input('Would you like to apply a tag (such as "underway") TO THE ENTIRE LIST OF FILES besides the cruise tag? (y/n)','s');
 if strcmp(lower(answer),'y')
-    tag2 = input('What would you like the 2nd tag to be? Type exactly as you would like it to appear. (example: underway)','s');
+    tag1 = input('What would you like the tag to be? Type exactly as you would like it to appear. (example: underway)','s');
     fprintf('\n');
     fprintf('\n');
-    disp(['The 2nd tag will be: ' tag2]);
+    disp(['The 2nd tag will be: ' tag1]);
     fprintf('\n');
     answer = input('Are you positive you want this tag applied to every single file on the list? (y/n)','s');
     if strcmp(lower(answer),'y')
-        A = {'going_to_dashboard' 'Filename' 'Tag1' 'Tag2'};
-        tag2 = repmat({tag2},length(files),1);
-        A = [A; going2dashboard files cruise_tag tag2];
+        A = {'Filename' 'cruise' 'skip' 'Tag1'};
+        tag1 = repmat({tag1},length(files),1);
+        A = [A; files cruise_field toskip tag1];
     elseif strcmp(lower(answer),'n')
         error('Run this file again. You messed up. You have not created a to tag excel doc.');
     end
     fprintf('\n');
-    disp(['NOTE: THE ONLY TAGS THAT HAVE BEEN APPLIED TO THIS FILE LIST ARE: ' cruise ' and ' char(tag2(1))]);
+    disp(['NOTE: THE ONLY LABELS THAT HAVE BEEN APPLIED TO THIS FILE LIST ARE: cruise field = ' cruise ' and tag = ' char(tag1(1))]);
     fprintf('\n');
     disp('YOU STILL NEED TO REVIEW THIS FILE AND ADD ANY ADDITIONAL TAGS MANUALLY.');
     fprintf('\n');
     disp('THE EXCEL FILE TITLE HAS INCOMPLETE AT THE END FOR A REASON');
 elseif strcmp(lower(answer),'n')
-    A = {'going_to_dashboard' 'Filename' 'Tag1'};
-    A = [A; going2dashboard files cruise_tag];
+    A = {'Filename' 'cruise' 'skip'};
+    A = [A; files cruise_field toskip];
     fprintf('\n')
-    disp(['NOTE: THE ONLY TAG THAT HAVE BEEN APPLIED TO THIS FILE LIST IS: ' cruise ])
-    fprintf('\n')
-    disp('YOU STILL NEED TO REVIEW THIS FILE AND ADD ANY ADDITIONAL TAGS MANUALLY.')
-    fprintf('\n')
-    disp('THE EXCEL FILE TITLE HAS INCOMPLETE AT THE END FOR A REASON')
+    disp(['NOTE: THE ONLY TAG THAT HAVE BEEN APPLIED TO THIS FILE LIST IS: ' cruise ]);
+    fprintf('\n');
+    disp('YOU STILL NEED TO REVIEW THIS FILE AND ADD ANY ADDITIONAL TAGS MANUALLY.');
+    fprintf('\n');
+    disp('THE EXCEL FILE TITLE HAS INCOMPLETE AT THE END FOR A REASON');
 else error('YOU DID NOT ANSWER Y OR N DUMMY!!');
 end
 
@@ -112,7 +119,6 @@ xlswrite(excelfile2save,A)
 
 %sometimes incorrect empty files are made when instr screws up. should skip
 %them
-ind= find(file_size == 0);
 display('Empty files that need to be skipped: ')
 display(files(ind))
 
