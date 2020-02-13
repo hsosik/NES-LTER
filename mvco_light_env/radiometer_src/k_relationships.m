@@ -7,7 +7,8 @@
 %% A time series plot of K_d values!
 
 %sourcepath=fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\processed_radiometer_files\'); % path to folders with raw data...
-sourcepath=fullfile('/Volumes/Lab_data/MVCO/HyperPro_Radiometer/');
+%sourcepath=fullfile('/Volumes/Lab_data/MVCO/HyperPro_Radiometer/');
+sourcepath=fullfile('/mnt/Lab_data/MVCO/HyperPro_Radiometer/');
 processed_path=fullfile(sourcepath,'/processed_radiometer_files/');
 
 %How many of these do we have?
@@ -34,8 +35,8 @@ for foldernum=good_data' %folders with viable casts in them
     eval(['load ' matsource 'data_' datafolders{foldernum} '.mat'])
     eval(['tempdata=data_' datafolders{foldernum} ';'])
     
-    eval(['load ' matsource 'K_PAR_' datafolders{foldernum} '.mat'])
-    eval(['K_PAR=K_PAR_' datafolders{foldernum} ';'])
+    eval(['load ' matsource 'K_PAR_' datafolders{foldernum} 'B.mat'])
+    eval(['K_PAR=K_PAR_' datafolders{foldernum} ';']) %k values with correct PAR units - still the same!
     
     eval(['load ' matsource 'location_' datafolders{foldernum} '.mat'])
     eval(['location=location_' datafolders{foldernum} ';'])
@@ -44,18 +45,18 @@ for foldernum=good_data' %folders with viable casts in them
     eval(['k_lambda=k_lambda_' datafolders{foldernum} ';'])
     
     %because some of the casts were split, need to account for this:
-    for filenum=1:length(K_PAR);
+    for filenum=1:length(K_PAR)
         
-        if K_PAR(filenum).flag==0;
+        if K_PAR(filenum).flag==0
             
             k_values=[k_values; datenum(datestr(datafolders{foldernum})) location(filenum).lat location(filenum).lon K_PAR(filenum).K(2) K_PAR(filenum).stats(1) K_PAR(filenum).flag];
             k_record=[k_record; {datafolders{foldernum}} {foldernum} {K_PAR(filenum).file} {location(filenum).file} location(filenum).eventnum {K_PAR(filenum).NOTES} {location(filenum).notes}];
             k_lambdas=[k_lambdas; -k_lambda(filenum).k_wv(:,3)'];  %attenuation coefficient for each wavelength
             lambdas=[lambdas; k_lambda(filenum).k_wv(:,1)']; %wavelength used
             
-        elseif K_PAR(filenum).flag==3;
-            
-            k_values=[k_values; datenum(datestr(datafolders{foldernum})) location(filenum).lat location(filenum).lon K_PAR(filenum).K1(2) NaN K_PAR(filenum).flag];
+        elseif K_PAR(filenum).flag==3
+            %keyboard
+            k_values=[k_values; datenum(datestr(datafolders{foldernum})) location(filenum).lat location(filenum).lon K_PAR(filenum).K1(2) K_PAR(filenum).stats1(1) K_PAR(filenum).flag];
             k_record=[k_record; {datafolders{foldernum}} {foldernum} {K_PAR(filenum).file} {location(filenum).file} location(filenum).eventnum {K_PAR(filenum).NOTES} {location(filenum).notes}];
             k_lambdas=[k_lambdas; -k_lambda(filenum).k_wv1(:,3)']; %attenuation coefficient for each wavelength
             lambdas=[lambdas; k_lambda(filenum).k_wv1(:,1)']; %wavelength used
@@ -71,7 +72,7 @@ else
     disp('Ruh oh - not all wavelengths are the same?')
 end
 
-%add in yearday:
+%% add in yearday:
 k_values=[find_yearday(k_values(:,1)) k_values];
 
 k_record_titles={'date';'folder number';'K_PAR file name';'location file name';'event number';'K_PAR notes';'location notes'};
@@ -234,7 +235,7 @@ end
 %% save vars:
 
 
-save k_lite k_avg* k_record k_values k_low k_high kaggregate*
+save ~/Documents/NES-LTER/mvco_light_env/k_liteB k_avg* k_record k_values* k_low k_high kaggregate*
 
 
 

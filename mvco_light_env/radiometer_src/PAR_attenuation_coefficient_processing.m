@@ -10,7 +10,7 @@
 % first find all the folders with the processed matlab files...
 
 %sourcepath=fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\processed_radiometer_files\'); % path to folders with raw data...
-sourcepath=fullfile('/Volumes/Lab_data/MVCO/HyperPro_Radiometer/');
+sourcepath=fullfile('/mnt/Lab_data/MVCO/HyperPro_Radiometer/');
 processed_path=fullfile(sourcepath,'/processed_radiometer_files/');
 %How many of these do we have?
 d = dir(processed_path);
@@ -27,9 +27,11 @@ load(fullfile(sourcepath,'initial_data_notes.mat'))
 load(fullfile(sourcepath,'good_data_folders.mat'))
 
 
-%%
+%% NOTE - THIS IS A MANUAL PROCESS! USER INPUT IS REQUIRED!
+
 %can just manually enter in a foldernum for now .... put into a for loop later....
-foldernum=19; %good_data(15);
+Q=15;
+foldernum=good_data(Q);
 
 %find the data!
 matsource=fullfile(processed_path,datafolders{foldernum},'/mat_outfiles/');
@@ -52,6 +54,7 @@ for filenum=1:numfiles
 end
 set(gca,'Ydir','reverse','xgrid','on','ygrid','on')
 datetick
+ylabel('Depth')
 
 subplot(1,2,2,'replace')
 hold on
@@ -72,6 +75,17 @@ plot(pos(:,1),pos(:,2),'rp')
 %% Okay, if that looks reasonable, then move onto attenuation calculations!
 
 %disp(['#files: ' num2str(numfiles)])
+
+use_previous_data_calls = 1; %this will load in earlier K_PAR data and use the classifications there
+%If want to do from scratch, please set to 0
+
+if use_previous_data_calls == 1
+    load(fullfile(processed_path,datafolders{foldernum},['/mat_outfiles/K_PAR_' datafolders{foldernum}]));
+    eval(['K_PAR_old=K_PAR_' datafolders{foldernum} ';'])
+    eval(['clearvars K_PAR_' datafolders{foldernum}]) %should just have K_PAR_old...
+end
+%%
+
 for filenum=1:numfiles
     
     filename=sourcefiles{filenum};
@@ -87,7 +101,7 @@ for filenum=1:numfiles
         
     else
         disp(['Processing: file number: ' num2str(filenum) ' out of ' num2str(numfiles) ' | ' filename ' for attenuation coefficient'])
-        
+        to_note=0; %extra notes down below
         %a reasonable plan may be to look at the sign of the change in
         %depth - a positive, continuous value implies a falling profiler -
         %look for these to find the downcasts.
@@ -96,7 +110,7 @@ for filenum=1:numfiles
         %for easier handling:
         depth=tempdata(filenum).depth;
         
-        if max(depth) < 7
+        if max(depth) < 7 %may need to change this depending on deployment!
             disp('too short of a cast')
             K_PAR(filenum).file=filename;
             K_PAR(filenum).NOTES='depth too short for reliable cast, excluding...';
@@ -139,8 +153,29 @@ for filenum=1:numfiles
             title(['File: ' num2str(filenum) ' ; ' filename])
             xl=get(gca,'xlim');  yl=get(gca,'ylim');
             
-            %Okay, now ask if need to fit linear or piecewise:
-            [ch]=input('See if data supports a linear or piecewise linear fit: \n Enter "linear" if one line is good or "piecewise" if need two lines or "other" if need to do something else \n');
+            
+            
+            %Okay, now ask if need to fit linear or piecewise or use
+            %previous calls of data:
+            if exist('K_PAR_old','var')
+                if strcmp(K_PAR_old(filenum).NOTES,'manually excluded points') %ah....
+                    ch="other";
+                elseif length(ipar)~=K_PAR_old(filenum).par_index %manually excluded points someitme where not noted in the notes!
+                       ch="other";                   
+                elseif K_PAR_old(filenum).flag==0 %no prob - linear
+                    ch="linear";
+                elseif K_PAR_old(filenum).flag==3 %split cast!
+                    ch="piecewise";
+                    temp= regexp(K_PAR_old(filenum).NOTES,'0\-(?<br1>(\d{1,2}\.\d{1,2})|(\d{1,2})) and (?<br2>(\d{1,2}\.\d{1,2})|(\d{1,2}))','names');
+                    dbreak = [str2num(temp.br1) str2num(temp.br2)];
+                else
+                    keyboard
+                end
+                
+            else %MANUAL!
+                [ch]=input('See if data supports a linear or piecewise linear fit: \n Enter "linear" if one line is good or "piecewise" if need two lines or "other" if need to do something else \n');
+            end
+            
             
             switch ch
                 
@@ -149,7 +184,7 @@ for filenum=1:numfiles
                     %now, calculate k:
                     [K,~,~,~,STATS] = regress(log(edl_PAR(ipar)),[ones(size(depth(impr))) depth(impr)]);
                     
-                    plot(K(1)+K(2)*depth(impr),depth(impr),'-')
+                    plot(K(1)+K(2)*depth(impr),depth(impr),'-','linewidth',3)
                     text(0.80*diff(xl)+xl(1),0.95*diff(yl)+yl(1),{['K: ' num2str(K(2))];['R2: ' num2str(STATS(1))] })
                     
                     K_PAR(filenum).file=filename;
@@ -164,19 +199,33 @@ for filenum=1:numfiles
                     
                 case 'piecewise'
                     
-                    [dbreak]=input('enter a 2 element vector of depths to where you want to split the line \n');
+                    if ~exist('K_PAR_old','var')
+                       [dbreak]=input('enter a 2 element vector of depths to where you want to split the line \n');
+                    end
                     
                     %for a split k:
                     d1=find(depth(impr) < dbreak(1));
                     d2=find(depth(impr) > dbreak(2));
-                    [K1,~,~,~,STATS1] = regress(log(edl_PAR(ipar(d1))),[ones(size(depth(impr(d1)))) depth(impr(d1))]);
-                    [K2,~,~,~,STATS2] = regress(log(edl_PAR(ipar(d2))),[ones(size(depth(impr(d2)))) depth(impr(d2))]);
                     
-                    impr1=impr(d1);
-                    impr2=impr(d2);
-                    ipar1=ipar(d1);
-                    ipar2=ipar(d2);
+                    if exist('K_PAR_old','var') %a double check on manual points here:
+                        if length(d1)~=K_PAR_old(filenum).depth_index1
+                            disp('Okay...this must have been manually changed!')
+                            impr1=K_PAR_old(filenum).depth_index1;
+                            impr2=K_PAR_old(filenum).depth_index2;
+                            ipar1=K_PAR_old(filenum).par_index1;
+                            ipar2=K_PAR_old(filenum).par_index2;
+                            to_note=1;
+                        else
+                            impr1=impr(d1);
+                            impr2=impr(d2);
+                            ipar1=ipar(d1);
+                            ipar2=ipar(d2);      
+                        end
+                    end
                     
+                    [K1,~,~,~,STATS1] = regress(log(edl_PAR(ipar1)),[ones(size(depth(impr1))) depth(impr1)]);
+                    [K2,~,~,~,STATS2] = regress(log(edl_PAR(ipar2)),[ones(size(depth(impr2))) depth(impr2)]);
+                                            
                     K_PAR(filenum).file=filename;
                     K_PAR(filenum).stats1=STATS1;
                     K_PAR(filenum).K1=K1;
@@ -186,7 +235,11 @@ for filenum=1:numfiles
                     K_PAR(filenum).K2=K2;
                     K_PAR(filenum).depth_index2=impr2;
                     K_PAR(filenum).par_index2=ipar2;
-                    K_PAR(filenum).NOTES=['split cast from 0-' num2str(dbreak(1)) ' and ' num2str(dbreak(2)) '-max'];
+                    if to_note==1
+                         K_PAR(filenum).NOTES=['split cast from 0-' num2str(dbreak(1)) ' and ' num2str(dbreak(2)) '-max, with manually excluded points'];
+                    else
+                        K_PAR(filenum).NOTES=['split cast from 0-' num2str(dbreak(1)) ' and ' num2str(dbreak(2)) '-max'];
+                    end
                     K_PAR(filenum).flag=3;
                     
                     subplot(1,2,1,'replace')
@@ -206,11 +259,11 @@ for filenum=1:numfiles
                     subplot(1,2,2,'replace')
                     plot(log(edl_PAR),depth(edl_ind),'.'), hold on
                     plot(log(edl_PAR(ipar1)),depth(impr1),'.','color',[0.2081    0.1663    0.5292])
-                    plot(K1(1)+K1(2)*depth(impr1),depth(impr1),'-')
+                    plot(K1(1)+K1(2)*depth(impr1),depth(impr1),'-','linewidth',3)
                     plot(log(edl_PAR(ipar2)),depth(impr2),'.','color',[0.9763    0.9831    0.0538])
-                    plot(K2(1)+K2(2)*depth(impr2),depth(impr2),'-')
+                    plot(K2(1)+K2(2)*depth(impr2),depth(impr2),'-','linewidth',3)
                     set(gca,'YDir','reverse')
-                    title(['Folder: ' num2str(foldernum) ', File: ' num2str(filenum) ' out of ' num2str(length(K_PAR)) '; ' filename ' SPLIT CAST!'])
+                    title(['Folder: ' num2str(foldernum) ', File: ' num2str(filenum) ' out of ' num2str(numfiles) '; ' filename ' SPLIT CAST!'])
                     xl=get(gca,'xlim');  yl=get(gca,'ylim');
                     text(0.80*diff(xl)+xl(1),0.85*diff(yl)+yl(1),{['K1: ' num2str(K1(2))];['R2: ' num2str(STATS1(1))] })
                     text(0.80*diff(xl)+xl(1),0.95*diff(yl)+yl(1),{['K2: ' num2str(K2(2))];['R2: ' num2str(STATS2(1))] })
@@ -219,14 +272,17 @@ for filenum=1:numfiles
                     
                 case 'other'
                     
-                    keyboard
-                    
-                    %by trial and error to figure out which indexes to
-                    %inlcude:
-                    
-                    imprB=impr(15:end); %if want to exclude some suspicious data points
-                    iparB=ipar(15:end);
-                    
+                    if ~exist('K_PAR_old','var')
+                        keyboard %-choose points here!
+                        %inlcude by trial and error to figure out which
+                        %indexes to use, i.e.:
+                        imprB=impr(7:end); %if want to exclude some suspicious data points
+                        iparB=ipar(7:end);
+                    else
+                        imprB=K_PAR_old(filenum).depth_index;
+                        iparB=K_PAR_old(filenum).par_index;
+                    end
+                     %%                  
                     [K,~,~,~,STATS] = regress(log(edl_PAR(iparB)),[ones(size(depth(imprB))) depth(imprB)]);
                     
                     subplot(1,2,2)
@@ -260,7 +316,7 @@ for filenum=1:numfiles
                     % casts=find(diff(impr)>100);
                     % cc=7;
                     % [K,~,~,~,STATS] = regress(log(edl_PAR(ipar(casts(cc):end))),[ones(size(depth(impr(casts(cc):end)))) depth(impr(casts(cc):end))]);
-                    
+                    %%
                     keyboard
                 otherwise
                     keyboard
@@ -294,14 +350,14 @@ disp(k_rec)
 disp({K_PAR(:).flag}')
 
 close all
-clear K_PAR
+clear K_PAR*
 
 
 
 %% IF WANT TO CHECK K AND REGRESSION FITS FOR THE DATA:
 
 %sourcepath=fullfile('\\sosiknas1\lab_data\mvco\HyperPro_Radiometer\processed_radiometer_files\'); % path to folders with raw data...
-sourcepath=fullfile('/Volumes/Lab_data/MVCO/HyperPro_Radiometer/');
+sourcepath=fullfile('/mnt/Lab_data/MVCO/HyperPro_Radiometer/');
 processed_path=fullfile(sourcepath,'/processed_radiometer_files/');
 
 d = dir(processed_path);
@@ -329,9 +385,9 @@ eval(['location=location_' datafolders{foldernum} ';'])
 set(gcf,'position',[33         468        1218         510])
 
 %%
-for filenum=1:length(K_PAR);
+for filenum=1:length(K_PAR)
     
-    if K_PAR(filenum).flag==0;
+    if K_PAR(filenum).flag==0
              
         filename=tempdata(filenum).file;
         depth=tempdata(filenum).depth;
@@ -362,7 +418,7 @@ for filenum=1:length(K_PAR);
         disp(location(filenum).notes)
         
         figure(1)
-        subplot(1,2,1,'replac e')
+        subplot(1,2,1,'replace')
         [ax h1 h2]=plotyy(tempdata(filenum).mprtime,depth,tempdata(filenum).mprtime(edl_ind),edl_PAR);
         hold(ax(1)); hold(ax(2));
         plot(ax(1),tempdata(filenum).mprtime(impr),depth(impr),'.','markersize',12)
@@ -388,7 +444,7 @@ for filenum=1:length(K_PAR);
         pause
         clf
         
-    elseif K_PAR(filenum).flag==3; %split casts! Can look at both :)
+    elseif K_PAR(filenum).flag==3 %split casts! Can look at both :)
         
         filename=tempdata(filenum).file;
         depth=tempdata(filenum).depth;
