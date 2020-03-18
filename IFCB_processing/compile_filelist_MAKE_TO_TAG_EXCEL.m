@@ -5,8 +5,8 @@ clear all
 
 ifcb = 'IFCB127';
 % start = '23 Mar 2018';
-start = '1 Feb 2019';
- stop = '6 Feb 2019';
+start = '12 Apr 2019';
+ stop = '24 Apr 2019';
 %stop = now + + (5/24); %account for UTC time else won't get most recent 4 or 5 hours of data
 
 % dirpath = ['\\sosiknas1\Backup\SPIROPA\20180414_AR29\IFCB_data\data_underway\' start(end-3:end) '\'];
