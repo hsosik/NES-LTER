@@ -3,15 +3,15 @@
 %doc for manual tagging
 clear all
 
-ifcb = 'IFCB129';
+ifcb = 'IFCB109';
 % start = '23 Mar 2018';
-start = '9 May 2019';
- stop = '25 May 2019';
+start = '16 Apr 2018';
+ stop = '30 Apr 2018';
 %stop = now + + (5/24); %account for UTC time else won't get most recent 4 or 5 hours of data
 
 % dirpath = '\\sosiknas1\IFCB_data\NESLTER_transect\data\2019\';
 dirpath = '\\sosiknas1\IFCB_data\NESLTER_transect\data\2019\';
-dirpath = '\\sosiknas1\IFCB_data\SPIROPA\data\2019\';
+dirpath = '\\sosiknas1\IFCB_data\SPIROPA\data\2018\';
 
 dashboards2choose = {'NESLTER_transect'; 'NESLTER_broadscale'; 'SPIROPA'; 'OTZ'; 'WHOI_Dock'; 'EXPORTS'; 'other'}; 
 for n=1:length(dashboards2choose),fprintf('%2d    %s\n',n,char(dashboards2choose(n))),end
@@ -62,10 +62,12 @@ for j=1:length(dirlist)
     roidir      = [dirpath cell2mat(dirlist(j))];
     roifiles    = dir([roidir '\*' ifcb '.roi']);
     temp={roifiles.name}';
-    temp = char(temp);
-    temp=temp(:,1:end-4);
-    files = [files; cellstr(temp)];
-    file_size = [file_size; [roifiles.bytes]'];
+    if ~isempty(temp) 
+        temp = char(temp);
+        temp=temp(:,1:end-4);
+        files = [files; cellstr(temp)];
+        file_size = [file_size; [roifiles.bytes]'];
+    end
     clear temp
 end
 % files = char(files);
