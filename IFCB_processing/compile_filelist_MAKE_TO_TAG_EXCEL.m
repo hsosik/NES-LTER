@@ -3,15 +3,15 @@
 %doc for manual tagging
 clear all
 
-ifcb = 'IFCB109';
+ifcb = 'IFCB011';
 % start = '23 Mar 2018';
-start = '16 Apr 2018';
- stop = '30 Apr 2018';
+start = '14 Aug 2018';
+ stop = '29 Aug 2018';
 %stop = now + + (5/24); %account for UTC time else won't get most recent 4 or 5 hours of data
 
 % dirpath = '\\sosiknas1\IFCB_data\NESLTER_transect\data\2019\';
 dirpath = '\\sosiknas1\IFCB_data\NESLTER_transect\data\2019\';
-dirpath = '\\sosiknas1\IFCB_data\SPIROPA\data\2018\';
+% dirpath = '\\sosiknas1\IFCB_data\EXPORTS\data\2028\';
 
 dashboards2choose = {'NESLTER_transect'; 'NESLTER_broadscale'; 'SPIROPA'; 'OTZ'; 'WHOI_Dock'; 'EXPORTS'; 'other'}; 
 for n=1:length(dashboards2choose),fprintf('%2d    %s\n',n,char(dashboards2choose(n))),end
@@ -77,39 +77,49 @@ ind= find(file_size == 0);
 toskip = repmat({''},length(files),1);
 toskip(ind) = {'y'};
 
+sampletypes2choose = {'underway';'cast';'other'};
 fprintf('\n')
 fprintf('\n')
-answer = input('Would you like to apply a tag (such as "underway") TO THE ENTIRE LIST OF FILES besides the cruise tag? (y/n)','s');
-if strcmp(lower(answer),'y')
-    tag1 = input('What would you like the tag to be? Type exactly as you would like it to appear. (example: underway)','s');
+disp('Now we will apply a SAMPLE TYPE to the ENTIRE LIST OF FILES.');
+fprintf('\n')
+fprintf('\n')
+for n=1:length(sampletypes2choose),fprintf('%2d    %s\n',n,char(sampletypes2choose(n))),end
+fprintf('\n')
+pick = input('Pick the sample type by entering the number of the count listed above:');
+
+if pick == length(sampletypes2choose)
+    sampletype2use = input('What would you like the sample type to be? Type exactly as you would like it to appear. (example: underway)','s');
     fprintf('\n');
     fprintf('\n');
-    disp(['The 2nd tag will be: ' tag1]);
+    disp(['The sample type will be: ' sampletype2use]);
     fprintf('\n');
     answer = input('Are you positive you want this tag applied to every single file on the list? (y/n)','s');
     if strcmp(lower(answer),'y')
-        A = {'Filename' 'cruise' 'skip' 'Tag1'};
-        tag1 = repmat({tag1},length(files),1);
-        A = [A; files cruise_field toskip tag1];
+        A = {'Filename' 'cruise' 'skip' 'sample_type'};
+        sampletype2use = repmat({sampletype2use},length(files),1);
+        A = [A; files cruise_field toskip sampletype2use];
     elseif strcmp(lower(answer),'n')
-        error('Run this file again. You messed up. You have not created a to tag excel doc.');
+        error('Run this file again. You messed up. You have NOT created a to tag excel doc.');
     end
     fprintf('\n');
-    disp(['NOTE: THE ONLY LABELS THAT HAVE BEEN APPLIED TO THIS FILE LIST ARE: cruise field = ' cruise ' and tag = ' char(tag1(1))]);
+    disp(['NOTE: THE ONLY LABELS THAT HAVE BEEN APPLIED TO THIS FILE LIST ARE: cruise field = ' cruise ' and sample type = ' char(sampletype2use(1))]);
     fprintf('\n');
     disp('YOU STILL NEED TO REVIEW THIS FILE AND ADD ANY ADDITIONAL TAGS MANUALLY.');
     fprintf('\n');
     disp('THE EXCEL FILE TITLE HAS INCOMPLETE AT THE END FOR A REASON');
-elseif strcmp(lower(answer),'n')
-    A = {'Filename' 'cruise' 'skip'};
-    A = [A; files cruise_field toskip];
+elseif pick > length(sampletypes2choose)
+     error('THAT NUMBER IS NOT AN OPTION DUMMY!!');
+else
+    sampletype2use = char(sampletypes2choose(pick));
+    A = {'Filename' 'cruise' 'skip' 'sample_type'};
+    sampletype2use = repmat({sampletype2use},length(files),1);
+    A = [A; files cruise_field toskip sampletype2use];
     fprintf('\n')
     disp(['NOTE: THE ONLY TAG THAT HAVE BEEN APPLIED TO THIS FILE LIST IS: ' cruise ]);
     fprintf('\n');
     disp('YOU STILL NEED TO REVIEW THIS FILE AND ADD ANY ADDITIONAL TAGS MANUALLY.');
     fprintf('\n');
     disp('THE EXCEL FILE TITLE HAS INCOMPLETE AT THE END FOR A REASON');
-else error('YOU DID NOT ANSWER Y OR N DUMMY!!');
 end
 
 %make an excel file with the compiled filelist and 
