@@ -9,7 +9,7 @@ function [] = process_attune_v3(basepath, assign_class_function, plot_flag, file
 %output: results stored to data file in summary folder under basepath
 %
 %For example:
-%filetype2exclude = {'FCB_bead_check' 'Cultures'};s 
+%filetype2exclude = {'FCB_bead_check' 'Cultures'};
 %process_attune_v3('\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\', 'assign_class_spiropa_TN368', true, filetype2exclude)
 
 %
