@@ -79,7 +79,7 @@ function [ class ] = assign_class_EN644( fcsdat, fcshdr, plot_flag, filename, QC
     
     in_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_11_19(:,1)),log10(gsyn_11_19(:,2))));
     nonsynfactorA = 15; %6
-    nonsynfactorB = 6 %2.5
+    nonsynfactorB = 6; %2.5
     in_nonsyn_lowPE = fcsdat(:,npar_synY) > minY & fcsdat(:,npar_synY) < maxY/2 & fcsdat(:,18)./fcsdat(:,17) < nonsynfactorB & ~(fcsdat(:,18)<1e4 & fcsdat(:,11)>1e4);
     in_nonsyn_hiPE = fcsdat(:,npar_synY) > maxY/2 & fcsdat(:,18)./fcsdat(:,17) > nonsynfactorB & fcsdat(:,18)./fcsdat(:,17) < nonsynfactorA;
         
