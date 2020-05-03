@@ -37,7 +37,7 @@ Attune.FCSfileinfo = FCSfileinfo;
 save([outpath 'FCSfileinfo'], 'FCSfileinfo')
 clear FCSfileinfo
 
-for iii = 1:length(filetype2exclude)    
+for iii = 1:30:length(filetype2exclude)    
     t = strmatch(filetype2exclude{iii}, Attune.FCSfileinfo.filelist);
     if ~isempty(t)
         f = fieldnames(Attune.FCSfileinfo);
