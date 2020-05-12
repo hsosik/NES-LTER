@@ -1,5 +1,5 @@
 function gps = compile_gps_fromRAW(cruise)
-% function [gps, notes] = compile_gps_fromRAW(cruise)
+% function gps = compile_gps_fromRAW(cruise)
 % function to compile GPS info for NOAA ships Bigelow, Okeanos Explorer, and
 % Gunter
 % See notes at bottom about source of raw files with GPS for each ship
