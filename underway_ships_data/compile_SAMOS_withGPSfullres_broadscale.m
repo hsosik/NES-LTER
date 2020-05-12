@@ -24,6 +24,16 @@ end
 %%
 ncfiles = dir([ncpath '*.nc']);
 ncfiles = {ncfiles.name}';
+%keep only the latest version of each day
+temp = char(ncfiles);
+v = str2num(temp(:,15:19));
+temp = cellstr(temp(:,6:13));
+temp2 = unique(temp);
+keep = ones(size(temp));
+for cc = 1:length(temp2)
+    ii = strmatch(temp2(cc), temp);
+    keep(ii(v(ii)<max(v(ii)))) = 0;
+end
 info = ncinfo([ncpath ncfiles{1}]);
 varname = {info.Variables.Name};
 varname = setdiff(varname,{'flag', 'history'});
