@@ -10,7 +10,11 @@ warning off
 
 %IFCB_mdate = IFCB_file2date(cellstr(IFCB_files));
 iso8601format = 'yyyy-mm-dd hh:MM:ss';
-uw_mdate = datenum(uw.date, iso8601format);
+if ismember('matdate', uw.Properties.VariableNames)
+    uw_mdate = uw.matdate; %case for NESLTER_broadscale
+else
+    uw_mdate = datenum(uw.date, iso8601format);
+end
 t = uw.Properties.VariableNames;
 ilat = find(contains(t, 'latitude'));
 ilon = find(contains(t, 'longitude'));
