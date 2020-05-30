@@ -74,7 +74,8 @@ else
     uw = movevars(uw,{'lat', 'lon'},'Before',1); 
     uw.Properties.VariableNames{'lat'} = 'latitude_fullres';
     uw.Properties.VariableNames{'lon'} = 'longitude_fullres';
-    uw.Properties.VariableNames{'matdate'} = 'mdate_fullres';
+    %uw.Properties.VariableNames{'matdate'} = 'mdate_fullres';
+    uw.mdate_fulres = uw.matdate;
 end
 notes = {'Heidi Sosik, WHOI, produced with compile_SAMOS_withGPSfullres_broadscale.m from downloaded SAMOS netcdf files and appended higher resolution lat, lon from raw data provided by ship or NCEI download'};
 save(outfile, 'uw', 'notes')
