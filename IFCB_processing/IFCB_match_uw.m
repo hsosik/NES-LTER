@@ -20,9 +20,9 @@ ilat = find(contains(t, 'latitude'));
 ilon = find(contains(t, 'longitude'));
 uw_lat = uw.(t{ilat(1)});
 uw_lon = uw.(t{ilon(1)});
-IFCB_match = uw(1,:);
-IFCB_match.lat(1) = NaN; 
-IFCB_match.lon(1) = NaN;
+IFCB_match(1,:) = uw(1,:);
+IFCB_match.lat(1:length(IFCB_mdate)) = NaN(size(IFCB_mdate)); 
+IFCB_match.lon(1:length(IFCB_mdate)) = NaN(size(IFCB_mdate));
 
 for count = 1:length(IFCB_mdate)
     [m,ia] = min(abs(IFCB_mdate(count)-uw_mdate));
@@ -31,19 +31,23 @@ for count = 1:length(IFCB_mdate)
         IFCB_match.lat(count) = uw_lat(ia);
         IFCB_match.lon(count) = uw_lon(ia);        
     else
-        if IFCB_mdate(count) > uw_mdate(ia) %closest to end of gap
-            it = ia;
-        else %closest to start of gap
-            it = ia-1;
+        if ia < length(uw_mdate) %otherwise no match (IFCB file after end of uw data)
+            if IFCB_mdate(count) > uw_mdate(ia) %closest to end of gap
+                it = ia;
+            else %closest to start of gap
+                it = ia-1;
+            end
+            step = floor((uw_mdate(it+1)- uw_mdate(it))*24*60); %one minute interpolation
+            [lat,lon] = track2(uw_lat(it), uw_lon(it),uw_lat(it+1), uw_lon(it+1),[],[], step);
+            it2 = round((IFCB_mdate(count)-uw_mdate(it))/(uw_mdate(it+1)-uw_mdate(it))*step); %index of closest interpolated minute
+            IFCB_match.lat(count) = lat(it2);
+            IFCB_match.lon(count) = lon(it2);
+            IFCB_match(count,1:end-2) = interp1(uw_mdate, uw, IFCB_mdate(count));
+            disp('CHECK interpolation')
+            keyboard
+        else
+            IFCB_match(count,1:size(uw,2)) = array2table(NaN(size(uw(1,:))));
         end
-        step = floor((uw_mdate(it+1)- uw_mdate(it))*24*60); %one minute interpolation
-        [lat,lon] = track2(uw_lat(it), uw_lon(it),uw_lat(it+1), uw_lon(it+1),[],[], step);
-        it2 = round((IFCB_mdate(count)-uw_mdate(it))/(uw_mdate(it+1)-uw_mdate(it))*step); %index of closest interpolated minute
-        IFCB_match.lat(count) = lat(it2);
-        IFCB_match.lon(count) = lon(it2);
-        IFCB_match(count,1:end-2) = interp1(uw_mdate, uw, IFCB_mdate(count));
-        disp('CHECK interpolation')
-        keyboard
     end
 end
 IFCB_match = addvars(IFCB_match, IFCB_files, 'before', 1, 'NewVariableNames',{'pid'});
