@@ -42,7 +42,9 @@ for count = 1:length(IFCB_mdate)
             it2 = round((IFCB_mdate(count)-uw_mdate(it))/(uw_mdate(it+1)-uw_mdate(it))*step); %index of closest interpolated minute
             IFCB_match.lat(count) = lat(it2);
             IFCB_match.lon(count) = lon(it2);
-            IFCB_match(count,1:end-2) = interp1(uw_mdate, uw, IFCB_mdate(count));
+            IFCB_match(count,1:end-2) = array2table(interp1(uw_mdate, double(uw{:,:}), IFCB_mdate(count)));
+            IFCB_match.latitude_fullres(count) = IFCB_match.lat(count);
+            IFCB_match.longitude_fullres(count) = IFCB_match.lon(count);
             disp('CHECK interpolation')
             keyboard
         else
