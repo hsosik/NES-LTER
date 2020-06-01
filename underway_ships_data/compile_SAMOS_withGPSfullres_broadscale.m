@@ -34,6 +34,7 @@ for cc = 1:length(temp2)
     ii = strmatch(temp2(cc), temp);
     keep(ii(v(ii)<max(v(ii)))) = 0;
 end
+ncfiles(~keep) = [];
 info = ncinfo([ncpath ncfiles{1}]);
 varname = {info.Variables.Name};
 varname = setdiff(varname,{'flag', 'history'});
