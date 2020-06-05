@@ -78,6 +78,34 @@ else
     %uw.Properties.VariableNames{'matdate'} = 'mdate_fullres';
     uw.mdate_fulres = uw.matdate;
 end
+
+%add in full res gps if available in SAMOS gaps
+temp = uw(1,:);
+temp{:,:} = NaN; 
+gind = find(diff(uw.mdate_fullres)*24*60>5);
+for ii = 1:length(gind)
+    tt = find(gps.matdate > uw.mdate_fullres(gind(ii)) & gps.matdate < uw.mdate_fullres(gind(ii)+1));
+    sind = find(diff(round(gps.matdate(tt)*24*60))); %indices at 1 minute intervals
+    tt = tt(sind);
+    temp2 = repmat(temp,length(tt),1);
+    temp2.mdate_fullres = gps.matdate(tt);
+    temp2.latitude_fullres = gps.lat(tt);
+    temp2.longitude_fullres = gps.lon(tt);
+    uw = [uw; temp2];
+end
+%add on any gps data for times after SAMOS files end
+if gps.matdate(end) > uw.mdate_fullres(end)
+    tt = find(gps.matdate>uw.mdate_fullres(end));
+    sind = find(diff(round(gps.matdate(tt)*24*60))); %indices at 1 minute intervals
+    tt = tt(sind);
+    temp2 = repmat(temp,length(tt),1);
+    temp2.mdate_fullres = gps.matdate(tt);
+    temp2.latitude_fullres = gps.lat(tt);
+    temp2.longitude_fullres = gps.lon(tt);
+    uw = [uw; temp2];
+end
+uw = sortrows(uw,'mdate_fullres');
+
 notes = {'Heidi Sosik, WHOI, produced with compile_SAMOS_withGPSfullres_broadscale.m from downloaded SAMOS netcdf files and appended higher resolution lat, lon from raw data provided by ship or NCEI download'};
 save(outfile, 'uw', 'notes')
 disp('results saved: ') 
