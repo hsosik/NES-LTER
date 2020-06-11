@@ -10,7 +10,9 @@ warning off
 
 %IFCB_mdate = IFCB_file2date(cellstr(IFCB_files));
 iso8601format = 'yyyy-mm-dd hh:MM:ss';
-if ismember('matdate', uw.Properties.VariableNames)
+if ismember('mdate_fullres', uw.Properties.VariableNames)
+    uw_mdate = uw.mdate_fullres; %case for NESLTER_broadscale with added full resolution gps
+elseif ismember('matdate', uw.Properties.VariableNames) %case for NESLTER_broadscale only SAMOS
     uw_mdate = uw.matdate; %case for NESLTER_broadscale
 else
     uw_mdate = datenum(uw.date, iso8601format);
@@ -23,6 +25,7 @@ uw_lon = uw.(t{ilon(1)});
 IFCB_match(1,:) = uw(1,:);
 IFCB_match.lat(1:length(IFCB_mdate)) = NaN(size(IFCB_mdate)); 
 IFCB_match.lon(1:length(IFCB_mdate)) = NaN(size(IFCB_mdate));
+nnind = find(~isnan(uw_mdate));
 
 for count = 1:length(IFCB_mdate)
     [m,ia] = min(abs(IFCB_mdate(count)-uw_mdate));
@@ -42,11 +45,11 @@ for count = 1:length(IFCB_mdate)
             it2 = round((IFCB_mdate(count)-uw_mdate(it))/(uw_mdate(it+1)-uw_mdate(it))*step); %index of closest interpolated minute
             IFCB_match.lat(count) = lat(it2);
             IFCB_match.lon(count) = lon(it2);
-            IFCB_match(count,1:end-2) = array2table(interp1(uw_mdate, double(uw{:,:}), IFCB_mdate(count)));
+            IFCB_match(count,1:end-2) = array2table(interp1(uw_mdate(nnind), double(uw{nnind,:}), IFCB_mdate(count)));
             IFCB_match.latitude_fullres(count) = IFCB_match.lat(count);
             IFCB_match.longitude_fullres(count) = IFCB_match.lon(count);
             disp('CHECK interpolation')
-            keyboard
+            %keyboard
         else
             IFCB_match(count,1:size(uw,2)) = array2table(NaN(size(uw(1,:))));
         end
