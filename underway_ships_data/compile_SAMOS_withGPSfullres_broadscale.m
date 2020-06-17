@@ -80,6 +80,8 @@ else
 end
 
 %add on any gps data for times after SAMOS files end
+temp = uw(1,:);
+temp{:,:} = NaN; 
 if (max(gps.matdate)-max(uw.mdate_fullres)) > 10/60/24 %more than 10 minutes of extra data
     tt = find(gps.matdate>uw.mdate_fullres(end));
     sind = find(diff(round(gps.matdate(tt)*24*60))); %indices at 1 minute intervals
