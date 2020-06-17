@@ -79,42 +79,43 @@ else
     uw.mdate_fullres = uw.matdate;
 end
 
-%add on any gps data for times after SAMOS files end
-temp = uw(1,:);
-temp{:,:} = NaN; 
-if (max(gps.matdate)-max(uw.mdate_fullres)) > 10/60/24 %more than 10 minutes of extra data
-    tt = find(gps.matdate>uw.mdate_fullres(end));
-    sind = find(diff(round(gps.matdate(tt)*24*60))); %indices at 1 minute intervals
-    tt = tt(2:end);
-    temp2 = repmat(temp,length(tt),1);
-    temp2.mdate_fullres = gps.matdate(tt);
-    temp2.latitude_fullres = gps.lat(tt);
-    temp2.longitude_fullres = gps.lon(tt);
-    uw = [uw; temp2];
-end
+if exist('gps', 'var')
+    %add on any gps data for times after SAMOS files end
+    temp = uw(1,:);
+    temp{:,:} = NaN;
+    if (max(gps.matdate)-max(uw.mdate_fullres)) > 10/60/24 %more than 10 minutes of extra data
+        tt = find(gps.matdate>uw.mdate_fullres(end));
+        sind = find(diff(round(gps.matdate(tt)*24*60))); %indices at 1 minute intervals
+        tt = tt(2:end);
+        temp2 = repmat(temp,length(tt),1);
+        temp2.mdate_fullres = gps.matdate(tt);
+        temp2.latitude_fullres = gps.lat(tt);
+        temp2.longitude_fullres = gps.lon(tt);
+        uw = [uw; temp2];
+    end
 
-%add in full res gps if available in SAMOS gaps
-temp = uw(1,:);
-temp{:,:} = NaN; 
-gind = find(diff(uw.mdate_fullres)*24*60>5);
-for ii = 1:length(gind)
-    tt = find(gps.matdate > uw.mdate_fullres(gind(ii)) & gps.matdate < uw.mdate_fullres(gind(ii)+1));
-    sind = find(diff(round(gps.matdate(tt)*24*60))); %indices at 1 minute intervals
-    tt = tt(sind(2:end-1)); %skip first and last since overlap with SAMOS at 1 minute res
-    temp2 = repmat(temp,length(tt),1);
-    temp2.mdate_fullres = gps.matdate(tt);
-    temp2.latitude_fullres = gps.lat(tt);
-    temp2.longitude_fullres = gps.lon(tt);
-    uw = [uw; temp2];
-end
+    %add in full res gps if available in SAMOS gaps
+    temp = uw(1,:);
+    temp{:,:} = NaN; 
+    gind = find(diff(uw.mdate_fullres)*24*60>5);
+    for ii = 1:length(gind)
+        tt = find(gps.matdate > uw.mdate_fullres(gind(ii)) & gps.matdate < uw.mdate_fullres(gind(ii)+1));
+        sind = find(diff(round(gps.matdate(tt)*24*60))); %indices at 1 minute intervals
+        tt = tt(sind(2:end-1)); %skip first and last since overlap with SAMOS at 1 minute res
+        temp2 = repmat(temp,length(tt),1);
+        temp2.mdate_fullres = gps.matdate(tt);
+        temp2.latitude_fullres = gps.lat(tt);
+        temp2.longitude_fullres = gps.lon(tt);
+        uw = [uw; temp2];
+    end
 
-%in case some full res is missing, just use the SAMOS info as best available
-ii = find(isnan(uw.mdate_fullres));
-uw.mdate_fullres(ii) = uw.matdate(ii);
-uw.latitude_fullres(ii) = uw.lat_SAMOS(ii);
-uw.longitude_fullres(ii) = uw.lon_SAMOS(ii);
-uw = sortrows(uw,'mdate_fullres');
-
+    %in case some full res is missing, just use the SAMOS info as best available
+    ii = find(isnan(uw.mdate_fullres));
+    uw.mdate_fullres(ii) = uw.matdate(ii);
+    uw.latitude_fullres(ii) = uw.lat_SAMOS(ii);
+    uw.longitude_fullres(ii) = uw.lon_SAMOS(ii);
+    uw = sortrows(uw,'mdate_fullres');
+    end
 notes = {'Heidi Sosik, WHOI, produced with compile_SAMOS_withGPSfullres_broadscale.m from downloaded SAMOS netcdf files and appended higher resolution lat, lon from raw data provided by ship or NCEI download'};
 save(outfile, 'uw', 'notes')
 disp('results saved: ') 
