@@ -29,7 +29,8 @@ else
 end
 
 % cluster analysis
-c = dbscan(log10(fcsdat(:, [ch1 ch2])), epsilon, minpts);
+%c = dbscan(log10(fcsdat(:, [ch1 ch2])), epsilon, minpts);
+c = dbscan(log10(fcsdat(:, [15,17,19])+1), .1, 20, 'distance', 'mahalanobis'); unique(c)
 
 % identify bead clusters
 pd = NaN(length(unique(c))-1, 1);
@@ -87,7 +88,7 @@ plot([m1 m1], [yl(1) yl(2)], '-k', 'LineWidth', 1)
 plot([m6 m6], [yl(1) yl(2)], '-k', 'LineWidth', 1)
 set(gca, 'XScale', 'log')
 legend('0.5 \mum', '1 \mum', '6 \mum')
-
+pause
 end
 
 function c = centend(fcsdat, class_vec, class, channel)
