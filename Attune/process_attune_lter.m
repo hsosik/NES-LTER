@@ -32,7 +32,6 @@ end
 startdate = min(FCSfileinfo.matdate_start);
 Attune.FCSfileinfo = FCSfileinfo;
 save([outpath 'FCSfileinfo'], 'FCSfileinfo')
-clear FCSfileinfo
 
 for iii = 1:length(filetype2exclude)    
     t = strmatch(filetype2exclude{iii}, Attune.FCSfileinfo.filelist);
@@ -48,6 +47,16 @@ end
 % may need to adjust epsilon and/or minpts depending on cruise
 
 bead_files = dir([fpath '\FCB_bead_check*']);
+bead_files = {bead_files.name};
+[~,ia,ib] = intersect(FCSfileinfo.filelist, bead_files);
+[~,is] = sort(FCSfileinfo.matdate_start(ia)); 
+bead_files = bead_files(ib(is));
+f = fieldnames(FCSfileinfo);
+for ii = 1:length(f)
+      bead_FCSfileinfo.(f{ii}) = FCSfileinfo.(f{ii})(ia(is));
+end
+clear FCSfileinfo
+
 if isempty(bead_files)
     bead_files = dir([fpath '\Daily bead check*']);
     disp('STOP--need new code for cases with PT beads')
@@ -65,8 +74,8 @@ end
 beadstat = table;
 beadstat_temp = table;
 for ii = 1:length(bead_files)
-    disp(ii)
-    [fcsdat, fcshdr] = fca_readfcs([fpath bead_files(ii).name]);
+%    disp(ii)
+    [fcsdat, fcshdr] = fca_readfcs([fpath bead_files{ii}]);
     [~, ~, m1, ~, temp_table, QC_flag] = assign_class_beads_algorithm_v4(fcsdat, fcshdr, 1);
     beadstat(ii,:) = temp_table;
     beadstat_temp.hv(ii,:) = {fcshdr.par.hv};
@@ -75,10 +84,10 @@ for ii = 1:length(bead_files)
     bead_time(ii) = datetime([fcshdr.date, ' ', fcshdr.starttime]);
     hv(ii) = fcshdr.par(ssc_ch).hv;
     figure(99)
-    subplot(2,2,1), title(bead_files(ii).name, 'interpreter', 'none')
+    subplot(2,2,1), title(bead_files(ii), 'interpreter', 'none')
     subplot(2,2,2), title([datestr(bead_time(ii)) '; SSC hv = ' num2str(hv(ii)) ' (' fcshdr.par(ssc_ch).name ')'])
-    print(figure(99), fullfile(beadfigpath, regexprep(bead_files(ii).name, '.fcs', '.png')), '-dpng')
-    %pause
+    print(figure(99), fullfile(beadfigpath, regexprep(bead_files{ii}, '.fcs', '.png')), '-dpng')
+ %   pause
 end
 for ii = 1:length(beadstat_temp.hv(:)), if length(beadstat_temp.hv{ii})==0, beadstat_temp.hv{ii} = [NaN]; end; end;
 beadstat.hv = cell2mat(beadstat_temp.hv); clear beadstat_temp
@@ -102,7 +111,7 @@ xlabel('Time')
 ylabel('Bead SSC-H')
 hold off
 parname = {fcshdr.par.name};
-save([outpath 'beadstat'],'bead*', 'parname') 
+save([outpath 'beadstat'],'bead*', 'parname', 'ssc_ch') 
 % read in and process Attune data files
 
 filelist = Attune.FCSfileinfo.filelist;

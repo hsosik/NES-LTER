@@ -47,8 +47,18 @@ meanc = NaN(length(ch), nc);
 for ii = 1:nc
     meanc(:,ii) = mean(fcsdat(c==ii,ch));
 end
-[~,c1] = min(meanc(1,:)); %smallest on SSC (GL1), 0.5 micron
+%[~,c1] = min(meanc(1,:)); %smallest on SSC (GL1), 0.5 micron
+[~,ii] = sort(meanc(3,:));
+if (nc > 1 & meanc(1:2,ii(1))./meanc(1:2,ii(2)) > .8 & meanc(1:2,ii(1))./meanc(1:2,ii(2)) <1.5 & meanc(3,ii(1))./meanc(3,ii(2)) > 0.3 & meanc(3,ii(1))./meanc(3,ii(2)) < 1.5)
+    c(c==ii(1)) = ii(2);
+    for iii = 1:nc
+        meanc(:,iii) = mean(fcsdat(c==iii,ch));
+    end
+end
 [~,c2] = min(meanc(3,:)); %smallest on GL3, 1 micron
+tt = find(meanc(1,:) < meanc(1,c2));
+[~,c1] = min(meanc(2,tt)); %smallest on SSC (GL1), 0.5 micron
+c1 = tt(c1);
 
 % second cluster the stuff offscale on chl
 tempi = find(fcsdat(:,ch(2))>=1e6);
@@ -63,10 +73,10 @@ end
 [~,c3] = min(meanc(1,:)); %smallest on SSC (GL1)
 c3 = c3+max(ctemp);
 
-% figure(199), clf
-% subplot(1,2,1), scatter(fcsdat(:,ch(1)), fcsdat(:,ch(3)), 5, c, 'filled'), set(gca, 'yscale', 'log', 'xscale', 'log')
-% subplot(1,2,2), scatter(fcsdat(:,ch(1)), fcsdat(:,ch(2)), 5, c, 'filled'), set(gca, 'yscale', 'log', 'xscale', 'log')
-
+%  figure(199), clf
+%  subplot(1,2,1), scatter(fcsdat(:,ch(1)), fcsdat(:,ch(3)), 5, c, 'filled'), set(gca, 'yscale', 'log', 'xscale', 'log')
+%  subplot(1,2,2), scatter(fcsdat(:,ch(1)), fcsdat(:,ch(2)), 5, c, 'filled'), set(gca, 'yscale', 'log', 'xscale', 'log')
+% 
 class = zeros(length(c), 1);
 class(c==c1) = 1; %0.5 micron
 class(c==c2) = 2; %1 micron
@@ -79,6 +89,7 @@ for ii = 1:3
     beadstat.(['mean' nstr]) = mean(fcsdat(class==ii,:));
     beadstat.(['std' nstr]) = std(fcsdat(class==ii,:));
     beadstat.(['median' nstr]) = median(fcsdat(class==ii,:));
+    beadstat.(['number' nstr]) = sum(class==ii);
 end
 
 % central tendency of the bead clusters
@@ -100,10 +111,10 @@ end
 QC_flag = logical(QC_flag);
 
 % plot bead clusters for visual verification
+figure(99)
+set(gcf,'Position', [100 125 1100 650])
 if plot_flag
     figure(99), clf
-    set(gcf,'Position', [100 100 1100 650])
-
     colormap(lines(4));
     subplot(2,2,1)
     scatter(fcsdat(:,ch(1)), fcsdat(:,ch(2)), 1, class, 'filled')
