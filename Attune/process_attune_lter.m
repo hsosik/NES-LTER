@@ -86,7 +86,7 @@ for ii = 1:length(bead_files)
     figure(99)
     subplot(2,2,1), title(bead_files(ii), 'interpreter', 'none')
     subplot(2,2,2), title([datestr(bead_time(ii)) '; SSC hv = ' num2str(hv(ii)) ' (' fcshdr.par(ssc_ch).name ')'])
-    print(figure(99), fullfile(beadfigpath, regexprep(bead_files{ii}, '.fcs', '.png')), '-dpng')
+   % print(figure(99), fullfile(beadfigpath, regexprep(bead_files{ii}, '.fcs', '.png')), '-dpng')
  %   pause
 end
 for ii = 1:length(beadstat_temp.hv(:)), if length(beadstat_temp.hv{ii})==0, beadstat_temp.hv{ii} = [NaN]; end; end;
