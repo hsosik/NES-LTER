@@ -5,7 +5,7 @@ function [] = process_attune_lter(basepath, assign_class_function, plot_flag, fi
 fpath = [basepath filesep 'FCS' filesep];
 outpath = [basepath filesep 'bead_calibrated_test' filesep];
 beadfigpath = [outpath filesep 'bead_plots'];
-classpath = [outpath 'class' filesep];
+classpath = [outpath 'class_test' filesep];
 
 if ~exist(outpath, 'dir')
     mkdir(outpath)
