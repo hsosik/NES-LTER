@@ -171,7 +171,7 @@ for cc = 1:length(class2use)
     set(cbh, 'yticklabel', round(100*10.^(get(cbh, 'ytick')))/100)
     title([class2use{cc} '  cells or chains per ml'], 'interpreter','none')
     %print(['c:\work\lter\IFCB_classes\TS\' class2use{cc}], '-dpng')
-    %pause
+    pause
 end
 
 return
