@@ -1,7 +1,7 @@
 cruises = {'AR22' 'AR24A' 'AR24B' 'AR24C' 'EN608' 'AR28A' 'AR28B' 'EN617'...
     'AR31A' 'AR31B' 'AR31C' 'AR32' 'EN627' 'AR34A' 'AR34B' 'EN644'};  %'AR16' 'AR34B' 'AR38' 'AR39A' 'AR39A'
 
-cruises = {'EN608' 'AR28B' 'EN617' 'AR31B'};  %'AR16' 'AR34B' 'AR38' 'AR39'
+%cruises = {'EN608' 'AR28B' 'EN617' 'AR31B'};  %'AR16' 'AR34B' 'AR38' 'AR39'
 %cruises = {'EN608' 'EN617' 'EN627' 'EN644'};
 %cruises = {'EN617' 'EN644'};
 
