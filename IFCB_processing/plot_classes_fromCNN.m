@@ -49,13 +49,6 @@ s2019 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_
 %s2018 = load('c:\work\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2018.mat');
 %s2019 = load('c:\work\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2019.mat');
 
-temp = {'cast' 'tag1' 'tag2' 'tag3' 'tag4' 'tag5'};
-for count = 1:length(temp) %FUDGE for now, fix meta_data format later
-    s = temp{count};
-    s2017.meta_data.(s) = cellstr(num2str(s2017.meta_data.(s))); 
-    s2019.meta_data.(s) = cellstr(num2str(s2019.meta_data.(s))); 
-end
-
 IFCBsum = table;
 slist = {'filelist' 'classcount' 'meta_data' 'classbiovol' 'mdate'};
 for count = 1:length(slist)
