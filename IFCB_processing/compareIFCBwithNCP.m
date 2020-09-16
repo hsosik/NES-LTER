@@ -158,6 +158,8 @@ datetick('x', 1, 'keeplimits')
 set(gca, 'xlim', datenum(dr), 'linewidth', 2)
 
 %%
+ncpmatch617 = interp1(ncp617.ncplter(:,1),ncp617.ncplter(:,9), IFCBsum.mdate(en617ind));
+ncpmatch644 = interp1(ncp644.ncplter(:,1),ncp644.ncplter(:,9), IFCBsum.mdate(en644ind));
 figure
 plot(alivebv_gt10(en617ind,1)./IFCBsum.meta_data.ml_analyzed(en617ind), ncpmatch617, '.', 'markersize', 8)
 axis square
