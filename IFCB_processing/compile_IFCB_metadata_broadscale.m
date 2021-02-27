@@ -5,7 +5,6 @@ function [] = compile_IFCB_metadata_broadscale(ToTag_xlsFile, uw_compiled_file)
 cruise = strsplit(f, '_');
 cruise = cruise{2};
 
-
 totag = readtable(ToTag_xlsFile);
 %avoid case mis-matches
 totag.Properties.VariableNames = lower(totag.Properties.VariableNames);
