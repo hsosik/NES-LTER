@@ -34,7 +34,7 @@ for count = 1:length(IFCB_mdate)
         IFCB_match.lat(count) = uw_lat(ia);
         IFCB_match.lon(count) = uw_lon(ia);        
     else
-        if ia < length(uw_mdate) %otherwise no match (IFCB file after end of uw data)
+        if ia < length(uw_mdate) && ia > 1 %otherwise no match (IFCB file after end of uw data or before beginning)
             if IFCB_mdate(count) > uw_mdate(ia) %closest to end of gap
                 it = ia;
             else %closest to start of gap
