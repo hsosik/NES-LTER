@@ -1,6 +1,6 @@
 cruises = {'AR22' 'AR24A' 'AR24B' 'AR24C' 'EN608' 'AR28A' 'AR28B' 'EN617'...
-    'AR31A' 'AR31B' 'AR31C' 'AR32' 'EN627' 'AR34A' 'AR34B' 'AR38' 'AR39a'...
-    'AR39B' 'EN644'};  %'AR16' 'AR44' 'EN649' 'EN655' 'EN657' 'EN661'
+    'AR31A' 'AR31B' 'AR31C' 'AR32' 'AR44' 'EN627' 'AR34A' 'AR34B' 'AR38' 'AR39a'...
+    'AR39B' 'EN644' 'EN649' 'EN655' 'EN657' 'EN661'};  %'AR16' 'AR48A' 'AR48B'  
 cruises2 = {'AR29' 'RB1904' 'TN368' };
 
 %cruises = {'EN608' 'AR28B' 'EN617' 'AR31B'};  %'AR16' 'AR34B' 'AR38' 'AR39'
@@ -76,6 +76,8 @@ for count1 = 1:length(cruises2)
 s2017 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2017.mat');
 s2018 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2018.mat');
 s2019 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2019.mat');
+s2020 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2020.mat');
+%s2021 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2021.mat');
 s2018b = load('\\sosiknas1\IFCB_products\SPIROPA\summary\summary_biovol_allHDF_min20_2018.mat');
 s2019b = load('\\sosiknas1\IFCB_products\SPIROPA\summary\summary_biovol_allHDF_min20_2019.mat');
 tag5 = repmat(cellstr(''),size(s2018b.meta_data,1),1);
@@ -93,7 +95,7 @@ s2019b.meta_data.tag4 = cellstr(num2str(s2019b.meta_data.tag4));
 IFCBsum = table;
 slist = {'filelist' 'classcount' 'meta_data' 'classbiovol' 'mdate'};
 for count = 1:length(slist)
-    s = slist{count}; IFCBsum.(s) = [s2017.(s); s2018.(s); s2019.(s) ; s2018b.(s); s2019b.(s)];
+    s = slist{count}; IFCBsum.(s) = [s2017.(s); s2018.(s); s2019.(s) ;s2020.(s) ; s2018b.(s); s2019b.(s)];
 end
 
 class2use = s2017.class2use;
@@ -139,7 +141,15 @@ Z2all = IFCBsum.classbiovol(b,diatom_ind)./IFCBsum.meta_data.ml_analyzed(b);
 
 for ii = 1:12, y_month(ii) = nanmean(Z2(dv(:,2)==ii)); end
 
-
-
 ilat = 39.7:.1:41.5;
 for ii = 1:length(ilat)-1, iii = find(match_uw.lat >ilat(ii) & match_uw.lat<=ilat(ii+1)); Z2latmn(ii) = nanmean(Z2(iii));end
+
+figure
+boxplot(Z2,dv(:,2), 'Whisker', 5, 'notch', 'on')
+text(1:12,4.5e6*ones(12,1),num2str(histcounts(dv(:,2),0:12)'), 'fontsize', 10)
+
+figure
+plot(ilat(1:end-1)+.05, Z2latmn,'-*', 'linewidth', 3)
+
+figure
+plot(1:366, nanmean(y_mat,2), 'linewidth', 3)

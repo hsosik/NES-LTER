@@ -31,10 +31,10 @@ bottle_data = webread([apibase 'ctd/' cruise '/bottles.csv'], options);
 %find the underway rows
 tagstr = 'tag1';
 uwind = strmatch('underway', totag.(tagstr), 'exact');
-if isempty(uwind)
-    tagstr = 'tag2';
-    uwind = strmatch('underway', totag.(tagstr));
-end
+%if isempty(uwind)
+%    tagstr = 'tag2';
+%    uwind = strmatch('underway', totag.(tagstr));
+%end
 if isempty(uwind)
     tagstr = 'sample_type';
     uwind = strmatch('underway', totag.(tagstr));
