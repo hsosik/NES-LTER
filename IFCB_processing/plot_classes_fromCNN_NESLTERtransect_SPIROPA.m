@@ -77,7 +77,7 @@ s2017 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_
 s2018 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2018.mat');
 s2019 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2019.mat');
 s2020 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2020.mat');
-%s2021 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2021.mat');
+s2021 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2021.mat');
 s2018b = load('\\sosiknas1\IFCB_products\SPIROPA\summary\summary_biovol_allHDF_min20_2018.mat');
 s2019b = load('\\sosiknas1\IFCB_products\SPIROPA\summary\summary_biovol_allHDF_min20_2019.mat');
 tag5 = repmat(cellstr(''),size(s2018b.meta_data,1),1);
@@ -95,7 +95,7 @@ s2019b.meta_data.tag4 = cellstr(num2str(s2019b.meta_data.tag4));
 IFCBsum = table;
 slist = {'filelist' 'classcount' 'meta_data' 'classbiovol' 'mdate'};
 for count = 1:length(slist)
-    s = slist{count}; IFCBsum.(s) = [s2017.(s); s2018.(s); s2019.(s) ;s2020.(s) ; s2018b.(s); s2019b.(s)];
+    s = slist{count}; IFCBsum.(s) = [s2017.(s); s2018.(s); s2019.(s); s2020.(s); s2021.(s); s2018b.(s); s2019b.(s)];
 end
 
 class2use = s2017.class2use;
@@ -129,6 +129,7 @@ group_table = readtable('\\sosiknas1\training_sets\IFCB\config\IFCB_classlist_ty
 group_table.CNN_classlist(strmatch('Pseudo-nitzschia', group_table.CNN_classlist)) = {'Pseudo_nitzschia'};
 [~,ia,ib] = intersect(group_table.CNN_classlist, class2use);
 diatom_ind = ib(find(group_table.Diatom(ia)));
+dino_ind = ib(find(group_table.Dinoflagellate(ia)));
 
 dv = datevec(match_uw.mdate);
 yd_vec = match_uw.mdate-datenum(dv(:,1),1,0);
@@ -136,20 +137,263 @@ yd_vec = match_uw.mdate-datenum(dv(:,1),1,0);
 Z2 = (sum(IFCBsum.classbiovol(b,diatom_ind),2)./IFCBsum.meta_data.ml_analyzed(b));
 
 Z2all = IFCBsum.classbiovol(b,diatom_ind)./IFCBsum.meta_data.ml_analyzed(b);
+ind = find(match_uw.lon < -70.883+.24 & match_uw.lon > -70.883-.24); 
 
-[ mdate_mat, y_mat, yearlist, yd ] = timeseries2ydmat( match_uw.mdate, Z2 );
+%%
+for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
+yy = 2017:2021;
+bins = linspace(3,6.5,100);
+figure, tl = tiledlayout(11,1, 'TileSpacing', 'compact')
+for iii = 1:11
+    nexttile
+    hh = NaN(length(yy), length(bins)-1);
+    for cc = 1:length(yy)
+        tt = find(dv(ind,2) == iii & dv(ind,1) == yy(cc));
+        hh(cc,:) = histcounts(log10(Z2(ind(tt))),bins);
+    end
+    bar(bins(1:end-1),hh, 'stacked', 'edgecolor', 'none'), set(gca, 'xticklabel', [])
+    yl = ylim;
+    text(3.1, yl(2)*.8, datestr(datenum(2020,iii,1), 'mmm'))
+end
+ylabel(tl, 'Frequency of samples (transect 2017-2020)')
+xlabel(tl, {'Diatom biovolume concentration';  '(log10 \mum^3 ml^{-1})'})
+set(gca, 'xticklabelmode', 'auto')
+nexttile(6)
+legend(num2str(yy'), 'location', 'southeast')
+set(gcf, 'paperposition', [.25 .25 4 10.5])
+set(gcf, 'position', [200 50 400 600])
 
-for ii = 1:12, y_month(ii) = nanmean(Z2(dv(:,2)==ii)); end
+print('c:\work\diatom_bv_month', '-dpng')
 
-ilat = 39.7:.1:41.5;
-for ii = 1:length(ilat)-1, iii = find(match_uw.lat >ilat(ii) & match_uw.lat<=ilat(ii+1)); Z2latmn(ii) = nanmean(Z2(iii));end
+%%
+figure
+boxplot(Z2(ind),dv(ind,2), 'whisker', 3, 'notch', 'on', 'datalim', [0 1.5e6], 'extrememode', 'compress', 'outliersize', 4)
+xlim([.5 12.5])
+set(gca, 'xtick', 1:12)
+set(gca, 'xticklabel', num2str(get(gca, 'xtick')'))
+set(gca, 'position', [.13 .11 .775 .7])
+tt = regexprep(cellstr(num2str(histcounts(dv(:,2),1:13)')), ' ', '');
+text(1:12,2e6*ones(12,1),tt, 'fontsize', 10, 'horizontalalignment', 'center', 'color', 'b')
+for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
+text(1:12,2.15e6*ones(12,1),num2str(numyrs'), 'fontsize', 10, 'horizontalalignment', 'center', 'color', 'b')
+set(gca, 'xticklabel', ['JFMAMJJASOND']')
+ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+
+print('c:\work\diatom_bv_monthly_box', '-dpng')
+
+%%
+%[ mdate_mat, y_mat, yearlist, yd ] = timeseries2ydmat( match_uw.mdate, Z2 );
+%for ii = 1:12, y_month(ii) = nanmean(Z2(dv(:,2)==ii)); end
+%ilat = 39.2:.05:41.5;
+%for ii = 1:length(ilat)-1, iii = find(match_uw.lat(ind) >ilat(ii) & match_uw.lat(ind)<=ilat(ii+1)); Z2latmd(ii) = nanmedian(Z2(ind(iii)));end
+
+%figure
+%plot(match_uw.lat(ind), Z2(ind), '.')
+%hold on
+%plot(ilat(1:end-1)+.05, Z2latmd,'-', 'linewidth', 3)
+%set(gca, 'xdir', 'rev')
+
+%figure
+%plot(1:366, nanmean(y_mat,2), 'linewidth', 3)
+%ilat = (39.2:.05:41.5)';
+
+for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
+lat_smooth = round(match_uw.lat,1);
+ilat = unique(lat_smooth);
+ilat = ilat(~isnan(ilat));
+figure
+t = boxplot(Z2(ind),lat_smooth(ind), 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'inline');
+set(gca, 'xdir', 'rev')
+yl = ylim; ylim([0 yl(2)])
+ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+xlabel('Latitude')
+print('c:\work\diatom_bv_lat_box', '-dpng')
+
+LTER = [41 11.8 70 53; 41 1.8 70 53; 40 51.8 70 53; 40 41.8 70 53; 40 30.8 70 53; 40 21.8 70 53; 40 13.6 70 53; ...
+    40 08.2 70 46.5; 40 5.9 70 53; 39 56.4 70 53; 39 46.4 70 53];
+LTER_labels = {'L1'; 'L2'; 'L3'; 'L4'; 'L5'; 'L6'; 'L7'; 'L8'; 'L9'; 'L10'; 'L11'};
+LTERdeg(:,1) = LTER(:,1)+LTER(:,2)/60;
+LTERdeg(:,2) = LTER(:,3)+LTER(:,4)/60;
 
 figure
-boxplot(Z2,dv(:,2), 'Whisker', 5, 'notch', 'on')
-text(1:12,4.5e6*ones(12,1),num2str(histcounts(dv(:,2),0:12)'), 'fontsize', 10)
+hh = histcounts(lat_smooth(ind),ilat(~isnan(ilat)));
+bar(ilat(2:end), hh), set(gca, 'xdir', 'rev', 'xtick', ilat, 'XTickLabelRotation', 90)
+set(gca, 'xdir', 'rev', 'xgrid', 'on')
+xlim([39.1 41.55])
+ylabel({'Number of'; 'samples'})
+set(gcf, 'position', [360 530 560 200])
+set(gca, 'position', [.13 .1386 .775 .4])
+hold on
+text(LTERdeg(:,1), 1500*ones(size(LTER_labels)), 'v', 'fontsize', 8, 'verticalalignment', 'bottom', 'fontname', 'arial')
+text(LTERdeg(:,1), 1700*ones(size(LTER_labels)), LTER_labels, 'fontsize', 8, 'verticalalignment', 'bottom', 'horizontalalignment', 'left')
+print('c:\work\samplenum_by_lat', '-dpng')
+
+%%
+
+figure 
+%set(gcf,'paperposition', [.5 .5 5 10])
+tl = tiledlayout(5,1, 'TileSpacing', 'compact')
+for cc = 2:2:9
+    %subplot(5,1,cc/2)
+    nexttile
+    ii = find(dv(ind,2)==cc |dv(ind,2)==cc+1); 
+    %boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on');
+    boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+    set(gca, 'xdir', 'rev', 'xticklabel', [])
+    a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+    yl = ylim; ylim([0 yl(2)]); %auto y-scale
+    text(5, yl(2)*.7, [a(1,:) '-' a(2,:)], 'fontsize', 14)
+    %ylim([0 1.83e6]) %all same y scale
+    %text(5, 12e5, [a(1,:) '-' a(2,:)], 'fontsize', 14)
+end
+nexttile
+cc = 10;
+ii = find(dv(ind,2)==cc |dv(ind,2)==cc+1); 
+boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+set(gca, 'xdir', 'rev')
+%yl = ylim; ylim([0 yl(2)]);
+ylim([0 1.83e6]);
+a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+text(5, 12e5, [a(1,:) '-' a(2,:)], 'fontsize', 14)
+set(gca, 'XTickLabelRotation',90)
+set(gcf, 'paperposition', [.25 .25 6 10.5])
+print('c:\work\diatom_bv_lat_by_2mon_box', '-dpng')
+
+ylabel(tl, 'Diatom biovolume concentration (\mum^3 ml^{-1})')
+xlabel(tl, 'Latitude')
+
+%%
+tstr = {'Feb-Mar' 'Apr-May' 'Jun-Jul' 'Aug-Sep' 'Oct-Nov'};
+for yy = 2017ex:2021
+figure 
+set(gcf,'position', [360 60 500 600])
+tl = tiledlayout(5,1, 'TileSpacing', 'compact')
+for cc = 2:2:9
+    %subplot(5,1,cc/2)
+    nexttile
+    ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy); 
+    boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+    set(gca, 'xdir', 'rev', 'xticklabel', [])
+    a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+    yl = ylim; ylim([0 yl(2)]); %auto y-scale
+    text(5, yl(2)*.7, tstr{cc/2}, 'fontsize', 14)
+    %text(5, yl(2)*.7, [a(1,:) '-' a(2,:)], 'fontsize', 14)
+    %ylim([0 1.83e6]) %all same y scale
+    %text(5, 12e5, [a(1,:) '-' a(2,:)], 'fontsize', 14)
+end
+nexttile
+cc = 10;
+ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy); 
+boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+set(gca, 'xdir', 'rev')
+%yl = ylim; ylim([0 yl(2)]);
+ylim([0 1.83e6]);
+a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+text(5, 12e5, tstr{cc/2}, 'fontsize', 14)
+set(gca, 'XTickLabelRotation',90)
+set(gcf, 'paperposition', [.25 .25 6 10.5])
+
+ylabel(tl, 'Diatom biovolume concentration (\mum^3 ml^{-1})')
+xlabel(tl, 'Latitude')
+title(tl, yy)
+end
+
+%%
+%%
+tstr = {'Feb-Mar' 'Apr-May' 'Jun-Jul' 'Aug-Sep' 'Oct-Nov'};
+for yy = 2017:2020
+figure 
+set(gcf,'position', [360 20 500 600])
+tl = tiledlayout(5,1, 'TileSpacing', 'compact');
+%tZ2 = Z2all(:,strmatch('Hemiaulus', class2use(diatom_ind)));
+c2plot = 'Guinardia_flaccida';
+c2plot = 'Guinardia_delicatula';
+tZ2 = sum(Z2all(:,strmatch(c2plot, class2use(diatom_ind))),2);
+for cc = 2:2:9
+    %subplot(5,1,cc/2)
+    nexttile
+    ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy); 
+    boxplot([tZ2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+    set(gca, 'xdir', 'rev', 'xticklabel', [])
+    a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+    yl = ylim; ylim([0 yl(2)]); %auto y-scale
+    %text(5, yl(2)*.7, tstr{cc/2}, 'fontsize', 14)
+    %text(5, yl(2)*.7, [a(1,:) '-' a(2,:)], 'fontsize', 14)
+    ylim([0 1e6]) %all same y scale
+    text(7, .8e6, tstr{cc/2}, 'fontsize', 14)
+end
+nexttile
+cc = 10;
+ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy); 
+boxplot([tZ2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+set(gca, 'xdir', 'rev')
+%yl = ylim; ylim([0 yl(2)]);
+ylim([0 1.83e6]);
+a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+text(5, 12e5, tstr{cc/2}, 'fontsize', 14)
+set(gca, 'XTickLabelRotation',90)
+set(gcf, 'paperposition', [.25 .25 6 10.5])
+
+ylabel(tl, 'Diatom biovolume concentration (\mum^3 ml^{-1})')
+xlabel(tl, 'Latitude')
+title(tl, [c2plot ' ' num2str(yy)], 'interpreter', 'none')
+end
+
+%%
+ii2018 = find(dv(ind,2)==2 & dv(ind,1) == 2018);
+[~, is2018] = sort(sum(Z2all(ind(ii2018),:)), 'descend');
+class2use(diatom_ind(is2018(1:10)))
+
+ii2019 = find(dv(ind,2)==2 & dv(ind,1) == 2019);
+[~, is2019] = sort(sum(Z2all(ind(ii2019),:)), 'descend');
+
+ii2020 = find(dv(ind,2)==2 & dv(ind,1) == 2020);
+[~, is2020] = sort(sum(Z2all(ind(ii2020),:)), 'descend');
+
+top10ind = unique([is2018(1:10) is2019(1:10) is2020(1:10)]);
+class2use(diatom_ind(unique([is2018(1:10) is2019(1:10) is2020(1:10)])))
+
+cind2 = strmatch('Thalassiosira', class2use(diatom_ind));
+cind = strmatch('Guinardia', class2use(diatom_ind));
 
 figure
-plot(ilat(1:end-1)+.05, Z2latmn,'-*', 'linewidth', 3)
+tl = tiledlayout(3,1, 'TileSpacing', 'compact');
+ind2plot = {is2019(1) cind cind2};
+for cc = 1:2
+    nexttile
+    boxplot([sum(Z2all(ind(ii2019),ind2plot{cc}),2); NaN(size(ilat))],[lat_smooth(ind(ii2019)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+    set(gca, 'xdir', 'rev', 'xticklabel', [])
+    ylim([0 .5e6]) %all same y scale
+end
+nexttile
+cc = 3;
+boxplot([sum(Z2all(ind(ii2019),ind2plot{cc}),2); NaN(size(ilat))],[lat_smooth(ind(ii2019)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+set(gca, 'xdir', 'rev')
+ylim([0 .5e6]) %all same y scale
+set(gca, 'XTickLabelRotation',90)
+%set(gcf, 'paperposition', [.25 .25 6 10.5])
 
+ylabel(tl, 'Biovolume concentration (\mum^3 ml^{-1})')
+xlabel(tl, 'Latitude')
+title(tl, 'Feb 2019, top 3 diatom genera')
+
+%%
+ii2019Aug = find(dv(ind,2)==8 & dv(ind,1) == 2019);
 figure
-plot(1:366, nanmean(y_mat,2), 'linewidth', 3)
+tl = tiledlayout(3,1, 'TileSpacing', 'compact');
+ind2plot = strmatch('Hemiaulus', class2use(diatom_ind))
+    nexttile
+    boxplot([sum(Z2all(ind(ii2019Aug),ind2plot),2); NaN(size(ilat))],[lat_smooth(ind(ii2019Aug)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+    set(gca, 'xdir', 'rev')
+    ylim([0 2e6]) %all same y scale
+
+set(gca, 'XTickLabelRotation',90)
+%set(gcf, 'paperposition', [.25 .25 6 10.5])
+
+ylabel({'Biovolume concentration'; '(\mum^3 ml^{-1})'})
+xlabel('Latitude')
+title(tl, 'Aug 2019, \itHemiaulus')
+
+
+%%
+ 
