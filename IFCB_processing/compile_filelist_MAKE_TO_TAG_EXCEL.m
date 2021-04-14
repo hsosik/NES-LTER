@@ -4,10 +4,10 @@
 clear all
 
 %% VARIABLES TO EDIT
-ifcb = 'IFCB014';
+ifcb = 'IFCB101';
 % start = '23 Mar 2018';
-start = '21 Aug 2013';
- stop = '11 Sep 2013';
+start = '21 May 2016';
+ stop = '16 Jun 2016';
 %stop = now + + (5/24); %account for UTC time else won't get most recent 4 or 5 hours of data
 
 %% Choose dashboard to use
