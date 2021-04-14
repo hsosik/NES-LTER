@@ -8,6 +8,7 @@ function uw = compile_SAMOS_withGPSfullres_broadscale(cruise)
 %Heidi M. Sosik, Woods Hole Oceanographic Institution, May 2020
 
 basepath = '\\sosiknas1\Lab_data\LTER\NESLTER_broadscale\';
+%basepath = '\\sosiknas1\Lab_data\OTZ\';
 temp = dir([basepath '*' cruise]);
 bpath1 = [basepath temp.name filesep]; clear temp
 ncpath = [bpath1 '\samos_netcdf\netcdf\'];

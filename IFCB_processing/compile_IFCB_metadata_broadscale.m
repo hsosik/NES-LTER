@@ -3,7 +3,7 @@ function [] = compile_IFCB_metadata_broadscale(ToTag_xlsFile, uw_compiled_file)
 %   Detailed explanation goes here
 [~,f] = fileparts(ToTag_xlsFile);
 cruise = strsplit(f, '_');
-cruise = cruise{3};
+cruise = cruise{2};
 
 totag = readtable(ToTag_xlsFile);
 %avoid case mis-matches

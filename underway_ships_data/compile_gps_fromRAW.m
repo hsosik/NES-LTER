@@ -8,6 +8,8 @@ function gps = compile_gps_fromRAW(cruise)
 % used to compile metadata for underway IFCB sampling
 %%
 basepath = '\\sosiknas1\Lab_data\LTER\NESLTER_broadscale\';
+%basepath = '\\sosiknas1\Lab_data\OTZ\';
+
 temp = dir([basepath '*' cruise]);
 bpath1 = [basepath temp.name filesep];
 
@@ -15,6 +17,7 @@ ship = cruise(1:2);
 switch ship
     case 'HB'
         bpath2  = 'nodc_noaa_download\POSMV\'; %CNAV files under cruise path
+        %bpath2  = 'ship_provided\POSMV\'; %case for OTZ HB1805
         filestr = 'POSMV-INGGA*.Raw';
     case 'EX'
         bpath2  = 'NCEI_nav\'; %CNAV files under cruise path

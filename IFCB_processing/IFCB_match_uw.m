@@ -18,8 +18,10 @@ else
     uw_mdate = datenum(uw.date, iso8601format);
 end
 t = uw.Properties.VariableNames;
-ilat = find(contains(t, 'latitude'));
-ilon = find(contains(t, 'longitude'));
+%ilat = find(contains(t, 'latitude'));
+%ilon = find(contains(t, 'longitude'));
+ilat = find(contains(t, 'lat'));
+ilon = find(contains(t, 'lon'));
 uw_lat = uw.(t{ilat(1)});
 uw_lon = uw.(t{ilon(1)});
 IFCB_match(1,:) = uw(1,:);
@@ -34,7 +36,7 @@ for count = 1:length(IFCB_mdate)
         IFCB_match.lat(count) = uw_lat(ia);
         IFCB_match.lon(count) = uw_lon(ia);        
     else
-        if ia < length(uw_mdate) %otherwise no match (IFCB file after end of uw data)
+        if ia < length(uw_mdate) && ia > 1 %otherwise no match (IFCB file after end of uw data or before beginning)
             if IFCB_mdate(count) > uw_mdate(ia) %closest to end of gap
                 it = ia;
             else %closest to start of gap
@@ -51,7 +53,8 @@ for count = 1:length(IFCB_mdate)
             disp('CHECK interpolation')
             %keyboard
         else
-            IFCB_match(count,1:size(uw,2)) = array2table(NaN(size(uw(1,:))));
+            %IFCB_match(count,1:size(uw,2)) = array2table(NaN(size(uw(1,:))));
+            IFCB_match(count,1:size(uw,2)-1) = array2table(NaN(size(uw(1,1:end-1)))); %skip date cell on end??
         end
     end
 end

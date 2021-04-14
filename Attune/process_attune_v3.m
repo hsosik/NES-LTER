@@ -1,5 +1,7 @@
 function [] = process_attune_v3(basepath, assign_class_function, plot_flag, filetype2exclude)
 %function [] = process_attune_v3(basepath, assign_class_function, plot_flag)
+% e.g., 
+%  process_attune_v3('D:\LTER\20210203_EN661\attune\', 'assign_class_EN661', false, {})
 %
 %input: basepath for cruise or project with Attune NxT data (assumes 'FSC' folder exists at basepath location)
 %       assign_class_function: name of function specifying gating details for class boundaries
@@ -37,7 +39,7 @@ Attune.FCSfileinfo = FCSfileinfo;
 save([outpath 'FCSfileinfo'], 'FCSfileinfo')
 clear FCSfileinfo
 
-for iii = 1:30:length(filetype2exclude)    
+for iii = 1:length(filetype2exclude)    
     t = strmatch(filetype2exclude{iii}, Attune.FCSfileinfo.filelist);
     if ~isempty(t)
         f = fieldnames(Attune.FCSfileinfo);
@@ -72,7 +74,7 @@ CarbonBin = CountBin;
 
 QC_flowrate = NaN(length(filelist),2);
 
-for count = 1:length(filelist) %2830
+for count = 300:30:length(filelist) 
     if ~rem(count,10)
         disp([num2str(count) ' of ' num2str(length(filelist))])
     end
@@ -137,7 +139,7 @@ AttuneTable.QC_flowrate_std = QC_flowrate(:,2);
     
 AttuneTable = sortrows(AttuneTable, 'StartDate');
 
-save([outpath '\AttuneTable'],'AttuneTable', 'assign_class_function')
+%save([outpath '\AttuneTable'],'AttuneTable', 'assign_class_function')
 disp(['Result file saved:'])
 disp([outpath '\AttuneTable'])
 

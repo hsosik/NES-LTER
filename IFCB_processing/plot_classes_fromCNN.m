@@ -1,5 +1,6 @@
 cruises = {'AR22' 'AR24A' 'AR24B' 'AR24C' 'EN608' 'AR28A' 'AR28B' 'EN617'...
-    'AR31A' 'AR31B' 'AR31C' 'AR32' 'EN627' 'AR34A' 'AR34B' 'EN644'};  %'AR16' 'AR34B' 'AR38' 'AR39A' 'AR39A'
+    'AR31A' 'AR31B' 'AR31C' 'AR32' 'EN627' 'AR34A' 'AR34B' 'AR38' 'AR39a'...
+    'AR39B' 'EN644'};  %'AR16' 'AR44' 'EN649' 'EN655' 'EN657' 'EN661'
 
 %cruises = {'EN608' 'AR28B' 'EN617' 'AR31B'};  %'AR16' 'AR34B' 'AR38' 'AR39'
 %cruises = {'EN608' 'EN617' 'EN627' 'EN644'};
@@ -239,7 +240,7 @@ diatom_ind = ib(find(group_table.Diatom(ia)));
 %dino_ind = ib(find(group_table.Dinoflagellate(ia)));
 %%
 figure, hold on
-Z2 = (sum(IFCBsum.classbiovol(b,diatom_ind),2)./IFCBsum.ml_analyzed(b));
+Z2 = (sum(IFCBsum.classbiovol(b,diatom_ind),2)./IFCBsum.meta_data.ml_analyzed(b));
 ind = find(strcmp(match_uw.cruise, 'EN608') & match_uw.lat < 41.2);
 plot(match_uw.temperature(ind), Z2(ind),'ob', 'markerfacecolor', 'b', 'markersize', 4)
 ind = find(strcmp(match_uw.cruise, 'EN617') & match_uw.lat < 41.2);
@@ -260,8 +261,45 @@ plot(match_uw.temperature(ind), Z2(ind),'^', 'color', [.93 .69 .13], 'markerface
 
 legend('Winter 2018', 'Summer 2018', 'Winter 2019', 'Summer 2019', 'location', 'south')
 %legend('EN608', 'EN617', 'EN627', 'EN644', 'location', 'southwest')
+%% 
+% NES-LTER 2021 annual meeting
+Z2 = (sum(IFCBsum.classbiovol(b,diatom_ind),2)./IFCBsum.meta_data.ml_analyzed(b));
+ind = find(match_uw.lat>41.25 & match_uw.lon <-71.1); %points towards Narragansett Bay
+Z2(ind) = NaN;
+dv = datevec(match_uw.mdate);
+yd_vec = match_uw.mdate-datenum(dv(:,1),1,0);
+figure
+scatter(match_uw.temperature, Z2, 20,yd_vec, '.')
+text(10, 1e6, 'Diatoms', 'fontsize', 18)
+ylim([0 15e5])
+set(gca, 'yscale', 'log')
+xlim([0 30])
+xlabel('Temperature (\circC)', 'fontsize', 18)
+ylabel('Biovolume (\mum^3 ml^{-1})', 'fontsize', 18)
+cb = colorbar; colormap jet
+set(cb, 'xtick', datenum(0,1:12,1))
+datetick(cb,'x', 'mmm', 'keepticks')
 
 %%
+figure
+ind = find(dv(:,1) == 2017);
+scatter(match_uw.temperature(ind), Z2(ind), 20,yd_vec(ind), '.')
+title(dv(ind(1),1))
+text(2, 1500, 'Diatoms', 'fontsize', 18)
+set(gca, 'yscale', 'log')
+ylim([1e3 6e6])
+xlim([0 30])
+xlabel('Temperature (\circC)', 'fontsize', 18)
+ylabel('Biovolume (\mum^3 ml^{-1})', 'fontsize', 18)
+cb = colorbar; colormap hsv
+set(cb, 'xtick', datenum(0,1:12,1))
+datetick(cb,'x', 'mmm', 'keepticks')
+%%
+figure
+plot(match_uw.lat, Z2,'.')
+set(gca, 'xdir', 'rev')
+%%
+
 group_table = readtable('\\sosiknas1\training_sets\IFCB\config\IFCB_classlist_type.csv');
 [~,ia,ib] = intersect(group_table.CNN_classlist, class2use);
 diatom_ind = ib(find(group_table.Diatom(ia)));
@@ -269,7 +307,7 @@ notalive_ind = [ib(find(group_table.OtherNotAlive(ia))); ib(find(group_table.IFC
 alive_ind = 1:length(class2use); alive_ind(notalive_ind) = [];
 alive_ind(strmatch( 'Phaeocystis', class2use(alive_ind))) = []; %seems to be detritus for en644
 alive_ind(strmatch( 'unclassified', class2use(alive_ind))) = [];
-
+%%
 ncp617 = load('C:\work\LTER\Stanley_data\ncplterEn617.mat');
 ncp644 = load('C:\work\LTER\Stanley_data\ncplterEn644.mat');
 

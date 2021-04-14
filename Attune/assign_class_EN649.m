@@ -1,4 +1,4 @@
-function [ class ] = assign_class_EN644( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
+function [ class ] = assign_class_EN649( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 %function [ class ] = assign_class_spiropa( fcsdat, fcshdr, plot_flag )
 %a
 %   input:  data and hdr from FCS file (fcsdat, fcshdr)
@@ -23,7 +23,7 @@ function [ class ] = assign_class_EN644( fcsdat, fcshdr, plot_flag, filename, QC
     %gsyn_11_19 = [0 1200 ; 8e3 1200; 8e3 4e5; 0 4e5]; %[Xmin Ymin; Xmax Ymax]
     gsyn_11_19 = [0 1000 ; 8e3 1000; 3e4 4e5; 0 4e5]; %[Xmin Ymin; Xmax Ymax]
 
-   % if strmatch('SPIROPA_RB1904_Grazer',filename)
+   % if strmatch('SPIROPA_RB1904_Grazer',filename
    % end
     %eukminX = 500;
     %geuk_15_19 = [eukminX 1100; 8e3 1100; 1100000 1e5; 1100000 1; eukminX 1];
@@ -85,6 +85,9 @@ function [ class ] = assign_class_EN644( fcsdat, fcshdr, plot_flag, filename, QC
         ax9 = subplot(a1,a2,9);
         ax10 = subplot(a1,a2,10);
         ax11 = subplot(a1,a2,11);
+        ax12 = subplot(a1,a2,12);
+        ax13 = subplot(a1,a2,13);
+
         
         mylim1 = [1e1 1.1e6 1e1 1.1e6];
         mylim2 = [1e3 1.1e6 1e3 1.1e6];
@@ -115,6 +118,10 @@ function [ class ] = assign_class_EN644( fcsdat, fcshdr, plot_flag, filename, QC
         line(ax9, xlim(ax9), xlim(ax9)*nonsynfactorB) %2.5
         make_plot(ax10,11,12, mylim1)
         make_plot(ax11,12,14, mylim1)
+        
+        make_plot(ax12,27,24, [1 1024 1 1024])
+        make_plot(ax13,21,27, [1 1024 1 1024])
+
         pause (.01)
     end
         
