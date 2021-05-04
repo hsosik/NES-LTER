@@ -1,4 +1,7 @@
 function [ FCSfileinfo ] = FCS_DateTimeList(fcs_path, FCSfileinfo_name)
+% modified 4/26/2021 to make output into a table, and to include quality
+% control data
+
 %function [ FCSfileinfo ] = FCS_DateTimeList(fcs_path, FCSfileinfo_name)
 %input: 
 %   fcspath - path to a directory of fcs files
@@ -21,40 +24,73 @@ end
 fcslist = dir(fullfile(fcs_path, '*.fcs'));
 fcslist = {fcslist.name}';
 
-if exist('FCSfileinfo_name', 'var')
+%first check if we are starting from scratch 
+if exist('FCSfileinfo_name', 'var') 
     load(FCSfileinfo_name)
-    fcslist = setdiff(fcslist, FCSfileinfo.filelist);
-    a = length(FCSfileinfo.filelist);
-    b = length(fcslist);
-    FCSfileinfo.filelist(a+1:a+b) = fcslist;
-    FCSfileinfo.matdate_start(a+1:a+b) = NaN;
-    FCSfileinfo.matdate_stop(a+1:a+b) = NaN;
-    FCSfileinfo.vol_analyzed(a+1:a+b) = NaN;
+        if istable('FCSfileinfo_name') %if the file is a table 
+            fcslist = setdiff(fcslist, FCSfileinfo.filelist);
+            a = length(FCSfileinfo.filelist);
+            b = length(fcslist);
+            FCSfileinfo.filelist(a+1:a+b) = fcslist;
+            FCSfileinfo.matdate_start(a+1:a+b) = NaN;
+            FCSfileinfo.matdate_stop(a+1:a+b) = NaN;
+            FCSfileinfo.vol_analyzed(a+1:a+b) = NaN;
+        else % the variable is old and still a structure. Needs to be converted. 
+            FCSfileinfo = struct2table(FCSfileinfo); 
+            fcslist = setdiff(fcslist, FCSfileinfo.filelist);
+            a = length(FCSfileinfo.filelist);
+            b = length(fcslist);
+            FCSfileinfo.filelist(a+1:a+b) = fcslist;
+            FCSfileinfo.matdate_start(a+1:a+b) = NaN;
+            FCSfileinfo.matdate_stop(a+1:a+b) = NaN;
+            FCSfileinfo.vol_analyzed(a+1:a+b) = NaN;
+        end
 else  %initialize
-    FCSfileinfo.filelist = fcslist;
-    FCSfileinfo.matdate_start = NaN(size(fcslist));
-    FCSfileinfo.matdate_stop = FCSfileinfo.matdate_start;
-    FCSfileinfo.vol_analyzed = FCSfileinfo.matdate_start;
-    a = 0;
-    b = length(fcslist);
+            FCSfileinfo = table(fcslist);
+            FCSfileinfo.matdate_start = NaN(size(fcslist));
+            FCSfileinfo.matdate_stop = FCSfileinfo.matdate_start;
+            FCSfileinfo.vol_analyzed = FCSfileinfo.matdate_start;
+            FCSfileinfo.QC_flag = FCSfileinfo.matdate_start;
+            a = 0;
+             b = length(fcslist);
 end
 
-if b > 0
+if b > 0 %now add to existing table
     for ii = a+1:a+b
-        if ~rem(ii,10)
+        if ii == 20; %~rem(ii,10)
             disp([num2str(ii) ' of ' num2str(a+b)])
+            keyboard
         end
-        [~,fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii-a}));
+        [fcsdat,fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii-a}));
         if ~(fcshdr.TotalEvents==0)
             FCSfileinfo.matdate_start(ii) = datenum([fcshdr.date ', ' fcshdr.starttime]);
             FCSfileinfo.matdate_stop(ii) = datenum([fcshdr.date ', ' fcshdr.stoptime]);
             FCSfileinfo.vol_analyzed(ii) = fcshdr.VOL;
+            
+            %adding quality control flags 
+            t = find(fcsdat(:,12)>200 & fcsdat(:,3)>200);
+            QC_flowrate(1) = (median(fcsdat(t,3)./fcsdat(t,12)));
+            QC_flowrate(2) = (std(fcsdat(t,3)./fcsdat(t,12)));
+            QC_flag = 0; %default bad
+            if (QC_flowrate(2)<2 && QC_flowrate(1)<1.5)
+                QC_flag = 1; %set to good
+            end
+            FCSfileinfo.QC_flag(ii) = QC_flag; 
+            clear QC_flag QC_flowrate t
+                        
         end
     end
 end
 
+%put table in chronological order
 [~,ind] = sort(FCSfileinfo.matdate_start);
-f = fields(FCSfileinfo)
-for ii = 1:length(f)
-    FCSfileinfo.(f{ii}) = FCSfileinfo.(f{ii})(ind,:);
+FCSfileinfo = FCSfileinfo(ind, :); 
+
+%This was for sorting structure, but it's easier now that its a table
+%f = fields(FCSfileinfo); 
+%for ii = 1:length(f)
+%    FCSfileinfo.(f{ii}) = FCSfileinfo.(f{ii})(ind,:);
+%end
+
+
 end
