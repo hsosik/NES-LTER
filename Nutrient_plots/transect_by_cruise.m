@@ -26,7 +26,7 @@ end
 ilat = 39.5:.05:41.5;
 ilon = ones(size(ilat)).*-70.8855;
 idpth = 0:1:200;
-bdata = load('c:\work\lter\EN644\ngdc2.mat'); %from Gordon
+bdata = load('ngdc2.mat'); %from Gordon
 ibdpth = griddata(bdata.lon',bdata.lat,bdata.h,ilon(:),ilat(:));
 
 %cstr = 'EN617';
