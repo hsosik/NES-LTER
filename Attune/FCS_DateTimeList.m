@@ -59,7 +59,6 @@ if b > 0 %now add to existing table
     for ii = a+1:a+b
         if ii == 20; %~rem(ii,10)
             disp([num2str(ii) ' of ' num2str(a+b)])
-            keyboard
         end
         [fcsdat,fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii-a}));
         if ~(fcshdr.TotalEvents==0)
@@ -85,12 +84,6 @@ end
 %put table in chronological order
 [~,ind] = sort(FCSfileinfo.matdate_start);
 FCSfileinfo = FCSfileinfo(ind, :); 
-
-%This was for sorting structure, but it's easier now that its a table
-%f = fields(FCSfileinfo); 
-%for ii = 1:length(f)
-%    FCSfileinfo.(f{ii}) = FCSfileinfo.(f{ii})(ind,:);
-%end
 
 
 end
