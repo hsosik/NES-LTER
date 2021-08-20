@@ -9,12 +9,12 @@
 function [] = generate_attune_table(classpath, FCSfileinfopath)
 
 Attune = load([FCSfileinfopath]);
-startdate = min(Attune.FCSfileinfo.matdate_start);
 
 % identify bead run files and determine mean bead SSC-H for cruise
 % may need to adjust epsilon and/or minpts depending on cruise
 
 % read in and process Attune data files
+%classlist = dir([classpath, '*.mat']); 
 filelist = regexprep(Attune.FCSfileinfo.fcslist,'fcs', 'mat'); 
 AttuneTable = table(Attune.FCSfileinfo.fcslist, datetime(Attune.FCSfileinfo.matdate_start, 'ConvertFrom', 'datenum'), datetime(Attune.FCSfileinfo.matdate_stop, 'ConvertFrom', 'datenum'), Attune.FCSfileinfo.vol_analyzed/1e6, 'VariableNames', {'Filename' 'StartDate' 'StopDate' 'VolAnalyzed_ml'});
 
@@ -28,13 +28,21 @@ Carbon = Count;
 CountBin = NaN(length(filelist),numBins);
 BiovolBin = CountBin;
 CarbonBin = CountBin;
+rem_ind = []; 
 
-for count = 1:length(filelist) %go through each of the files in the FCSfilelist
+for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
     if ~rem(count,10)
         disp([num2str(count) ' of ' num2str(length(filelist))])
     end
     filename = [classpath filelist{count}]; %load class file 
+    if exist(filename)
+    
     load(filename)
+    if ~exist('volume', 'var') %% if we haven't done size calibration yet, function should still run 
+        %eval('classvec = class;'); %again issues with class as variable name
+        eval('volume = NaN.*class;'); 
+    end
+    
     carbon = biovol2carbon(volume, 0); % carbon, picograms per cell
     
     eval(['rename_class = class;']) %issues with class as a variable name since its a function in matlab 
@@ -52,6 +60,12 @@ for count = 1:length(filelist) %go through each of the files in the FCSfilelist
         BiovolBin(count,ii) = sum(volume(ind));
         CarbonBin(count,ii) = nansum(carbon(ind));
     end
+    else
+        rem_ind = [rem_ind count]; %indeces to remove from final table
+        disp(['skipped ', filelist{count}])
+    end
+    
+    clear volume 
 end
 
 for ii = 1:numBins
@@ -59,10 +73,15 @@ for ii = 1:numBins
 end
 
 
-%back classnames out of notes string
-classnames = split(notes, '='); 
-classnames = classnames(2:numClass+1); 
-classnames = regexprep(classnames, 'Class \d', '');
+%back classnames out of notes string, sometimes a string array... 
+if isstring(notes)
+    classnames = split(notes(1), '='); 
+else
+    classnames = split(notes, '='); 
+end
+    classnames = classnames(2:numClass+1); 
+    classnames = regexprep(classnames, 'Class \d', '');
+    classnames = regexprep(classnames, '_euk_coincident', 'Euk');
 
 AttuneTable = [AttuneTable array2table(Count, 'VariableNames', regexprep(classnames, ', ', '_count'))];
 AttuneTable = [AttuneTable array2table(Biovol, 'VariableNames', regexprep(classnames, ', ', '_biovolume'))];
@@ -72,16 +91,21 @@ AttuneTable = [AttuneTable array2table(BiovolBin, 'VariableNames', regexprep(bin
 AttuneTable = [AttuneTable array2table(CarbonBin, 'VariableNames', regexprep(binlabel, 'X', 'carbon'))];
 
 AttuneTable.QC_flag = Attune.FCSfileinfo.QC_flag; 
+
+AttuneTable(rem_ind,:) = []; 
 AttuneTable = sortrows(AttuneTable, 'StartDate');
 
-if exist('assign_class_function') %we're hoping this is saved to class files
+%notes(2) is where assign_class_function should be saved, sometimes saved
+%as its own variable in class files
+if exist('assign_class_function') 
     table_metadata = {assign_class_function; classpath; string(datetime())};
 else 
-    table_metadata = {'class function unsaved'; classpath; string(datetime())};
+    table_metadata = {notes(2); classpath; string(datetime())};
 end
 
-save([classpath '..\AttuneTable_T'],'AttuneTable', 'table_metadata')
+save([classpath '..\AttuneTable'],'AttuneTable', 'table_metadata')
 disp(['Result file saved:'])
-disp([classpath '..\AttuneTable_T'])
+disp([classpath '..\AttuneTable'])
 
 end
+
