@@ -3,10 +3,6 @@ cruises = {'AR22' 'AR24A' 'AR24B' 'AR24C' 'EN608' 'AR28A' 'AR28B' 'EN617'...
     'AR39B' 'EN644' 'EN649' 'EN655' 'EN657' 'EN661'};  %'AR16' 'AR48A' 'AR48B'  
 cruises2 = {'AR29' 'RB1904' 'TN368' };
 
-%cruises = {'EN608' 'AR28B' 'EN617' 'AR31B'};  %'AR16' 'AR34B' 'AR38' 'AR39'
-%cruises = {'EN608' 'EN617' 'EN627' 'EN644'};
-%cruises = {'EN617' 'EN644'};
-
 ubase = '\\sosiknas1\IFCB_data\NESLTER_transect\match_up\';
 ubase2 = '\\sosiknas1\IFCB_data\SPIROPA\match_up\';
 %ubase = 'c:\work\IFCB_products\NESLTER_transect\match_up\';
@@ -126,7 +122,8 @@ if ~isempty(temp)
 end
 
 group_table = readtable('\\sosiknas1\training_sets\IFCB\config\IFCB_classlist_type.csv');
-group_table.CNN_classlist(strmatch('Pseudo-nitzschia', group_table.CNN_classlist)) = {'Pseudo_nitzschia'};
+%%7 April 2021, including the line below was a mistake on plots for NES-LTER annual meeting 2021, P-n accidentally excluded from diatoms...
+%%group_table.CNN_classlist(strmatch('Pseudo-nitzschia', group_table.CNN_classlist)) = {'Pseudo_nitzschia'};
 [~,ia,ib] = intersect(group_table.CNN_classlist, class2use);
 diatom_ind = ib(find(group_table.Diatom(ia)));
 dino_ind = ib(find(group_table.Dinoflagellate(ia)));
@@ -138,6 +135,11 @@ Z2 = (sum(IFCBsum.classbiovol(b,diatom_ind),2)./IFCBsum.meta_data.ml_analyzed(b)
 
 Z2all = IFCBsum.classbiovol(b,diatom_ind)./IFCBsum.meta_data.ml_analyzed(b);
 ind = find(match_uw.lon < -70.883+.24 & match_uw.lon > -70.883-.24); 
+
+for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
+lat_smooth = round(match_uw.lat,1);
+ilat = unique(lat_smooth);
+ilat = ilat(~isnan(ilat));
 
 %%
 for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
@@ -197,10 +199,10 @@ print('c:\work\diatom_bv_monthly_box', '-dpng')
 %plot(1:366, nanmean(y_mat,2), 'linewidth', 3)
 %ilat = (39.2:.05:41.5)';
 
-for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
-lat_smooth = round(match_uw.lat,1);
-ilat = unique(lat_smooth);
-ilat = ilat(~isnan(ilat));
+% for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
+% lat_smooth = round(match_uw.lat,1);
+% ilat = unique(lat_smooth);
+% ilat = ilat(~isnan(ilat));
 figure
 t = boxplot(Z2(ind),lat_smooth(ind), 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'inline');
 set(gca, 'xdir', 'rev')
@@ -264,7 +266,7 @@ xlabel(tl, 'Latitude')
 
 %%
 tstr = {'Feb-Mar' 'Apr-May' 'Jun-Jul' 'Aug-Sep' 'Oct-Nov'};
-for yy = 2017ex:2021
+for yy = 2017:2021
 figure 
 set(gcf,'position', [360 60 500 600])
 tl = tiledlayout(5,1, 'TileSpacing', 'compact')
@@ -396,4 +398,153 @@ title(tl, 'Aug 2019, \itHemiaulus')
 
 
 %%
- 
+T_smooth = round(match_uw.temperature);
+iT = unique(T_smooth);
+iT = iT(~isnan(iT));
+
+figure
+t = boxplot(Z2(ind),T_smooth(ind), 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on');
+yl = ylim; ylim([0 yl(2)])
+ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+xlabel('Temperature (\circC)')
+set(gca, 'yscale', 'log')
+ylim([1e3 2e6])
+%print('c:\work\diatom_bv_T_box', '-dpng')
+
+%%
+figure
+tt = find(dv(ind,1) == 2018 & dv(ind,2) < 3);
+semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), '.'), hold on
+ylim([1e3 2e6])
+xlim([0 30])
+ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+xlabel('Temperature (\circC)')
+legend('2018 winter')
+print('c:\work\lter\diatom_bv_T1', '-dpng')
+%pause
+tt = find(dv(ind,1) == 2018 & (dv(ind,2) == 7 | dv(ind,2) ==8));
+semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), '.')
+legend('2018 winter', '2018 summer', 'location', 'southwest')
+print('c:\work\lter\diatom_bv_T2', '-dpng')
+%pause
+tt = find(dv(ind,1) == 2019 & dv(ind,2) < 3);
+semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), '.')
+legend('2018 winter', '2018 summer', '2019 winter', 'location', 'southwest')
+print('c:\work\lter\diatom_bv_T3', '-dpng')
+tt = find(dv(ind,1) == 2019 & (dv(ind,2) == 7 | dv(ind,2) ==8));
+semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), 'y.')
+legend('2018 winter', '2018 summer', '2019 winter', '2019 summer', 'location', 'southwest')
+print('c:\work\lter\diatom_bv_T4', '-dpng')
+tt = find(dv(ind,1) == 2020 & dv(ind,2) < 3);
+semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), '.')
+legend('2018 winter', '2018 summer', '2019 winter', '2019 summer', '2029 winter', 'location', 'southwest')
+print('c:\work\lter\diatom_bv_T5', '-dpng')
+tt = find(dv(ind,1) == 2020 & (dv(ind,2) == 7 | dv(ind,2) ==8));
+semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), '.')
+legend('2018 winter', '2018 summer', '2019 winter', '2019 summer', '2020 winter', '2020 summer', 'location', 'southwest')
+print('c:\work\lter\diatom_bv_T6', '-dpng')
+tt = find(dv(ind,1) == 2021 & dv(ind,2) < 3);
+semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), '.')
+legend('2018 winter', '2018 summer', '2019 winter', '2019 summer', '2020 winter', '2020 summer', '2021 winter', 'location', 'southwest')
+print('c:\work\lter\diatom_bv_T7', '-dpng')
+
+figure
+scatter(match_uw.temperature(ind), Z2(ind),10, dv(ind,2))
+set(gca, 'yscale', 'log')
+ylim([1e3 2e6])
+xlim([0 30])
+ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+xlabel('Temperature (\circC)')
+cbh = colorbar;
+colormap hsv
+cmap = colormap;
+cmap = cmap(1:22:end,:);
+colormap(cmap)
+caxis([1 13])
+set(cbh, 'Ticks', 1.5:12.5, 'TickLabels', ['JFMAMJJASOND']', 'Direction', 'rev')
+set(gca, 'box', 'on')
+
+print('c:\work\lter\diatom_bv_T_all', '-dpng')
+
+%%
+%ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy);
+ii = find((dv(ind,2)==11 | dv(ind,2)==11));%& dv(ind,1) == 2019); 
+ii = find(dv(ind,2));
+figure
+scatter(match_uw.salinity(ind(ii)), Z2(ind(ii)),10, dv(ind(ii),2), 'filled')
+%scatter(match_uw.salinity(ind(ii)), sum(Z2(ind(ii),:),2),10, dv(ind(ii),2), 'filled')
+set(gca, 'yscale', 'log')
+ylim([1e3 2e6])
+xlim([30 36])
+ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+xlabel('Salinity')
+cbh = colorbar;
+colormap hsv
+cmap = colormap;
+cmap = cmap(1:22:end,:);
+colormap(cmap)
+caxis([1 13])
+set(cbh, 'Ticks', 1.5:12.5, 'TickLabels', ['JFMAMJJASOND']', 'Direction', 'rev')
+set(gca, 'box', 'on')
+
+
+%%
+%%
+%ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy); 
+ii = find(dv(ind,2));
+figure
+scatter(match_uw.lat(ind(ii)), match_uw.salinity(ind(ii)), 10, dv(ind(ii),2), 'filled')
+set(gca, 'yscale', 'log', 'xdir', 'rev')
+%ylim([1e3 2e6])
+ylim([30 37])
+ylabel('Salinity')
+xlabel('Latitude')
+cbh = colorbar;
+colormap hsv
+cmap = colormap;
+cmap = cmap(1:22:end,:);
+colormap(cmap)
+caxis([1 13])
+set(cbh, 'Ticks', 1.5:12.5, 'TickLabels', ['JFMAMJJASOND']', 'Direction', 'rev')
+set(gca, 'box', 'on')
+
+
+
+%%
+tstr = {'Feb-Mar' 'Apr-May' 'Jun-Jul' 'Aug-Sep' 'Oct-Nov'};
+for yy = 2017:2021
+figure 
+set(gcf,'position', [360 60 500 600])
+tl = tiledlayout(5,1, 'TileSpacing', 'compact')
+for cc = 2:2:9
+    %subplot(5,1,cc/2)
+    nexttile
+    ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy); 
+    %boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+    plot(match_uw.lat(ind(ii)), match_uw.salinity(ind(ii)), '.')
+    set(gca, 'xdir', 'rev', 'xticklabel', [])
+    a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+    ylim([31.5 36.5]), xlim([39.6 41.6])
+    text(41.5, 36, tstr{cc/2}, 'fontsize', 14)
+    line(xlim, [34.5 34.5],'color', 'r')
+    line(xlim, [35 35],'color', 'r')
+    grid
+end
+nexttile
+cc = 10;
+ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy); 
+plot(match_uw.lat(ind(ii)), match_uw.salinity(ind(ii)), '.')
+set(gca, 'xdir', 'rev')
+a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+ylim([31.5 36.5])
+xlim([39.6 41.6])
+text(41.5, 36, tstr{cc/2}, 'fontsize', 14)
+set(gcf, 'paperposition', [.25 .25 6 10.5])
+grid
+ylabel(tl, 'Salinity')
+xlabel(tl, 'Latitude')
+title(tl, yy)
+
+line(xlim, [34.5 34.5],'color', 'r')
+line(xlim, [35 35],'color', 'r')
+end

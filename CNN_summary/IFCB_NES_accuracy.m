@@ -1,10 +1,14 @@
-load("\\vortex\omics\sosik\training-output\20201022_NES\results.mat")
+%load("\\vortex\omics\sosik\training-output\20201022_NES\results.mat")
+%f1load("C:\work\CNN_models\20201102_NES_norm_seed__THIS IS really 20210429_Dec2020_NES\results.mat")
+%load("C:\work\CNN_models\20210430_Dec2020_NES_norm_1.7\results.mat")
+load("C:\work\CNN_models\202106_Dec2020_NES_1.6\results.mat")
 
 figure
 subplot(1,2,2)
 imagesc(confusion_matrix)
 axis square
 %for ii = 1:numel(confusion_matrix), if confusion_matrix(ii), [a,b] = ind2sub(size(confusion_matrix),ii); text(b,a,num2str(confusion_matrix(ii)), 'HorizontalAlignment', 'center', 'fontsize', 8), end; end
+[~,ind] = sort(f1_perclass);
 set(gca, 'ytick', 1:1:numel(ind), 'yticklabel', regexprep(class_labels(classes_by_recall), '_', ' '), 'fontsize', 8)
 set(gca, 'xtick', 1:1:numel(ind), 'xticklabel', regexprep(class_labels(classes_by_recall), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 8, 'XAxisLocation', 'top')
 
