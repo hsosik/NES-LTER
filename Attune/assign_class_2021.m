@@ -137,7 +137,7 @@ plot_flag = 0;
     class(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset & fcsdat(:,15)> min(geuk_15_19(:,1)))) = 5; %Syn&Euk coincident
     class(in_euk) = 1; %AFTER lowPE
 
-    class(class == 0 & fcsdat(:,npar_synY)>minY & fcsdat(:,npar_synY)<maxY & fcsdatlog(:,15)>fcsdatlog(:,12)*syneukBL3H2SSCHslope+syneukBL3H2SSCHoffset) = nonsynfactorA; %more Syn&Euk coincident
+    class(class == 0 & fcsdat(:,npar_synY)>minY & fcsdat(:,npar_synY)<maxY & fcsdatlog(:,15)>fcsdatlog(:,12)*syneukBL3H2SSCHslope+syneukBL3H2SSCHoffset) = 6; %more Syn&Euk coincident
     
     
     class(fcsdat(:,15) < 200 & fcsdat(:,npar_synY) < 250) = 7; %noise %LAST
