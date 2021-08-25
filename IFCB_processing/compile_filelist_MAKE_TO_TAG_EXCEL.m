@@ -4,10 +4,10 @@
 clear all
 
 %% VARIABLES TO EDIT
-ifcb = 'IFCB101';
+ifcb = 'IFCB102';
 % start = '23 Mar 2018';
-start = '21 May 2016';
- stop = '16 Jun 2016';
+start = '5 Aug 2021';
+ stop = '21 Aug 2021';
 %stop = now + + (5/24); %account for UTC time else won't get most recent 4 or 5 hours of data
 
 %% Choose dashboard to use
@@ -37,7 +37,7 @@ fprintf('You chose NESLTER_broadscale. Often times, a cruise type such as ECOMON
 fprintf('\n')
 answer = input('Would you like to add a tag for the cruise type? (Answer y or n using.)','s');
 if regexp(lower(answer),'y')
-broadscale_type = {'ecomon'; 'cyst_cruise'; 'amaps'; 'other'}; 
+broadscale_type = {'ecomon'; 'cyst_cruise'; 'amapps'; 'other'}; 
 for n=1:length(broadscale_type),fprintf('%2d    %s\n',n,char(broadscale_type(n))),end
 fprintf('\n')
 pick = input('Pick the dashboard to tag by entering the number of the count listed above: ');
