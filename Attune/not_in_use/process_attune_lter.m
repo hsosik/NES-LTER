@@ -1,16 +1,17 @@
-% process attune files for AR29
+function [] = process_attune_lter(basepath, assign_class_function, plot_flag, filetype2exclude)
 
 % make output directories and create metadata structure (FCSfileinfo)
 
-filetype2exclude = {'SFD_AR29_Dilution', 'SFD_AR29_Grazer'};
-plot_flag = 0;
-
-fpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20180414_AR29\FCS\';
-outpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20180414_AR29\bead_calibrated\';
-classpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20180414_AR29\bead_calibrated\class\';
+fpath = [basepath filesep 'FCS' filesep];
+outpath = [basepath filesep 'bead_calibrated_test' filesep];
+beadfigpath = [outpath filesep 'bead_plots'];
+classpath = [outpath 'class_test' filesep];
 
 if ~exist(outpath, 'dir')
     mkdir(outpath)
+end
+if ~exist(beadfigpath, 'dir')
+    mkdir(beadfigpath)
 end
 
 if ~exist(classpath, 'dir')
@@ -42,16 +43,77 @@ for iii = 1:length(filetype2exclude)
     end
 end
 
-% assign scattering channels
-ssc_ch = 3;
-ssch = 12;
+% identify bead run files and determine mean bead SSC-H for cruise
+% may need to adjust epsilon and/or minpts depending on cruise
 
+bead_files = dir([fpath '\FCB_bead_check*']);
+bead_files = {bead_files.name};
+[~,ia,ib] = intersect(FCSfileinfo.filelist, bead_files);
+[~,is] = sort(FCSfileinfo.matdate_start(ia)); 
+bead_files = bead_files(ib(is));
+f = fieldnames(FCSfileinfo);
+for ii = 1:length(f)
+      bead_FCSfileinfo.(f{ii}) = FCSfileinfo.(f{ii})(ia(is));
+end
+clear FCSfileinfo
 
-% calculate PT bead mean and convert to FCB equivalent
-pt_mean = 1.7486e4; % this is the "bead settings" file in AR29 FCS folder
-fcb_mean = 0.0835*pt_mean;
+if isempty(bead_files)
+    bead_files = dir([fpath '\Daily bead check*']);
+    disp('STOP--need new code for cases with PT beads')
+    keyboard
+end
+bead_ssch = NaN(length(bead_files), 1);
+bead_qc = bead_ssch;
+hv = bead_ssch;
+bead_time = NaT(length(bead_files), 1);
+ssc_ch = 19; %GL1-H, low sensitivity SSC, with OD2
+if startdate < datenum('1-Aug-2019')
+    ssc_ch = 12;
+end
+   
+beadstat = table;
+beadstat_temp = table;
+for ii = 1:length(bead_files)
+%    disp(ii)
+    [fcsdat, fcshdr] = fca_readfcs([fpath bead_files{ii}]);
+    [~, ~, m1, ~, temp_table, QC_flag] = assign_class_beads_algorithm_v4(fcsdat, fcshdr, 1);
+    beadstat(ii,:) = temp_table;
+    beadstat_temp.hv(ii,:) = {fcshdr.par.hv};
+    bead_ssch(ii) = m1;
+    bead_qc(ii) = QC_flag;
+    bead_time(ii) = datetime([fcshdr.date, ' ', fcshdr.starttime]);
+    hv(ii) = fcshdr.par(ssc_ch).hv;
+    figure(99)
+    subplot(2,2,1), title(bead_files(ii), 'interpreter', 'none')
+    subplot(2,2,2), title([datestr(bead_time(ii)) '; SSC hv = ' num2str(hv(ii)) ' (' fcshdr.par(ssc_ch).name ')'])
+   % print(figure(99), fullfile(beadfigpath, regexprep(bead_files{ii}, '.fcs', '.png')), '-dpng')
+ %   pause
+end
+for ii = 1:length(beadstat_temp.hv(:)), if length(beadstat_temp.hv{ii})==0, beadstat_temp.hv{ii} = [NaN]; end; end;
+beadstat.hv = cell2mat(beadstat_temp.hv); clear beadstat_temp
+bead_qc = logical(bead_qc);
+bead_mean = NaN(length(unique(hv)), 2);
+bead_mean(:,1) = unique(hv);
+%for i = 1:length(bead_mean)
+for ii = 1:size(bead_mean,1) %heidi
+    bead_mean(ii,2) = mean(bead_ssch(bead_qc & hv==bead_mean(ii,1)));
+end
 
+% plot bead data for user verification
+
+figure; hold on;
+hv_list = unique(hv);
+for ii=1:length(hv_list)
+    plot(bead_time(hv==hv_list(ii) & bead_qc), bead_ssch(hv==hv_list(ii) & bead_qc), '.')
+end
+legend(num2str(hv_list(:)))
+xlabel('Time')
+ylabel('Bead SSC-H')
+hold off
+parname = {fcshdr.par.name};
+save([outpath 'beadstat'],'bead*', 'parname', 'ssc_ch') 
 % read in and process Attune data files
+
 filelist = Attune.FCSfileinfo.filelist;
 AttuneTable = table(Attune.FCSfileinfo.filelist, datetime(Attune.FCSfileinfo.matdate_start, 'ConvertFrom', 'datenum'), datetime(Attune.FCSfileinfo.matdate_stop, 'ConvertFrom', 'datenum'), Attune.FCSfileinfo.vol_analyzed/1e6, 'VariableNames', {'Filename' 'StartDate' 'StopDate' 'VolAnalyzed_ml'});
 
@@ -74,9 +136,10 @@ for count = 1:length(filelist)
     filename = [fpath filelist{count}];
     disp(filename)
     [fcsdat,fcshdr] = fca_readfcs(filename);
-    file_hv = fcshdr.par(ssc_ch).hv;
+    %file_hv(i) = fcshdr.par(19).hv; 
+    file_hv = fcshdr.par(ssc_ch).hv; %heidi
     t = find(fcsdat(:,12)>200 & fcsdat(:,3)>200);
-    QC_flowrate(count,1) = (median(fcsdat(t,3)./fcsdat(t,12))); 
+    QC_flowrate(count,1) = (median(fcsdat(t,3)./fcsdat(t,12)));  %Heidi: DOUBLE CHECK IF THIS SHOULD BE ssc_ch instead of 12
     QC_flowrate(count,2) = (std(fcsdat(t,3)./fcsdat(t,12)));
 
     QC_flag = 0; %default bad
@@ -84,20 +147,15 @@ for count = 1:length(filelist)
         QC_flag = 1; %set to good 
     end
     
-    % correct for negative SSC-A values
-    cf = fitlm(fcsdat(fcsdat(:,ssch)<1000,ssch), fcsdat(fcsdat(:,ssch)<1000, ssc_ch), 'Intercept', false);
-    cf = cf.Coefficients.Estimate;
-    fcsdat(fcsdat(:,ssc_ch)<0, ssc_ch) = cf*fcsdat(fcsdat(:,ssc_ch)<0, ssch);
-   
     [~,fname] = fileparts(filename);
-    class = assign_class_spiropa(fcsdat, fcshdr, plot_flag, fname, QC_flag, Attune.FCSfileinfo.matdate_start(count)); clear fname;
-    ssca = fcsdat(:,ssc_ch);
-    volume = 10.^(1.2232*log10(ssca./fcb_mean) + 1.0868);
+    class = eval([assign_class_function '( fcsdat, fcshdr, plot_flag, fname, QC_flag, Attune.FCSfileinfo.matdate_start(count) );']); clear fname
+%Heidi: WELL, THIS SEEMS WRONG...if beads are ch 19, then should get cells ch 19??
+    volume = 10.^(1.4225*log10(fcsdat(:,12)./bead_mean(bead_mean(:,1)==file_hv,2)) + 1.1432);
     carbon = biovol2carbon(volume, 0); % carbon, picograms per cell
-    notes = 'Class 1= Euk, Class 2 = Syn, Class 5 = lowPEeuks, Class 4 = hiPEeuks, Class 5 = Syn_euk_coincident1, Class 6 = Syn_euk_coincident2, Class 7 = noise; Class 0 = junk; Cell volume in cubic microns';
+    notes = ['Class 1= Euk, Class 2 = Syn, Class 5 = lowPEeuks, Class 4 = hiPEeuks, Class 5 = Syn_euk_coincident1, Class 6 = Syn_euk_coincident2, Class 7 = noise; Class 0 = junk; Cell volume in cubic microns; assign_class_function = ' assign_class_function];
     class_labels = {'Euk_' 'Syn_' 'lowPEeuk_' 'hiPEeuk_' 'SynEuk1_' 'SynEuk2_'};
     save([classpath regexprep(filelist{count}, '.fcs', '')], 'class', 'volume', 'notes')
-        
+    
     for ii = 1:numClass
         Count(count,ii) = sum(class==ii);
         Biovol(count,ii) = nansum(volume(class==ii));
@@ -128,6 +186,8 @@ AttuneTable.QC_flowrate_std = QC_flowrate(:,2);
     
 AttuneTable = sortrows(AttuneTable, 'StartDate');
 
-save([outpath '\AttuneTable'],'AttuneTable')
+save([outpath '\AttuneTable'],'AttuneTable', 'assign_class_function')
 disp(['Result file saved:'])
 disp([outpath '\AttuneTable'])
+
+end
