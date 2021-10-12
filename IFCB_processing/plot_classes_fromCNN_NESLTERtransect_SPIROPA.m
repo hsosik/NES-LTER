@@ -395,7 +395,17 @@ set(gca, 'XTickLabelRotation',90)
 ylabel({'Biovolume concentration'; '(\mum^3 ml^{-1})'})
 xlabel('Latitude')
 title(tl, 'Aug 2019, \itHemiaulus')
-
+%for 2021 NES LTER site review report
+figure
+set(gcf, 'position', [350 300 550 180])
+boxplot([sum(Z2all(ind(ii2019Aug),ind2plot),2); NaN(size(ilat))],[lat_smooth(ind(ii2019Aug)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+set(gca, 'xdir', 'rev')
+ylim([0 2e6])
+set(gca, 'XTickLabelRotation',90)
+ylabel({'Biovolume concentration'; '(\mum^3 ml^{-1})'})
+xlabel('Latitude')
+xlim([8 26])
+text(25.5, 1.1e6, {'\itHemiaulus\rm'; 'August 2019'})
 
 %%
 T_smooth = round(match_uw.temperature);
@@ -547,4 +557,57 @@ title(tl, yy)
 
 line(xlim, [34.5 34.5],'color', 'r')
 line(xlim, [35 35],'color', 'r')
+end
+
+%%
+%For 2021 site review, Q3 presentation by Rachel
+tt = find(ilat<39.5 | ilat>41.5);
+ilat(tt) = [];
+Z2(tt) = [];
+lat_smooth(tt) = [];
+match_uw(tt,:) = [];
+dv = datevec(match_uw.mdate);
+ind = find(match_uw.lon < -70.883+.24 & match_uw.lon > -70.883-.24); 
+
+tstr = {'Jan-Mar' 'Apr-Jun' 'Jul-Sep' 'Oct-Dec'};
+%tstr = {'Feb-Mar' 'Apr-May' 'Jun-Aug' 'Sep-Nov'};
+for yy = 2018:2020
+figure 
+set(gcf,'position', [360 60 500 600])
+tl = tiledlayout(4,1, 'TileSpacing', 'compact')
+ccmonth = {[1:3] [4:6] [7:9] [10:12]};
+%ccmonth = {[2:3] [4:5] [6:8] [9:11]};
+ax1 = nexttile
+for cc = 1:length(ccmonth)-1 %2:2:9
+    ii = find((dv(ind,2)>=ccmonth{cc}(1) & dv(ind,2)<=ccmonth{cc}(end)) & dv(ind,1) == yy);
+    
+    boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+    set(gca, 'xdir', 'rev', 'xticklabel', [])
+    a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+    yl = ylim; ylim([0 yl(2)]); %auto y-scale
+    ylim([0 1.83e6]); yl = ylim;
+    text(6, yl(2)*.7, tstr{cc}, 'fontsize', 14)
+    %xlim([5 27.5])
+    %text(5, yl(2)*.7, [a(1,:) '-' a(2,:)], 'fontsize', 14)
+    %ylim([0 1.83e6]) %all same y scale
+    %text(5, 12e5, [a(1,:) '-' a(2,:)], 'fontsize', 14)
+    nexttile
+end
+cc = cc+1;
+%cc = 10;
+%ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy); 
+ii = find((dv(ind,2)>=ccmonth{cc}(1) & dv(ind,2)<=ccmonth{cc}(end)) & dv(ind,1) == yy);    
+boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+set(gca, 'xdir', 'rev')
+%yl = ylim; ylim([0 yl(2)]);
+ylim([0 1.83e6]);
+a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
+text(6, 12e5, tstr{cc}, 'fontsize', 14)
+set(gca, 'XTickLabelRotation',90)
+set(gcf, 'paperposition', [.25 .25 6 10.5])
+%xlim([5 27.5])
+
+ylabel(tl, 'Diatom biovolume concentration (\mum^3 ml^{-1})')
+xlabel(tl, 'Latitude')
+title(ax1, yy, 'fontsize', 14)
 end

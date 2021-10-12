@@ -19,6 +19,9 @@ switch ship
         bpath2  = 'nodc_noaa_download\POSMV\'; %CNAV files under cruise path
         %bpath2  = 'ship_provided\POSMV\'; %case for OTZ HB1805
         filestr = 'POSMV-INGGA*.Raw';
+    case 'PC'
+        bpath2  = 'nodc_noaa_download\POSMV\'; %CNAV files under cruise path
+        filestr = 'POSMV-INGGA*.Raw';
     case 'EX'
         bpath2  = 'NCEI_nav\'; %CNAV files under cruise path
         filestr = 'CNAV*.Raw';
@@ -42,7 +45,8 @@ for cc = 1:length(f)
             T = readtable([inpath f(cc).name], 'FileType', 'text', 'HeaderLines',3, 'Format', '%{MM/dd/yyyy}D%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s');
         otherwise
             T = readtable([inpath f(cc).name],'FileType', 'text', 'Format', '%{MM/dd/yyyy}D%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s');    
-    end                  
+    end                 
+    T(find(isnat(T{:,1})),:) = [];
     temp = char(T{:,2});
     mdate = datenum(T{:,1}) + datenum(0,0,0,str2num(temp(:,1:2)),str2num(temp(:,4:5)),str2num(temp(:,7:end)));
     lat = char(regexprep(T{:,5}, char(0),'')); %POSMV files from HB have occasional odd spaces (char(0)) in lat/lon records
