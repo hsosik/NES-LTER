@@ -25,9 +25,13 @@ sumnum = sumnum(sind,:);
 sumvol = sumvol(sind,:);
 sumtitles = temp.sumtitles;
 
+ind = find(~isnan(ml_analyzed));
+[ mdate_mat, SynC_mat, yearlist, yd ] = timeseries2ydmat( matdate(ind), sumC(ind,1));
+[ mdate_mat, ml_mat, yearlist, yd ] = timeseries2ydmat( matdate(ind), ml_analyzed(ind));
+figure
+plot(mdate_mat(:), SynC_mat(:)./ml_mat(:)/1000, '-')
 
-
-
+com
 return
 %semilogy(time_syn(:), daily_syn(:), 'b', 'linewidth', 1)
 semilogy(matdate, sumnum(:,1)./ml_analyzed, 'b', 'linewidth', 1)
@@ -39,4 +43,40 @@ set(gca, 'position', [0.0884    0.1335    0.8806    0.8083])
 set(gca, 'xlim', [datenum('1-0-2003') datenum('1-1-2018')])
 datetick
 
+figure
+
+load("\\sosiknas1\Lab_data\MVCO\EnvironmentalData\CTD_tables.mat")
+load('\\sosiknas1\Lab_data\MVCO\EnvironmentalData\Tall_day.mat')
+
+ii = find(MVCO_ctd_table.dates> datetime('1-Jan-2019'));
+unqday = unique(MVCO_ctd_table.dates(ii));
+for iii = 1:length(unqday)
+    Tday_new(iii) = mean(MVCO_ctd_table.temperature(ii(MVCO_ctd_table.dates(ii) == unqday(iii))));
+end
+
+
+T = [Tday2; Tday_new'];
+T_mdate = [mdate2; datenum(unqday)];
+Tinterp = interp1(T_mdate, T, matdate);
+
+ind = find(~isnan(ml_analyzed));
+[ mdate_mat, Syn_mat, yearlist, yd ] = timeseries2ydmat( matdate(ind), sumnum(ind,1));
+[ mdate_mat, ml_mat, yearlist, yd ] = timeseries2ydmat( matdate(ind), ml_analyzed(ind));
+Tinterp = interp1(T_mdate, T, mdate_mat(:));
+
+dv = datevec(mdate_mat(:));
+
+%%
+figure
+scatter(Tinterp, Syn_mat(:)./ml_mat(:),10,dv(:,2), 'filled')
+cbh = colorbar
+set(cbh, 'xdir', 'rev')
+caxis([1 12])
+set(cbh, 'ticklabels', {'Jan' 'Feb' 'Mar' 'Apr' 'May' 'Jun' 'Jul' 'Aug' 'Sep' 'Oct' 'Nov' 'Dec'}')
+set(gca, 'yscale', 'log')
+ylabel('\itSynechococcus\rm concentration (ml^{-1})', 'fontsize', 14)
+xlabel('Temperature (\circC)', 'fontsize', 14)
+set(gca, 'box', 'on')
+title('Inner shelf, MVCO 2003-2021', 'fontsize', 14)
+axis([-2 28 20 1e6])
 

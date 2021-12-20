@@ -15,13 +15,13 @@ set(gca, 'xtick', 1:1:numel(ind), 'xticklabel', regexprep(class_labels(classes_b
 subplot(2,2,1)
 [~,ind] = sort(f1_perclass);
 bar(1:numel(ind),f1_perclass(ind))
-set(gca, 'xtick', 1:1:numel(ind),'xticklabel', []) %, 'xticklabel', regexprep(extractAfter(class_labels(ind), '_'), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 8)
+set(gca, 'xtick', 0:1:numel(ind)-1,'xticklabel', []) %, 'xticklabel', regexprep(extractAfter(class_labels(ind), '_'), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 8)
 ylabel('F1-score', 'fontsize', 12)
 
 subplot(2,2,3)
 [~,ind] = sort(f1_perclass);
 bar(1:numel(ind),counts_perclass(ind))
-set(gca, 'xtick', 1:1:numel(ind), 'xticklabel', regexprep(class_labels(ind), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 10)
+set(gca, 'xtick', 0:1:numel(ind)-1, 'xticklabel', regexprep(class_labels(ind), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 10)
 ylabel('Count', 'fontsize', 12)
 p = get(gca,'position');
 p(2) = p(2)*2;
@@ -29,20 +29,31 @@ set(gca,'position', p)
 
 set(gcf, 'Position', get(0, 'Screensize'))
 %%
-figure
 group_table = readtable('\\sosiknas1\training_sets\IFCB\config\IFCB_classlist_type.csv');
 [~,ia,ib] = intersect(group_table.CNN_classlist, class_labels);
 
+figure
 [~,ind] = sort(f1_perclass);
 bar(1:numel(ind),f1_perclass(ind), 'edgecolor', 'none')
 ylabel('F1-score', 'fontsize', 16)
-set(gca, 'xtick', 1:1:numel(ind), 'xticklabel', regexprep(class_labels(ind), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 8)
+set(gca, 'xtick', 0:1:numel(ind)-1, 'xticklabel', regexprep(class_labels(ind), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 8)
 set(gca, 'position', [.13 .58 .78 .34], 'fontweight', 'bold')
 set(gcf, 'Position', get(0, 'Screensize'))
 ax = gca;
 ax.YAxis.FontSize = 16;
 
-pause
+figure
+[~,ind] = sort(f1_perclass);
+bar(1:numel(ind),counts_perclass(ind))
+set(gca, 'xtick', 0:1:numel(ind)-1, 'xticklabel', regexprep(class_labels(ind), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 10)
+ylabel('Count', 'fontsize', 12)
+set(gca, 'position', [.13 .58 .78 .34], 'fontweight', 'bold')
+set(gcf, 'Position', get(0, 'Screensize'))
+ax = gca;
+ax.YAxis.FontSize = 16;
+
+
+return
 
 class_ind = ib(find(group_table.Diatom(ia(ind))));
 for ii = 1:length(class_ind), ax.XTickLabel{class_ind(ii)} = ['\color{red}' ax.XTickLabel{class_ind(ii)}]; end
@@ -53,3 +64,8 @@ for ii = 1:length(class_ind), ax.XTickLabel{class_ind(ii)} = ['\color{blue}' ax.
 class_ind = ib(find(group_table.Nano(ia(ind))));
 for ii = 1:length(class_ind), ax.XTickLabel{class_ind(ii)} = ['\color{green}' ax.XTickLabel{class_ind(ii)}]; end
 
+class_ind = ib(find(group_table.Ciliate(ia(ind))));
+for ii = 1:length(class_ind), ax.XTickLabel{class_ind(ii)} = ['\color{cyan}' ax.XTickLabel{class_ind(ii)}]; end
+
+class_ind = ib(find(group_table.Coccolithophore(ia(ind))));
+for ii = 1:length(class_ind), ax.XTickLabel{class_ind(ii)} = ['\color{magenta}' ax.XTickLabel{class_ind(ii)}]; end
