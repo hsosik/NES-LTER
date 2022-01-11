@@ -1,6 +1,6 @@
 %%2021:'EN661' 'EN668'  2020:'EN649' 'EN655' 'EN657' 2019:'EN627' 'EN644' 2018:'EN608' 'EN617'
 %SPIROPA 'TN368'; 'RB1904' 'AR29'
-cruiseStr = 'EN608';
+cruiseStr = 'AR39';
 %ifcbbase = '\\sosiknas1\IFCB_products\NESLTER_transect\summary\';
 ifcbbase = 'C:\work\IFCB_products\NESLTER_transect\summary\';
 %ifcbbase = 'C:\work\IFCB_products\SPIROPA\summary\';
@@ -9,8 +9,10 @@ alist = dir([attunebase '*' cruiseStr]);
 yr = alist.name(1:4);
 %load([attunebase alist.name '\bead_calibrated\AttuneTable_synmod'])
 load([attunebase alist.name '\bead_calibrated\AttuneTable'])
-attunebase2 = [attunebase alist.name '\bead_calibrated\class_newVolEst\'];
-attunebase_out = [attunebase2 'sizeDistPlots_newVolEst\'];
+%attunebase2 = [attunebase alist.name '\bead_calibrated\class_newVolEst\'];
+%attunebase_out = [attunebase2 'sizeDistPlots_newVolEst\'];
+attunebase2 = [attunebase alist.name '\bead_calibrated\class\'];
+attunebase_out = [attunebase2 'sizeDistPlots\'];
 if ~exist(attunebase_out, 'dir')
     mkdir(attunebase_out)
 end
@@ -20,7 +22,9 @@ ifcb_yr = load([ifcbbase 'summary_biovol_allHDF_min20_' yr]);
 
 %%
 
-ifcb_uwind = find(ifcb_yr.meta_data.cruise==cruiseStr & ifcb_yr.meta_data.sample_type == 'underway' & ~ifcb_yr.meta_data.skip);
+%ifcb_uwind = find(ifcb_yr.meta_data.cruise==cruiseStr & ifcb_yr.meta_data.sample_type == 'underway' & ~ifcb_yr.meta_data.skip);
+% handle case for example AR39 (attune all AR39, IFCB AR39A, AR39B
+ifcb_uwind = find(startsWith(ifcb_yr.meta_data.cruise,cruiseStr) & ifcb_yr.meta_data.sample_type == 'underway' & ~ifcb_yr.meta_data.skip);
 
 %%
 group_table = readtable('\\sosiknas1\training_sets\IFCB\config\IFCB_classlist_type.csv');
@@ -36,7 +40,7 @@ particle_ind = setdiff(1:length(ifcbL.class2use),artifact_ind); %all except arti
 %%
 Twin = 12/60/24; %12 minutes as days
 diambins = logspace(-.5,log10(50),100);
-for count = 1:length(ifcb_uwind)
+for count = 467:length(ifcb_uwind)
     temp = array2table(cat(1,ifcbL.classFeaList{ifcb_uwind(count),[phyto_ind; ciliate_ind]}), 'VariableNames', ifcbL.classFeaList_variables);
     %temp = array2table(cat(1,ifcbL.classFeaList{ifcb_uwind(count),:}), 'VariableNames', ifcbL.classFeaList_variables);
     ifcbH = histcounts(temp.ESD,[diambins inf]);
@@ -55,8 +59,8 @@ for count = 1:length(ifcb_uwind)
     for count2 = 1:length(attune_ind)
         f = char(regexprep(AttuneTable.Filename(attune_ind(count2)), '.fcs', '.mat'));
         c = load([attunebase2 f]);
-        %v = real(c.volume(c.class>=1&c.class<=4)); %leave out the large coincident class 5,6
-        v = real(c.rel_volume(c.class>=1&c.class<=4)); %leave out the large coincident class 5,6
+        v = real(c.volume(c.class>=1&c.class<=4)); %leave out the large coincident class 5,6
+        %v = real(c.rel_volume(c.class>=1&c.class<=4)); %leave out the large coincident class 5,6
         d = real(biovol2esd(v));
         h(count2,:) = histcounts(d,[diambins inf]);
         attuneml = attuneml + AttuneTable.VolAnalyzed_ml(attune_ind(count2));

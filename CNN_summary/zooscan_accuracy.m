@@ -2,7 +2,8 @@
 %load('\\vortex\share\otz-data\zooscan\training-output\20201207_OTZzooscan\results')
 %load('\\vortex\share\otz-data\zooscan\training-output\20201214_OTZzooscan_jpg\results')
 
-load('\\vortex\share\otz-data\zooscan\training-output\20210302_OTZzooscan_1.1jpg\results')
+load('\\vortex\share\otz-data\zooscan\training-output\20211228_OTZ_Zooscan_V1.2\results')
+%load('\\vortex\share\otz-data\zooscan\training-output\20210302_OTZzooscan_1.1jpg\results')
 %load('\\vortex\share\otz-data\zooscan\training-output\20210302_OTZzooscan_1.2jpg\results')
 
 figure
@@ -17,8 +18,8 @@ for ii = 1:numel(confusion_matrix)
 end
 %set(gca, 'ytick', 1:1:numel(class_labels), 'yticklabel', regexprep(extractAfter(class_labels(classes_by_recall), '_'), '_', ' '), 'yTickLabelRotation', -20, 'fontsize', 10)
 %set(gca, 'xtick', 1:1:numel(class_labels), 'xticklabel', regexprep(extractAfter(class_labels(classes_by_recall), '_'), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 10, 'XAxisLocation', 'top')
-set(gca, 'ytick', 1:1:numel(class_labels), 'yticklabel', regexprep(class_labels(classes_by_recall), '_', ''), 'yTickLabelRotation', -20, 'fontsize', 10)
-set(gca, 'xtick', 1:1:numel(class_labels), 'xticklabel', regexprep(class_labels(classes_by_recall), '_', ''), 'XTickLabelRotation', 80, 'fontsize', 10, 'XAxisLocation', 'top')
+set(gca, 'ytick', 1:1:numel(class_labels), 'yticklabel', regexprep(class_labels, '_', ''), 'yTickLabelRotation', -20, 'fontsize', 10)
+set(gca, 'xtick', 1:1:numel(class_labels), 'xticklabel', regexprep(class_labels, '_', ''), 'XTickLabelRotation', 80, 'fontsize', 10, 'XAxisLocation', 'top')
 xlabel('Manual class', 'fontsize', 20)
 ylabel('Predicted class', 'fontsize', 20)
 
@@ -34,7 +35,7 @@ subplot(2,2,3)
 [~,ind] = sort(f1_perclass);
 bar(1:numel(ind),counts_perclass(ind))
 %set(gca, 'xtick', 1:1:numel(ind), 'xticklabel', regexprep(extractAfter(class_labels(ind), '_'), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 10)
-set(gca, 'xtick', 1:1:numel(ind), 'xticklabel', regexprep(class_labels(ind), '_', ''), 'XTickLabelRotation', 80, 'fontsize', 10)
+set(gca, 'xtick', .5:1:numel(ind), 'xticklabel', regexprep(class_labels(ind), '_', ''), 'XTickLabelRotation', 80, 'fontsize', 10)
 ylabel('Count', 'fontsize', 12)
 p = get(gca,'position');
 p(2) = p(2)*2;
