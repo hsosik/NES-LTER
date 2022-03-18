@@ -34,42 +34,43 @@
 %basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20201013_EN657\'
 %basepath = '\\vdm\PublicData\EN668_Sosik\Sosik-provided_data\Attune\'; 
 
+%basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20180131_EN608\';
+
 function process_wrapper_2021(basepath)
 
 %% choose which steps to do (1 yes, 0 skip) and adjust inputs as necessary
 
 step1 = 0; %Generate FCSfileinfo
 
-step2 = 0; %make new class files
-    assign_class_function = 'assign_class_2021'; 
-    filetype2exclude = {'fcb_bead'; 'FCB_bead'; '(lab test)'; 'Dockwater'; 'Rinses'; "Filter config";}; %needed for Step2
-    ssc_name = 'SSC';
+step2 = 1; %make new class files
+    assign_class_function = 'assign_class_EN644'; 
+    filetype2exclude = {'fcb_bead'; 'FCB_bead'; '(lab test)'; 'Dockwater'; 'Rinses'; "Filter config"; "SFD_AR29_Grazer";}; %needed for Step2
+    OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
     
-    appendonly = 1; %set to 1 if we don't want to rewrite existing class files.
+    appendonly = 0; %set to 1 if we don't want to rewrite existing class files.
     
-    makemovieasyougo = 0; %option to make things more efficient. 
-    framemaker = 'make_movieframe_general';
+    makemovieasyougo = 1; %option to make things more efficient. 
+    framemaker = 'make_movieframe_density';
     stepsize = 1; %controls resolution of movie
-    moviechannels = {'BL3-H', 'GL1-H', 'SSC-H', 'GL1-H'}; %parameter numbers for euk X euk Y synX and SynY polygons if framemaker is general
+    moviechannels = 'late';%{'BL3-H', 'GL2-H', 'GL1-H', 'GL2-H'}; %parameter numbers for euk X euk Y synX and SynY polygons if framemaker is general
             %typically this is GL1-H for older cruises and GL2-H for new
     
 
 step3 = 0; %Assign beads to make beadstats table and bead plots
-    beadfiles2include = {'Daily bead check'};
-    bead_ch_names = {'SSC-A', 'BL3-H', 'GL3-H'}; 
-    %First should be scattering channel, second chlorophyl 
-
-step4 = 0; %set up calibration
+    beadfiles2include = {'FCB_bead'};
+    beadtype = 'FCB'; 
+    %check OD2setting above 
+    
+step4 = 0; %set up calibration, only if OD2setting is 'GL1'
     SSCDIM = 'A'; %needed for Step 4 & 5, SSCDIM = 'A' or 'H'
     
-step5 = 0; %apply calibration to add volume to class files 
+step5 = 1; %apply calibration to add volume to class files 
     %Check SSCDIM above
     
-step6 = 1; %Generate attune table
+step6 = 0; %Generate attune table
 
 step7 = 0; %Make a movie out of class files after the fact. 
     %Check moviechannels, framemaker and stepsize above. 
-
 
     
 %% Nothing below this section should change between cruises!
@@ -103,7 +104,7 @@ end
 %% STEP 2
 if step2
     %assign class, save class files, with option to make movies
-    step2function(basepath, assign_class_function, filetype2exclude, FCSfileinfo, makemovieasyougo, framemaker, ssc_name, appendonly, moviechannels)
+    step2function(basepath, assign_class_function, filetype2exclude, FCSfileinfo, makemovieasyougo, framemaker, OD2setting, appendonly, moviechannels)
 end
 
 %% STEP 3
@@ -111,25 +112,33 @@ if step3
    clear FCSfileinfo %need to get back to version that hasn't been cut down for class files in case step 2 was run
    load([outpath filesep 'FCSfileinfo.mat'])
 
-   process_beads_only(outpath, bead_ch_names, FCSfileinfo, beadfiles2include)
-   
+   if strcmp(OD2setting, 'GL1')
+       bead_ch_names = {'GL1-A', 'BL3-H', 'GL3-H'}; 
+   else
+       bead_ch_names = {'SSC-A', 'BL3-H', 'GL2-H'}; 
+   end
+    %First should be scattering channel, second chlorophyl 
+
+   %process_beads_only(outpath, bead_ch_names, FCSfileinfo, beadfiles2include)
+   process_beads_PT_adjust_2(basepath, FCSfileinfo, beadfiles2include, beadtype, OD2setting)
     
 end
 %% STEPS 4 - 5
 %size calibration, can be redone without reassigning classes if bead processing is adjusted
 if step4
-    get_calibration_stats(outpath, classpath, 50, SSCDIM) %A means ssch_ch_num is ssc-a
-    
+    if strcmp(OD2setting, 'GL1')
+        get_calibration_stats_linear_2021(outpath, classpath, 50, SSCDIM) %A means ssch_ch_num is ssc-a
+    end
 end
 if step5 
-    use_calibration_stats(outpath, classpath, SSCDIM)  
+    use_calibration_stats_linear(outpath, classpath, SSCDIM, OD2setting)  
 end
 
 
 
 %% STEP 6
 if step6
-    generate_attune_table(classpath, [outpath 'FCSfileinfo.mat'])
+    generate_attune_table_EDI(classpath, [outpath 'FCSfileinfo.mat'])
     %this function will generate attune table for files with class files
     %only, generally beads are removed
 end
@@ -137,17 +146,23 @@ end
 %% STEP 7 
 % make a movie 
 if step7
-    attune_lter_moviemaker(fpath, classpath, ssc_name, framemaker, moviechannels, stepsize)
+    attune_lter_moviemaker(fpath, classpath, OD2setting, framemaker, moviechannels, stepsize)
 end
 
 end
 
 
-function step2function(basepath, assign_class_function, filetype2exclude, FCSfileinfo, makemovieasyougo, framemaker, ssc_name, appendonly, moviechannels) 
+function step2function(basepath, assign_class_function, filetype2exclude, FCSfileinfo, makemovieasyougo, framemaker, OD2setting, appendonly, moviechannels) 
 
 fpath = [basepath filesep 'FCS' filesep];
 outpath = [basepath filesep 'bead_calibrated' filesep];
 classpath = [outpath 'class' filesep];
+
+if strcmp(OD2setting, 'GL1')
+    ssc_name = 'GL1'; 
+else
+    ssc_name = 'SSC'; 
+end
 
  %remove filetype2exclude from FCSfileinfo and generate filelist 
         %this part has been updated  for Table structure FCS filinfo 

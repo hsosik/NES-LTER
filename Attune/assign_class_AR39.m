@@ -1,12 +1,10 @@
+function [ class , bounds] = assign_class_AR39( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 
-function [ class , bounds] = assign_class_EN644( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
-
+plot_flag = 0; 
 
 %different gates for different portions of the cruise
-if startdate < 7.3782582e5
+if startdate < 737711 
     phase = 1;
-else
-    phase = 2; 
 end
 
 
@@ -22,31 +20,27 @@ end
     npar_synY = 18; %GL2-H %phycoerythrin 
     
     %just for initial gates
-    synmaxY = 1e5; 
+    synmaxY = 100000; 
     synminX = 700 ; 
-    synXcorners = [4000 40000]; 
+    synXcorners = [5000 30000]; 
 
-    eukminX = 3e3; 
-    eukcorner = [40000 1000]; 
+    eukminX = 8e3; 
+    eukcorner = [1e5 1500]; 
     eukmaxY = 2e4; 
-    eukmaxYlower = 300; 
+    eukmaxYlower = 600; 
 
-    gl2_noise_thresh = 1500; %basically synminY 
+    gl2_noise_thresh = 600; %basically synminY 
   
 
     synGL1A2GL1Hmax = 4; %PE area to height
-    synGL1H2BL3Hslope = .90; %PE to CHL
-    synGL1H2BL3Hoffset = .9; %PE to CHL 
+    synGL1H2BL3Hslope = 1.1; %PE to CHL, ?1.2 with .8 offset?
+    synGL1H2BL3Hoffset = 2.2; %PE to CHL .4 on RB, .3 on TN, .8?
     syneukBL3H2SSCHslope = 1.3; %CHL to SSC
-    syneukBL3H2SSCHoffset = -2.5; %PE to CHL 
+    syneukBL3H2SSCHoffset = -2.5; %-.6; %PE to CHL -.8 on TN
     nonsynfactorA = 15; %6
     nonsynfactorB = 6; %2.5
 
-    if phase == 2
-        synGL1H2BL3Hslope = .90; %PE to CHL
-        synGL1H2BL3Hoffset = 1.1; %PE to CHL 
-    end
-
+    
     %syn main gate
     gsyn_main_gate = [synminX gl2_noise_thresh ; synXcorners(1) gl2_noise_thresh; synXcorners(2) synmaxY; synminX synmaxY]; %[Xmin Ymin; Xmax Ymax]
     %euk gate 
@@ -60,19 +54,17 @@ end
     
     %first look in gates, then cut out extremes? or add if pileup at edges
     minX = prctile(fcsdat(in_syn,npar_synX),10)*.3; maxX = prctile(fcsdat(in_syn, npar_synX), 90)*10; 
-    minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
+    minY = prctile(fcsdat(in_syn,npar_synY),15)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
  
     %%compare syn mimimum Y to noise level. 
-    in_noise_tail = (fcsdat(:,npar_synY)>100 & fcsdat(:,npar_synX)<100);
-    minY2 = prctile(fcsdat(in_noise_tail, npar_synY), 99); 
-    minY = min(minY, minY2);
+    %in_noise_tail = (fcsdat(:,npar_synY)>100 & fcsdat(:,npar_synX)<100);
+    %minY2 = prctile(fcsdat(in_noise_tail, npar_synY), 99); 
+    %minY = min(minY, minY2);
 
     eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
     eukminX = max([eukminX 500]); %Pretty sure its always eukminX
     minY = max([minY 100]); %not below trigger level for this cruise
-    
-
-
+   
     %make new gates with adapted boundaries
     gsyn_main_gate(:,2) = [minY; minY; maxY; maxY]; 
     gsyn_main_gate(1,1) = minX; 
@@ -90,10 +82,10 @@ end
     %Chl PE relationship to move with the data
     
     frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-    %while frac_coinc > .03 & synGL1H2BL3Hoffset > 0.1;
-    %    synGL1H2BL3Hoffset = synGL1H2BL3Hoffset - .1;
-    %    frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-   % end
+    while frac_coinc > .04 & synGL1H2BL3Hoffset > .1;
+        synGL1H2BL3Hoffset = synGL1H2BL3Hoffset - .1;
+        frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
+    end
 
     %% part 3
 
@@ -141,4 +133,5 @@ end
 end
     
 
+   
     
