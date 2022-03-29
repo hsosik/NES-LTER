@@ -1,4 +1,4 @@
-year2do = 2017;
+year2do = 2021;
 monstr = 'Jan';
 switch year2do
     case {2003, 2006}
@@ -71,7 +71,7 @@ end
 
 beadmatchSSCsmooth = interp1(beadresults(:,1), sm_bead_avgSSC2, g.cellresultsall(:,1));
 
-%save([gpath 'groupsum'], '-append')
+save([gpath 'groupsum'], 'beadmatchSSCsmooth', '-append')
 
 figure
 plot(beadresults(:,1),beadresults(:,13),'.-k')

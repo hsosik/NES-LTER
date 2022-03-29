@@ -12,7 +12,9 @@ groupedpath = [base_path 'data\processed\grouped\'];
 mergedpath2 = mergedpath;
 groupedpath2 = groupedpath;
 
-if year2do <=2005,
+g = load([groupedpath 'groupsum']); %get the summary file with smoothed bead values
+
+if year2do <=2005
     filelist = dir([groupedpath '*.mat']);
     filelist(strmatch('groupsum.mat',{filelist.name}')) = [];
     filelist(strmatch('cellC_summary.mat',{filelist.name}')) = [];
@@ -29,7 +31,7 @@ cellresults_all = [];
 sumvol_all = [];
 sumC_all = [];
 sumnum_all = [];
-for count = 1:length(filelist),
+for count = 1:length(filelist)
     filename = filelist(count).name;
     disp(['loading...' filename])
     groupedpath = groupedpath2;
@@ -44,26 +46,32 @@ for count = 1:length(filelist),
     sumvol = NaN(length(mergedwithclass),6);
     sumC = sumvol;
     sumnum = sumvol;
-    for count2 = 1:length(mergedwithclass),
+    beadmatchSSCsmooth = NaN(size(beadmatch,1),1);
+    nnan = ~isnan(beadmatch(:,1));
+    [~,ia] = ismember(beadmatch(nnan,1), g.beadmatchall(:,1));
+    beadmatchSSCsmooth(nnan) = g.beadmatchSSCsmooth(ia); %smoothed SSC bead value for this file
+    for count2 = 1:length(mergedwithclass)
         temp = mergedwithclass{count2};    
-        for class = 1:4,
-            if size(temp,1) > 1,
+        for class = 1:4
+            if size(temp,1) > 1
                 if class == 1
                     ind = find(temp(:,classcol) == 1);  %syn
-                elseif class == 2,
+                elseif class == 2
                     ind = find(temp(:,classcol) == 4 | temp(:,classcol) == 2 | temp(:,classcol) == 6);  %euk + sm&lg crypto
-                elseif class == 3,
+                elseif class == 3
                     ind = find(temp(:,classcol) == 6);  %dim crypto
                 elseif class == 4
                     ind = find(temp(:,classcol) == 2);  %bright crypto
-                end;
-                cellvol = cytosub_SSC2vol(temp(ind,5)./beadmatch(count2,5));  %SSC bu values converted to volume
+                end
+                %cellvol = cytosub_SSC2vol(temp(ind,5)./beadmatch(count2,5));  %SSC bu values converted to volume
+                %use smoothed SSC bead value as saved in groupsum file after running bead_smooth.m
+                cellvol = cytosub_SSC2vol(temp(ind,5)./beadmatchSSCsmooth(count2));  %SSC bu values converted to volume
                 cellC = 10.^(-.665+.939.*log10(cellvol)); %Menden-Deuer & Lessard 2000, protist excl. diatoms
                 celldiam = (cellvol.*3./4./pi).^(1/3)*2;
                 sumvol(count2,class) = sum(cellvol);
                 sumC(count2,class) = sum(cellC);
                 sumnum(count2,class) = length(ind);
-                if class == 2,
+                if class == 2
                     ind2 = find(celldiam <=2);
                     sumvol(count2,5) = sum(cellvol(ind2));
                     sumC(count2,5) = sum(cellC(ind2));
@@ -72,21 +80,21 @@ for count = 1:length(filelist),
                     sumvol(count2,6) = sum(cellvol(ind2));
                     sumC(count2,6) = sum(cellC(ind2));
                     sumnum(count2,6) = length(ind2);
-                end;
+                end
                 %else  %empty
                 %    sumvol(count2,class) = NaN;
                 %    sumC(count2,class) = NaN;
                 %    sumnum(count2,class) = NaN;
-            end;
-        end;
+            end
+        end
         clear cellvol cellC celldiam
-    end; %for class = 1:2
+    end %for class = 1:2
     sumvol_all = [sumvol_all; sumvol(:,[1:2,5:6,3:4])];
     sumC_all = [sumC_all; sumC(:,[1:2,5:6,3:4])];
     sumnum_all = [sumnum_all; sumnum(:,[1:2,5:6,3:4])];
     clear sumvol sumC sumnum
     clear mergedwithclass beadmatch cellresults
-end;  %for count = 1:length(filelist)
+end  %for count = 1:length(filelist)
 
 sumtitles = {'Syn', 'Euk total', 'Euk < 2 microns', 'Euk 2-10 microns' 'Dim cryptos', 'Bright cryptos'};
 clear beadmatch* cellCHL* cellSSC* cellFLS* cellNUM* cellPE* merged* class* count* grouped* ind* file* temp

@@ -7,14 +7,17 @@
 %    'AR31A' 'AR31B' 'AR31C' 'AR32' 'EN627' 'AR34A' 'AR34B' 'AR38' 'EN644'...
 %    'EN655' 'EN657' 'AR39B'};  
 
-cruises = {'EN657'}; %use this option to run one cruise OR above case for saving and plottting multiple cruises
-
+%cruises = {'EN657'}; %use this option to run one cruise OR above case for saving and plottting multiple cruises
+cruises = {'en627' 'ar34b' 'en644' 'ar39b'};
 if 1 %1 to read from the APIs, 0 to load the stored (multi-cruise) file
     nut = table;
     for count1 = 1:length(cruises)
         disp(cruises{count1})
-        n = webread(['https://nes-lter-data.whoi.edu/api/nut/' cruises{count1} '.csv']);
+        opt = weboptions('Timeout', 30);
+        n = webread(['https://nes-lter-data.whoi.edu/api/nut/' cruises{count1} '.csv'], opt);
         n.alternate_sample_id = []; %move this column since the type doesn't match between all cruises
+        n.nearest_station = [];
+        n.distance_km = [];
         nut = [nut; n];
     end
     nut.mdate = datenum(nut.date, 'yyyy-mm-dd hh:MM:ss+00:00');
@@ -66,3 +69,34 @@ for count = 1:length(cruises)
     set(gcf, 'position', [488 41.8 560 740.8])
     print(['c:\work\lter\nutrient_sections\' cruises{count}], '-dpng')
 end
+
+
+return
+%%
+figure
+set(gcf', 'position', [0 350 1200 400])
+%tstr = [{'Winter 2019'; 'NO_3+NO_2'} {'Spring 2019'; 'NO_3+NO_2'} {'Summer 2019'; 'NO_3+NO_2'} {'Fall 2019'; 'NO_3+NO_2'}];
+tstr = [{'Winter 2019'} {'Spring 2019'} {'Summer 2019'} {'Fall 2019'}];
+tiledlayout(2,2,'TileSpacing', 'compact')
+for count = 1:length(cruises)
+    cstr = cruises{count};
+    nind = find(ismember(lower(nut.cruise), lower(cstr)));
+
+    inut(:,:,1) = griddata(nut.latitude(nind)*latfactor,nut.depth(nind),nut.nitrate_nitrite(nind),ilat*latfactor,idpth');
+
+    for ii = 1:length(ilat)
+        inut(idpth>ibdpth(ii),ii,:) = NaN; 
+    end
+
+        nexttile
+        pcolor(ilat, idpth', squeeze(inut))
+        hold on
+        plot(nut.latitude(nind), nut.depth(nind), '+')
+        plot(ilat,ibdpth,'k','linewidth',2);
+        shading interp, set(gca, 'ydir', 'rev', 'xdir', 'rev')
+        text(41.4,150,tstr(:,count), 'fontsize', 16) 
+        %colorbar
+        caxis([0 12])
+end
+cbh = colorbar;
+title(cbh, 'NO_3+NO_2')

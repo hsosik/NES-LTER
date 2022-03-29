@@ -95,6 +95,20 @@ if exist('gps', 'var')
         uw = [uw; temp2];
     end
 
+    %add on any gps data for times before SAMOS files start
+    temp = uw(1,:);
+    temp{:,:} = NaN;
+    if (min(uw.mdate_fullres)-min(gps.matdate)) > 10/60/24 %more than 10 minutes of extra data
+        tt = find(gps.matdate<uw.mdate_fullres(1));
+        sind = find(diff(round(gps.matdate(tt)*24*60))); %indices at 1 minute intervals
+        tt = tt(2:end);
+        temp2 = repmat(temp,length(tt),1);
+        temp2.mdate_fullres = gps.matdate(tt);
+        temp2.latitude_fullres = gps.lat(tt);
+        temp2.longitude_fullres = gps.lon(tt);
+        uw = [uw; temp2];
+    end
+    
     %add in full res gps if available in SAMOS gaps
     temp = uw(1,:);
     temp{:,:} = NaN; 
