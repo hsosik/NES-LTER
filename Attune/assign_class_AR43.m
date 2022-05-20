@@ -1,14 +1,6 @@
+function [ class , bounds] = assign_class_AR43( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 
-function [ class , bounds] = assign_class_EN644( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
-
-
-%different gates for different portions of the cruise
-if startdate < 7.3782582e5
-    phase = 1;
-else
-    phase = 2; 
-end
-
+plot_flag = 0; 
 
 %Initialze class vector
     class = zeros(size(fcsdat,1),1);
@@ -22,12 +14,12 @@ end
     npar_synY = 18; %GL2-H %phycoerythrin 
     
     %just for initial gates
-    synmaxY = 1e5; 
+    synmaxY = 2e4; 
     synminX = 700 ; 
-    synXcorners = [4000 40000]; 
+    synXcorners = [10000 70000]; 
 
-    eukminX = 3e3; 
-    eukcorner = [40000 1000]; 
+    eukminX = 5e3; 
+    eukcorner = [5e4 800]; 
     eukmaxY = 2e4; 
     eukmaxYlower = 300; 
 
@@ -35,18 +27,13 @@ end
   
 
     synGL1A2GL1Hmax = 4; %PE area to height
-    synGL1H2BL3Hslope = .90; %PE to CHL
-    synGL1H2BL3Hoffset = .9; %PE to CHL 
-    syneukBL3H2SSCHslope = 1.3; %CHL to SSC
-    syneukBL3H2SSCHoffset = -2.5; %PE to CHL 
+    synGL1H2BL3Hslope = 1.1; %PE to CHL, ?1.2 with .8 offset?
+    synGL1H2BL3Hoffset = .3; %PE to CHL .4 on RB, .3 on TN, .8?
+    syneukBL3H2SSCHslope = 1.1; %CHL to SSC
+    syneukBL3H2SSCHoffset = -0.5; %-.6; %PE to CHL -.8 on TN
     nonsynfactorA = 15; %6
     nonsynfactorB = 6; %2.5
-
-    if phase == 2
-        synGL1H2BL3Hslope = .90; %PE to CHL
-        synGL1H2BL3Hoffset = 1.1; %PE to CHL 
-    end
-
+    
     %syn main gate
     gsyn_main_gate = [synminX gl2_noise_thresh ; synXcorners(1) gl2_noise_thresh; synXcorners(2) synmaxY; synminX synmaxY]; %[Xmin Ymin; Xmax Ymax]
     %euk gate 
@@ -70,7 +57,6 @@ end
     eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
     eukminX = max([eukminX 500]); %Pretty sure its always eukminX
     minY = max([minY 100]); %not below trigger level for this cruise
-    
 
 
     %make new gates with adapted boundaries
@@ -89,11 +75,11 @@ end
     %it would be really nice if we could adjust the diagonal line in the
     %Chl PE relationship to move with the data
     
-    frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-    %while frac_coinc > .03 & synGL1H2BL3Hoffset > 0.1;
+    %frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
+    %while frac_coinc > .03
     %    synGL1H2BL3Hoffset = synGL1H2BL3Hoffset - .1;
     %    frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-   % end
+    %end
 
     %% part 3
 
