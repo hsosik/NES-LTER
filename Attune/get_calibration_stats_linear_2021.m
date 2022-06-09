@@ -25,9 +25,9 @@ function get_calibration_stats_linear_2021(outpath, classpath, stepsize, DIM)
          %ssc_ch_num = 3; %3 ssc-a, 12 ssc-h 
 fpath = regexprep(outpath, 'bead_calibrated', 'FCS');
 
-saverpath = [classpath 'calibration_l']; 
-if ~exist([classpath 'calibration_l'], 'dir')
-    mkdir([classpath 'calibration_l'])
+saverpath = [classpath 'calibration']; 
+if ~exist([classpath 'calibration'], 'dir')
+    mkdir([classpath 'calibration'])
 end
 
  classlist = dir([classpath, '*.mat']); 
