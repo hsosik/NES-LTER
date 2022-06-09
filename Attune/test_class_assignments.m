@@ -1,15 +1,15 @@
 
 %test class assignments for a cruise WITHOUT overwriting class data 
 
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20200725_EN655\'; 
-assign_class_function = 'assign_class_EN655'; 
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20181020_AR31\'; 
+assign_class_function = 'assign_class_AR31'; 
 
-filetype2exclude = {'fcb_bead'; 'FCB_bead'; '(lab test)'; 'Dockwater'; 'Rinses'; "Filter config"; "SFD_AR29_Grazer";}; %needed for Step2
+filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; '(lab test)'; 'test';'Dockwater'; 'Daily'; 'Rinses'; 'discrete'; "Filter config"; "Grazer"; "SFD_AR29_Grazer"; "Cultures";}; %needed for Step2
 OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
 
 framemaker = 'make_movieframe_density';
-stepsize = 10; %controls resolution of movie
-moviechannels = 'late'; 
+stepsize = 14; %controls resolution of movie
+moviechannels = 'early'; 
     
 
 %assign useful paths
@@ -20,7 +20,7 @@ classpath = [outpath 'class' filesep];
 load([outpath filesep 'FCSfileinfo.mat'])
 
 if strcmp(OD2setting, 'GL1')
-    ssc_name = 'GL1'; 
+    ssc_name = 'GL1';  
 else
     ssc_name = 'SSC'; 
 end
@@ -28,15 +28,16 @@ end
  %remove filetype2exclude from FCSfileinfo and generate filelist 
         %this part has been updated  for Table structure FCS filinfo 
     for iii = 1:length(filetype2exclude)    
-         t = strmatch(filetype2exclude{iii}, FCSfileinfo.fcslist);
+         t = contains(FCSfileinfo.fcslist, filetype2exclude{iii});
          if ~isempty(t)
               FCSfileinfo(t, :) = []; 
          end
     end
-    clear t iii 
+    clear t iii  
    
-     filelist = FCSfileinfo.fcslist;
+    filelist = FCSfileinfo.fcslist;
      
+
     %make sure its in chronological order
     matdate = FCSfileinfo.matdate_start;
     QC_flags = FCSfileinfo.QC_flag; 
@@ -44,9 +45,13 @@ end
     filelist = filelist(sort_ind);
     QC_flags = QC_flags(sort_ind); 
 
-    
+
+    %QC_flags = FCSfileinfo.QC_flowrates(sort_ind,1)<1.1; 
+
+    length(filelist)
     %now go through files of interest, assign classes, and save results
-    for count = 1300:stepsize:length(filelist)
+    for count = 10:stepsize:length(filelist) %2050
+        pause(.02)
          if ~rem(count,10)
             disp([num2str(count) ' of ' num2str(length(filelist))])
          end
@@ -70,5 +75,7 @@ end
             % call the function to make the plots and getframe
             eval(['Frame = ', framemaker, '(fcsdat, fcshdr, class, moviechannels, QC_flags(count), bounds)']);
      
+
+            set(gcf, 'position', [2.1483e+03 -187 905.3333 590.6667])
 
     end
