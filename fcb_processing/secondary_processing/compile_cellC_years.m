@@ -31,14 +31,28 @@ ind = find(~isnan(ml_analyzed));
 figure
 plot(mdate_mat(:), SynC_mat(:)./ml_mat(:)/1000, '-')
 
-com
+%%
+[ mdate_mat, Synnum_mat, yearlist, yd ] = timeseries2ydmat( matdate(ind), sumnum(ind,1));
+[ mdate_mat, ml_mat, yearlist, yd ] = timeseries2ydmat( matdate(ind), ml_analyzed(ind));
+figure
+semilogy(mdate_mat(:), Synnum_mat(:)./ml_mat(:), 'b-','linewidth',1)
+set(gcf, 'position', [50 400 1200 220])
+datetick
+ylim([10 1e6])
+set(gca, 'ytick', [1e2 1e4 1e6], 'xgrid', 'on', 'fontsize', 14)
+set(gca, 'position', [0.07    0.1335    0.9    0.8083])
+ylabel('Cells ml^{-1}')
+text(datenum(2003,9,1), 100, '\itSynechococcus', 'fontsize', 16, 'fontweight', 'bold')
+
+%%
+
 return
 %semilogy(time_syn(:), daily_syn(:), 'b', 'linewidth', 1)
 semilogy(matdate, sumnum(:,1)./ml_analyzed, 'b', 'linewidth', 1)
 ylim(([10 1e6]))
 set(gca, 'ytick', [1e2 1e4 1e6], 'xgrid', 'on', 'fontsize', 14)
 ylabel('\itSynechococcus\rm, ml^{-1}')
-set(gcf, 'position', [288.2000  447.4000  940.8000  238.4000])
+set(gcf, 'position', [288.2000  400  940.8000  238.4000])
 set(gca, 'position', [0.0884    0.1335    0.8806    0.8083])
 set(gca, 'xlim', [datenum('1-0-2003') datenum('1-1-2018')])
 datetick

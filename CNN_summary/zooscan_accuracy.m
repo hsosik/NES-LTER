@@ -2,7 +2,7 @@
 %load('\\vortex\share\otz-data\zooscan\training-output\20201207_OTZzooscan\results')
 %load('\\vortex\share\otz-data\zooscan\training-output\20201214_OTZzooscan_jpg\results')
 
-load('\\vortex\share\otz-data\zooscan\training-output\20211228_OTZ_Zooscan_V1.2\results')
+load('\\vortex\share\otz-data\zooscan\training-output\OTZ_zooscan_photic_20220318_1.4\results')
 %load('\\vortex\share\otz-data\zooscan\training-output\20210302_OTZzooscan_1.1jpg\results')
 %load('\\vortex\share\otz-data\zooscan\training-output\20210302_OTZzooscan_1.2jpg\results')
 
