@@ -56,11 +56,6 @@ end
     minX = prctile(fcsdat(in_syn,npar_synX),10)*.3; maxX = prctile(fcsdat(in_syn, npar_synX), 90)*10; 
     minY = prctile(fcsdat(in_syn,npar_synY),15)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
  
-    %%compare syn mimimum Y to noise level. 
-    %in_noise_tail = (fcsdat(:,npar_synY)>100 & fcsdat(:,npar_synX)<100);
-    %minY2 = prctile(fcsdat(in_noise_tail, npar_synY), 99); 
-    %minY = min(minY, minY2);
-
     eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
     eukminX = max([eukminX 500]); %Pretty sure its always eukminX
     minY = max([minY 100]); %not below trigger level for this cruise

@@ -50,11 +50,6 @@ plot_flag = 0;
     minX = prctile(fcsdat(in_syn,npar_synX),10)*.3; maxX = prctile(fcsdat(in_syn, npar_synX), 90)*10; 
     minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
  
-    %%compare syn mimimum Y to noise level. %useful for summer cruises
-    %in_noise_tail = (fcsdat(:,npar_synY)>100 & fcsdat(:,npar_synX)<100);
-    %minY2 = prctile(fcsdat(in_noise_tail, npar_synY), 99); 
-    %minY = min(minY, minY2);
-
     eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
     eukminX = max([eukminX 500]); %Pretty sure its always eukminX
     minY = max([minY 100]); %not below trigger level for this cruise
@@ -98,8 +93,6 @@ plot_flag = 0;
 
     %now use diagonal line in plot 1 to distinguish syn from euks and coincident
     class((fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset & fcsdat(:,15)> min(geuk_main_gate(:,1))) & fcsdat(:, npar_synY)> minY) = 3; %more euks
-    %class(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset & fcsdat(:,15)> min(geuk_main_gate(:,1)))) = 5; %Syn&Euk coincident
-    %also use FSC-W to see coincidence?
 
     class(in_euk) = 1; %AFTER lowPE
 

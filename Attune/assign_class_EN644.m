@@ -15,7 +15,7 @@ else
     phase = 5.5;
 end
 if startdate > 7.376568416666667e+05 & startdate < 737657.1 %19-Aug-2019 20:12:00
-   phase = 1.5
+   phase = 1.5;
 end
 
 
@@ -142,15 +142,6 @@ if rem(phase,1) == 0
     end
 end
 
-%     subset = in_syn & log10(fcsdat(:, npar_eukX))>2 & log10(fcsdat(:, npar_eukX))<3;
-%     lm = fitlm(log10(fcsdat(subset, npar_eukX)), log10(fcsdat(subset, npar_eukY)));
-%     synGL1H2BL3Hslope = lm.Coefficients.Estimate(2) +.45;
-%     synGL1H2BL3Hoffset = lm.Coefficients.Estimate(1) - 2;
-%     
-%     if prctile(fcsdat(in_syn,npar_synY),50) > 7000; 
-%         synGL1H2BL3Hslope = synGL1H2BL3Hslope-.05
-%     end
-    
 
     %% part 3
 

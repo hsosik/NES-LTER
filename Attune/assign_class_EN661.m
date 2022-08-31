@@ -45,24 +45,15 @@ plot_flag = 0;
     in_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
     
     %first look in gates, then cut out extremes? or add if pileup at edges
-    %minX = prctile(fcsdat(in_syn,npar_synX),10)*.3; maxX = prctile(fcsdat(in_syn, npar_synX), 90)*10; 
     minX = synminX;
     minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
  
-    %%compare syn mimimum Y to noise level. 
-    %in_noise_tail = (fcsdat(:,npar_synY)>100 & fcsdat(:,npar_synX)<100);
-    %minY2 = prctile(fcsdat(in_noise_tail, npar_synY), 99); 
-    %minY = min(minY, minY2);
-
     eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
     eukminX = max([eukminX 500]); %Pretty sure its always eukminX
     %minY = max([minY 100]); %not below trigger level for this cruise
 
 
     %make new gates with adapted boundaries
-   % gsyn_main_gate(:,2) = [minY; minY; maxY; maxY]; 
-    %gsyn_main_gate(1,1) = minX; 
-    %gsyn_main_gate(4,1) = minX; 
     geuk_main_gate(1,1) = eukminX; 
     geuk_main_gate(5,1) = eukminX; 
 
@@ -71,16 +62,6 @@ plot_flag = 0;
     % assingments for euk and syn 
     in_euk = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
-
-    %% Part 2
-    %it would be really nice if we could adjust the diagonal line in the
-    %Chl PE relationship to move with the data
-    
-    %frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-    %while frac_coinc > .03
-    %    synGL1H2BL3Hoffset = synGL1H2BL3Hoffset - .1;
-    %    frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-    %end
 
     %% part 3
 
@@ -99,7 +80,6 @@ plot_flag = 0;
     %now use diagonal line in plot 1 to distinguish syn from euks and coincident
     class((fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset & fcsdat(:,15)> min(geuk_main_gate(:,1))) & fcsdat(:, npar_synY)> minY) = 3; %more euks
     class(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset & fcsdat(:,15)> min(geuk_main_gate(:,1)))) = 5; %Syn&Euk coincident
-    %also use FSC-W to see coincidence?
 
     class(in_euk) = 1; %AFTER lowPE
 
