@@ -29,16 +29,16 @@ bottle_data = webread([apibase 'ctd/' cruise '/bottles.csv'], options);
 
 %% find the underway matchups
 %find the underway rows
-tagstr = 'tag1';
-uwind = strmatch('underway', totag.(tagstr), 'exact');
+%tagstr = 'tag1';
+%uwind = strmatch('underway', totag.(tagstr), 'exact');
 %if isempty(uwind)
 %    tagstr = 'tag2';
 %    uwind = strmatch('underway', totag.(tagstr));
 %end
-if isempty(uwind)
-    tagstr = 'sample_type';
-    uwind = strmatch('underway', totag.(tagstr));
-end
+%if isempty(uwind)
+tagstr = 'sample_type';
+uwind = strmatch('underway', totag.(tagstr));
+%end
 
 %get the underway match up
 IFCB_mdate = IFCB_file2date(cellstr(totag.filename(uwind)));
@@ -140,6 +140,22 @@ if ~isempty(logfilelist.log_file{cruise_ind})
         IFCB_match_btl_restuls.mdate = datenum(IFCB_match_btl_results.datetime, 'yyyy-mm-dd hh:MM:SS+00:00');
     end
 end %end if log file exists
+
+%% include any tags and comments from totag file and from IFCB log file
+[~,ia,ib] = intersect(totag.filename, IFCBlog.filename);
+tagindlog = find(strncmp('tag', IFCBlog.Properties.VariableNames,3));
+tagindtag = find(strncmp('tag', totag.Properties.VariableNames,3));
+for c = 1:length(ia)
+    %[IFCBlog{ib,tagindlog} totag{ia,tagindtag}]
+    tags_temp = setdiff(unique([IFCBlog{ib(c),tagindlog} totag{ia(c),tagindtag}]),char([]));
+    for tn = 1:length(tags_temp)
+        totag.(['tag' num2str(tn)])(ia(c)) = tags_temp(tn);
+    end
+    comments_temp = setdiff(unique([IFCBlog.comments(ib(c)) totag.comments(ia(c))]),char([]));
+    if ~isempty(comments_temp)
+        totag.comments(ia(c)) = join(comments_temp, '; ');
+    end
+end
 
 %% find the underway discrete matchups
 %uwdind = strmatch('underway_discrete', totag.tag2);
