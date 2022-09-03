@@ -18,7 +18,7 @@ if ~exist(outfile, 'dir')
 end
 outfile = [outfile cruise 'uw_compiled'];
 
-if ~strncmp('PC',cruise,2) | strcmp('PC2104', cruise)  %PC2104 case is missing 8/12 from SAMOS
+if ~strncmp('PC',cruise,2) | strcmp('PC2104', cruise) | strcmp('PC2106', cruise) %PC2104 case is missing 8/12 from SAMOS
     %load the gps table compiled from ship's data with compile_gps_from*.m 
     load([bpath1 'gps\gps_all.mat']); 
 end

@@ -1,5 +1,5 @@
 
-function [ class , bounds] = assign_class_EN644( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
+function [ class , bounds] = assign_class_EN649( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 
 
 %different gates for different portions of the cruise
@@ -7,6 +7,9 @@ if startdate < 7.3782582e5
     phase = 1;
 else
     phase = 2; 
+end
+if startdate < 7.378246250000000e+05
+    phase = 0;
 end
 
 
@@ -24,7 +27,7 @@ end
     %just for initial gates
     synmaxY = 1e5; 
     synminX = 700 ; 
-    synXcorners = [4000 40000]; 
+    synXcorners = [10000 40000]; 
 
     eukminX = 3e3; 
     eukcorner = [40000 1000]; 
@@ -36,15 +39,19 @@ end
 
     synGL1A2GL1Hmax = 4; %PE area to height
     synGL1H2BL3Hslope = .90; %PE to CHL
-    synGL1H2BL3Hoffset = .9; %PE to CHL 
+    synGL1H2BL3Hoffset = 1; %PE to CHL 
     syneukBL3H2SSCHslope = 1.3; %CHL to SSC
     syneukBL3H2SSCHoffset = -2.5; %PE to CHL 
-    nonsynfactorA = 15; %6
-    nonsynfactorB = 6; %2.5
+    nonsynfactorA = 9; %6
+    nonsynfactorB = 3; %2.5
 
     if phase == 2
         synGL1H2BL3Hslope = .90; %PE to CHL
         synGL1H2BL3Hoffset = 1.1; %PE to CHL 
+    end
+    if phase == 0
+        synGL1H2BL3Hslope = 1.1; %PE to CHL
+        synGL1H2BL3Hoffset = .4; %PE to CHL 
     end
 
     %syn main gate
@@ -60,7 +67,7 @@ end
     
     %first look in gates, then cut out extremes? or add if pileup at edges
     minX = prctile(fcsdat(in_syn,npar_synX),10)*.3; maxX = prctile(fcsdat(in_syn, npar_synX), 90)*10; 
-    minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
+    minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),80)*10;
  
     %%compare syn mimimum Y to noise level. 
     in_noise_tail = (fcsdat(:,npar_synY)>100 & fcsdat(:,npar_synX)<100);
@@ -86,25 +93,15 @@ end
     in_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
 
     %% Part 2
-    %it would be really nice if we could adjust the diagonal line in the
-    %Chl PE relationship to move with the data
-    
     frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-    %while frac_coinc > .03 & synGL1H2BL3Hoffset > 0.1;
-    %    synGL1H2BL3Hoffset = synGL1H2BL3Hoffset - .1;
-    %    frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-   % end
 
     %% part 3
 
     %look for things with low syn level phycoerythrin & low GL2/GL3 ratio?
     %& not big FCS with low phycoerythrin
     in_nonsyn_lowPE = fcsdat(:,npar_synY) > minY & fcsdat(:,npar_synY) < maxY/2 & fcsdat(:,npar_synY)./fcsdat(:,17) < nonsynfactorB & ~(fcsdat(:,npar_synY)<1e4 & fcsdat(:,11)>1e4);
-    in_nonsyn_hiPE = fcsdat(:,npar_synY) > maxY/2 & fcsdat(:,npar_synY)./fcsdat(:,17) > nonsynfactorB & fcsdat(:,npar_synY)./fcsdat(:,17) < nonsynfactorA;
-    
     %assign values in class vector
     class(in_nonsyn_lowPE) = 3;
-    class(in_nonsyn_hiPE) = 4;
     %keyboard
 
     class(in_syn) = 2; %must be done after nonsyn
@@ -130,6 +127,11 @@ end
     %group things with very high PE signals. 
     in_nonsyn_hiPE = fcsdat(:,npar_synY) > maxY;
     class(in_nonsyn_hiPE) = 4;
+
+
+    %distinct cluster here 
+    in_nonsyn_lowPE = fcsdat(:,npar_synY) > minY & fcsdat(:,npar_synY) < maxY/2 & fcsdat(:,npar_synY)./fcsdat(:,17) < nonsynfactorA & fcsdat(:,npar_synY)./fcsdat(:,17) > nonsynfactorB & ~(fcsdat(:,npar_synY)<1e4 & fcsdat(:,11)>1e4);
+    class(in_nonsyn_lowPE) = 7;
 
     class(fcsdat(:,npar_eukX) < 200 & fcsdat(:,npar_synY) < 250) = 0; %noise %LAST
   

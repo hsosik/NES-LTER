@@ -21,7 +21,7 @@ function use_calibration_stats_linear(outpath, classpath, DIM, OD2setting)
 
 fpath = regexprep(outpath, 'bead_calibrated', 'FCS');
 
-saverpath = [classpath 'calibration_l']; %within class files we save calibraiton informatino and some figures
+saverpath = [classpath 'calibration']; %within class files we save calibraiton informatino and some figures
 classlist = dir([classpath, '*.mat']);
 
 figpath = [saverpath '/onefit'];
@@ -31,9 +31,9 @@ end
 
 calibrate = 0; 
 if strcmp(OD2setting, 'GL1')
-if exist([classpath '/calibration_l/table.mat'])
+if exist([classpath '/calibration/table.mat'])
     calibrate = 1;
-    load([classpath '/calibration_l/table.mat'])
+    load([classpath '/calibration/table.mat'])
     %get average linear model statistics from table, only for files where
     %quality check flag wasn't flagged
     joint_table.intercept(joint_table.intercept == -Inf | joint_table.intercept == Inf ) = NaN;
@@ -104,7 +104,7 @@ for counti = 1:length(classlist)
             %use OD2 measurements to project to NoOD2 values
             bead_value = [beadstat_2021.OD2_hv beadstat_2021.OD2centers(:,2)];
             bead_value_to_convert = nanmedian(bead_value(bead_value(:,1)==file_hv,2)); %bead_value on GL1
-            bead_value = [beadstat_2021.OD2_hv beadstat_2021.NoOD2centers(:,2)];
+            bead_value = [beadstat_2021.NoOD2_hv beadstat_2021.NoOD2centers(:,2)];
             bead_value = nanmedian(bead_value(bead_value(:,1)==file_hv,2)); %bead_value on SSC
             
         else %OD2setting is 'none'
@@ -182,21 +182,23 @@ for counti = 1:length(classlist)
     if DIM == 'A'
         volume = 10.^(1.24*log10(scatter_value./bead_value) + 1.064); %based on linear fit to scaled ssch on OD2 filter March 2019
         volumestring = '10.^(1.24*log10(scatter_value./bead_value) + 1.064';
+     
+        %treat H values differently from A values
+        volume(negA_ind) = 10.^(1.4225*log10(scatter_value(negA_ind)./bead_value) + 1.1432); 
+        
     elseif DIM == 'H'
         volume = 10.^(1.4225*log10(scatter_value./bead_value) + 1.1432);
         volumestring = '10.^(1.4225*log10(scatter_value./bead_value) + 1.1432)'; %based on linear fit to scaled ssca on OD2 filter March 2019
         %below is a conversion we were using at one point? 
         %volume = 10.^(1.2232*log10(ssca./fcb_mean) + 1.0868);
-        
-        %treat H values differently from A values
-        volume(negA_ind) = 10.^(1.24*log10(scatter_value(negA_ind)./bead_value) + 1.064); 
+     
     end
     
     if calibrate == 1
-    vol_notes = {strcat('calibrated: ', string(datetime())); strcat('using SSC-', DIM, ' and GL1 Linear Scale Fit: right bound ', num2str(R_bound), 'intercept ', num2str(intercept), 'slope ', num2str(slope));
+    vol_notes = {strcat('calibrated: ', string(datetime())); strcat(' using SSC-', DIM, ' and GL1 Linear Scale Fit: right bound ', num2str(R_bound), 'intercept ', num2str(intercept), 'slope ', num2str(slope));
         volumestring};
     else 
-        vol_notes = {strcat('calibrated: ', string(datetime())); strcat('using SSC-', DIM, 'No Linear Fit to GL1   ', volumestring)};
+        vol_notes = {strcat('calibrated: ', string(datetime())); strcat(' using SSC-', DIM, 'No Linear Fit to GL1   ', volumestring)};
     end
     save([classpath classlist(counti).name], 'volume', 'ssc_value', 'vol_notes', 'bead_value', 'negA_ind', 'file_hv', '-append' )
         

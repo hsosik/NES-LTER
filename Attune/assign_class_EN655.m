@@ -6,6 +6,7 @@ else
     phase = 2
 end
 
+
 %Initialze class vector
     class = zeros(size(fcsdat,1),1);
     
@@ -68,10 +69,12 @@ end
     minY = max([minY 100]); %not below trigger level for this cruise
    
 
+    if ~any(isnan([minY, minX, maxY, maxX]))
     %make new gates with adapted boundaries
     gsyn_main_gate(:,2) = [minY; minY; maxY; maxY]; 
     gsyn_main_gate(1,1) = minX; 
     gsyn_main_gate(4,1) = minX; 
+    end
     geuk_main_gate(1,1) = eukminX; 
     geuk_main_gate(5,1) = eukminX; 
 
@@ -80,9 +83,13 @@ end
     in_euk = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
 
-    %this cruise has another smaller syn population 
+    %this cruise has another smaller syn population
+    if ~any(isnan([minY, minX, maxY, maxX]))
     gsyn_small_gate = [minX  minY; 10 1800; 10 2e4; synXcorners(2) maxY];
     in_small_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_small_gate(:,1)),log10(gsyn_small_gate(:,2))));
+    else
+        in_small_syn = []; 
+    end
 
     %% Part 2
     %it would be really nice if we could adjust the diagonal line in the

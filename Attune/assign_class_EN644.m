@@ -3,17 +3,21 @@ function [ class , bounds] = assign_class_EN644( fcsdat, fcshdr, plot_flag, file
 plot_flag = 0; 
 
 %different gates for different portions of the cruise
-if startdate < 737656.99
+if startdate < 737656.99 %  19-Aug-2019 23:45:36
     phase = 1;
-elseif startdate < 737657.1
+elseif startdate < 737657.1 %20-Aug-2019 02:24:00
     phase = 2;
-elseif startdate < 7.376580416666666e+05
+elseif startdate < 7.376580416666666e+05 %21-Aug-2019 01:00:00
     phase = 3;
-elseif startdate < 7.376620846064815e+05
+elseif startdate < 7.376620846064815e+05 %25-Aug-2019 02:01:50
     phase = 4;
 else 
-    phase = 5;
+    phase = 5.5;
 end
+if startdate > 7.376568416666667e+05 & startdate < 737657.1 %19-Aug-2019 20:12:00
+   phase = 1.5;
+end
+
 
 
 %Initialze class vector
@@ -49,6 +53,10 @@ end
     nonsynfactorB = 6; %2.5
 
 
+    if phase == 1.5
+        synGL1H2BL3Hoffset = .1; %PE to CHL .4 on RB, .3 on TN, .8?
+    end
+
     if phase >= 2 
     
     synXcorners = [30000 200000]; 
@@ -79,7 +87,7 @@ end
     end
     
     %syn main gate
-    gsyn_main_gate = [synminX gl2_noise_thresh ; synXcorners(1) gl2_noise_thresh; synXcorners(2) synmaxY; synminX synmaxY]; %[Xmin Ymin; Xmax Ymax]
+    gsyn_main_gate = [synminX gl2_noise_thresh ; synXcorners(1) gl2_noise_thresh; synXcorners(2) synmaxY; 800 synmaxY]; %[Xmin Ymin; Xmax Ymax]
     %euk gate 
     geuk_main_gate = [eukminX eukmaxYlower;  eukcorner(1) eukcorner(2); 1100000 eukmaxY; 1100000 1; eukminX 1];
     
@@ -113,7 +121,7 @@ end
     %make new gates with adapted boundaries
     gsyn_main_gate(:,2) = [minY; minY; maxY; maxY]; 
     gsyn_main_gate(1,1) = minX; 
-    gsyn_main_gate(4,1) = minX; 
+    gsyn_main_gate(4,1) = minX + 400; 
     geuk_main_gate(1,1) = eukminX; 
     geuk_main_gate(5,1) = eukminX; 
 
@@ -125,12 +133,15 @@ end
     %% Part 2
     %it would be really nice if we could adjust the diagonal line in the
     %Chl PE relationship to move with the data
-    
+     
+if rem(phase,1) == 0
     frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
     while frac_coinc > .03
         synGL1H2BL3Hoffset = synGL1H2BL3Hoffset - .1;
         frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
     end
+end
+
 
     %% part 3
 

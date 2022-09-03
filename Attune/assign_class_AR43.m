@@ -14,28 +14,28 @@ plot_flag = 0;
     npar_synY = 18; %GL2-H %phycoerythrin 
     
     %just for initial gates
-    synmaxY = 2e4; 
-    synminX = 700 ; 
+    synmaxY = 2e5; 
+    synminX = 600 ; 
     synXcorners = [10000 70000]; 
 
-    eukminX = 5e3; 
+    eukminX = 600; 
     eukcorner = [5e4 800]; 
     eukmaxY = 2e4; 
     eukmaxYlower = 300; 
 
-    gl2_noise_thresh = 1500; %basically synminY 
+    gl2_noise_thresh = 7000; %basically synminY 
   
 
     synGL1A2GL1Hmax = 4; %PE area to height
     synGL1H2BL3Hslope = 1.1; %PE to CHL, ?1.2 with .8 offset?
     synGL1H2BL3Hoffset = .3; %PE to CHL .4 on RB, .3 on TN, .8?
     syneukBL3H2SSCHslope = 1.1; %CHL to SSC
-    syneukBL3H2SSCHoffset = -0.5; %-.6; %PE to CHL -.8 on TN
+    syneukBL3H2SSCHoffset = -1; %-.6; %PE to CHL -.8 on TN
     nonsynfactorA = 15; %6
     nonsynfactorB = 6; %2.5
     
     %syn main gate
-    gsyn_main_gate = [synminX gl2_noise_thresh ; synXcorners(1) gl2_noise_thresh; synXcorners(2) synmaxY; synminX synmaxY]; %[Xmin Ymin; Xmax Ymax]
+    gsyn_main_gate = [synminX gl2_noise_thresh ; synXcorners(1) gl2_noise_thresh; synXcorners(2) synmaxY; 1500 synmaxY]; %[Xmin Ymin; Xmax Ymax]
     %euk gate 
     geuk_main_gate = [eukminX eukmaxYlower;  eukcorner(1) eukcorner(2); 1100000 eukmaxY; 1100000 1; eukminX 1];
     
@@ -47,22 +47,13 @@ plot_flag = 0;
     
     %first look in gates, then cut out extremes? or add if pileup at edges
     minX = prctile(fcsdat(in_syn,npar_synX),10)*.3; maxX = prctile(fcsdat(in_syn, npar_synX), 90)*10; 
-    minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
- 
-    %%compare syn mimimum Y to noise level. 
-    in_noise_tail = (fcsdat(:,npar_synY)>100 & fcsdat(:,npar_synX)<100);
-    minY2 = prctile(fcsdat(in_noise_tail, npar_synY), 99); 
-    minY = min(minY, minY2);
 
     eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
     eukminX = max([eukminX 500]); %Pretty sure its always eukminX
-    minY = max([minY 100]); %not below trigger level for this cruise
 
 
     %make new gates with adapted boundaries
-    gsyn_main_gate(:,2) = [minY; minY; maxY; maxY]; 
     gsyn_main_gate(1,1) = minX; 
-    gsyn_main_gate(4,1) = minX; 
     geuk_main_gate(1,1) = eukminX; 
     geuk_main_gate(5,1) = eukminX; 
 
@@ -71,17 +62,10 @@ plot_flag = 0;
     in_euk = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
 
-    %% Part 2
-    %it would be really nice if we could adjust the diagonal line in the
-    %Chl PE relationship to move with the data
-    
-    %frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-    %while frac_coinc > .03
-    %    synGL1H2BL3Hoffset = synGL1H2BL3Hoffset - .1;
-    %    frac_coinc = sum(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset))./sum(in_syn);
-    %end
-
     %% part 3
+
+    maxY = max(fcsdat(in_syn, npar_synY)); 
+    minY = min(fcsdat(in_syn, npar_synY)); 
 
     %look for things with low syn level phycoerythrin & low GL2/GL3 ratio?
     %& not big FCS with low phycoerythrin

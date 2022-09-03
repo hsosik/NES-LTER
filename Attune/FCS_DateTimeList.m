@@ -51,13 +51,14 @@ else  %initialize
             FCSfileinfo.matdate_stop = FCSfileinfo.matdate_start;
             FCSfileinfo.vol_analyzed = FCSfileinfo.matdate_start;
             FCSfileinfo.QC_flag = FCSfileinfo.matdate_start;
+            FCSfileinfo.QC_flowrates = NaN(length(fcslist), 2);
             a = 0;
-             b = length(fcslist);
+            b = length(fcslist);
 end
 
 if b > 0 %now add to existing table
     for ii = a+1:a+b
-        if ii == 20; %~rem(ii,10)
+        if rem(ii,20) == 0
             disp([num2str(ii) ' of ' num2str(a+b)])
         end
         [fcsdat,fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii-a}));
@@ -75,6 +76,7 @@ if b > 0 %now add to existing table
                 QC_flag = 1; %set to good
             end
             FCSfileinfo.QC_flag(ii) = QC_flag; 
+            FCSfileinfo.QC_flowrates(ii,:) = QC_flowrate;
             clear QC_flag QC_flowrate t
                         
         end

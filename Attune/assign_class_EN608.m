@@ -1,8 +1,8 @@
-function [ class, bounds ] = assign_class_EN627( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
+function [ class, bounds ] = assign_class_EN608( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 
 
-%different gates for different portions of the cruise
-phase = 1; 
+    phase = 1; 
+
 
 %Initialze class vector
     class = zeros(size(fcsdat,1),1);
@@ -17,25 +17,25 @@ phase = 1;
    
     
     %just for initial gates
-    synmaxY = 100000; 
-    synminX = 300 ; 
-    synXcorners = [800 3000]; 
+    synmaxY = 70000; 
+    synminX = 30 ; 
+    synXcorners = [300 400]; 
 
-    eukminX = 3e3; 
-    eukcorner = [40000 1000]; 
+    eukminX = 600; 
+    eukcorner = [40000 300]; 
     eukmaxY = 2e4; 
-    eukmaxYlower = 300; 
+    eukmaxYlower = 150; 
 
-    gl2_noise_thresh = 4600; %basically synminY 
+    gl2_noise_thresh = 1300; %basically synminY 
   
 
     synGL1A2GL1Hmax = 4; %PE area to height
-    synGL1H2BL3Hslope = 1.0; %PE to CHL
-    synGL1H2BL3Hoffset = .8; %PE to CHL 
+    synGL1H2BL3Hslope = 1.67; %PE to CHL
+    synGL1H2BL3Hoffset = -1.4; %PE to CHL 
     syneukBL3H2SSCHslope = 1.3; %CHL to SSC
     syneukBL3H2SSCHoffset = -0.8; %PE to CHL 
-    nonsynfactorA = 15; %6
-    nonsynfactorB = 6; %2.5
+    nonsynfactorA = 26; %6
+    nonsynfactorB = 5; %2.5
 
 
     %syn main gate
@@ -43,7 +43,7 @@ phase = 1;
     %euk gate 
     geuk_main_gate = [eukminX eukmaxYlower;  eukcorner(1) eukcorner(2); 1100000 eukmaxY; 1100000 1; eukminX 1];
     
-        
+
     %find indices of cells within the gates
     fcsdatlog = log10(fcsdat); %use log10 to make sure inpolygon corresponds to view of polygon on log-log plots
     in_euk = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2))); 
@@ -51,17 +51,16 @@ phase = 1;
     
     %first look in gates, then cut out extremes? or add if pileup at edges
     minX = prctile(fcsdat(in_syn,npar_synX),10)*.3; maxX = prctile(fcsdat(in_syn, npar_synX), 90)*10; 
-    minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
+    minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*5;
  
     eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
-    eukminX = max([eukminX 500]); %Pretty sure its always eukminX
     minY = max([minY 100]); %not below trigger level for this cruise
     
 
     %make new gates with adapted boundaries
     gsyn_main_gate(:,2) = [minY; minY; maxY; maxY]; 
     gsyn_main_gate(1,1) = minX; 
-    gsyn_main_gate(4,1) = minX; 
+    gsyn_main_gate(5,1) = minX; 
     geuk_main_gate(1,1) = eukminX; 
     geuk_main_gate(5,1) = eukminX; 
 
@@ -70,7 +69,10 @@ phase = 1;
     in_euk = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
 
+
     %% part 3
+
+    in_syn(fcsdat(:, npar_synY) < 1000) = 0; %really weird picking up syn not in polygon???
 
     %look for things with low syn level phycoerythrin & low GL2/GL3 ratio?
     %& not big FCS with low phycoerythrin
@@ -84,15 +86,23 @@ phase = 1;
     class(in_syn) = 2; %must be done after nonsyn
 
     %now use diagonal line in plot 1 to distinguish syn from euks and coincident
-    class((fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset & fcsdat(:,15)> min(geuk_main_gate(:,1))) & fcsdat(:, npar_synY)> minY) = 3; %more euks
     class(in_syn & (fcsdatlog(:,npar_synY)<fcsdatlog(:,15)*synGL1H2BL3Hslope+synGL1H2BL3Hoffset & fcsdat(:,15)> min(geuk_main_gate(:,1)))) = 5; %Syn&Euk coincident
-    %also use FSC-W to see coincidence?
 
     class(in_euk) = 1; %AFTER lowPE
 
     %rule out eukaryotes classed with smaller ssc than syn minimum
     class(fcsdat(:, npar_synX)<minX) = 0; 
-   
+    class( in_nonsyn_lowPE & fcsdat(:, npar_synX)<400 ) = 0;, 
+
+    if phase ==1
+        %weird low PE group
+        in_nonsyn_lowPE = (fcsdat(:,npar_eukY) > eukmaxYlower & fcsdat(:,npar_eukY) <6000 & fcsdat(:,npar_eukX) > 4000); 
+        class(in_nonsyn_lowPE & class == 0) = 3; 
+    end
+
+    %erroneous syn during flow issues
+    class(class == 2 & fcsdat(:,15)< 200) = 0; 
+
     %use size to chl ratio to rule out noise between syn and euks
     class(class ~= 2 & fcsdatlog(:,npar_eukX)<fcsdatlog(:,npar_synX)*syneukBL3H2SSCHslope+syneukBL3H2SSCHoffset) = 0; %more noise
     
