@@ -59,7 +59,12 @@ castind = strmatch('cast', totag.(tagstr));
 logfilelist = readtable('\\sosiknas1\IFCB_data\NESLTER_transect\to_tag\NESLTER_transect_IFCB_log_tag_filelist.xlsx');
 cruise_ind = strmatch(cruise, logfilelist.cruise);
 if ~isempty(logfilelist.log_file{cruise_ind})
-    IFCBlog = readtable(logfilelist.log_file{cruise_ind});
+    % set opts so make sure 'Cast' columne is read a char to handle option
+    % for underway_discretes as 'UW1', 'UW2', etc.
+    opts = detectImportOptions(logfilelist.log_file{cruise_ind});
+    opts = setvartype(opts, 'Cast', 'char');
+    opts.DataRange = 'A2';
+    IFCBlog = readtable(logfilelist.log_file{cruise_ind}, opts);
     %avoid case mis-matches
     IFCBlog.Properties.VariableNames = lower(IFCBlog.Properties.VariableNames);
     %check if any files are missing from tag file
@@ -163,7 +168,7 @@ if ~isempty(uwdind)
     end
     %these are the non-blank datetime entries from the original log file
     if ismember('datetime', IFCBlog.Properties.VariableNames)
-        ind = setdiff(1:length(uwdind), strmatch(' ', IFCBlog.datetime_override(ib)));
+        ind = setdiff(1:length(uwdind), strmatch(' ', IFCBlog.datetime(ib)));
         IFCB_mdate(ia(ind)) = datenum(IFCBlog.datetime(ib(ind)), 'yyyy-mm-dd hh:MM:ss+00:00');
     end
     IFCB_match_uwdiscrete_results = IFCB_match_uw(totag.filename(uwdind), IFCB_mdate, uw);
@@ -178,28 +183,28 @@ if ~isempty(uwdind)
 end
 totag.depth(find(ismember(totag.(tagstr), {'bucket'}))) = 0;
 
-%% save results
-%totag.Properties.VariableNames(strmatch('Tag1', totag.Properties.VariableNames)) = {'Cruise'}
-if strmatch(tagstr, 'tag2') %old case
-    totag.cruise = repmat(cellstr(cruise),size(totag,1),1);
-end
-f = strsplit(ToTag_xlsFile, '.');
-writetable(totag, [f{1} '_meta.csv']);
-disp(['CSV file for dashboard upload: ' f{1} '_meta.csv'])
-[p f] = fileparts(f{1});
-p = regexprep(p, 'to_tag', 'match_up\');
-f = regexprep(f, 'to_tag', '');
-if ~exist(p, 'dir'), mkdir(p), end
-disp('Match-up ancillary data files: ')
-save([p f 'uw_match'], 'IFCB_match_uw_results')
-disp([p f 'uw_match.mat'])
-if ~isempty(castind)
-    save([p f 'cast_match'], 'IFCB_match_btl_results')
-    disp([p f 'cast_match.mat'])
-end
-if ~isempty(uwdind)
-    save([p f 'uwdiscrete_match'], 'IFCB_match_uwdiscrete_results')
-    disp([p f 'uwdiscrete_match.mat'])
-end
+% %% save results
+% %totag.Properties.VariableNames(strmatch('Tag1', totag.Properties.VariableNames)) = {'Cruise'}
+% if strmatch(tagstr, 'tag2') %old case
+%     totag.cruise = repmat(cellstr(cruise),size(totag,1),1);
+% end
+% f = strsplit(ToTag_xlsFile, '.');
+% writetable(totag, [f{1} '_meta.csv']);
+% disp(['CSV file for dashboard upload: ' f{1} '_meta.csv'])
+% [p f] = fileparts(f{1});
+% p = regexprep(p, 'to_tag', 'match_up\');
+% f = regexprep(f, 'to_tag', '');
+% if ~exist(p, 'dir'), mkdir(p), end
+% disp('Match-up ancillary data files: ')
+% save([p f 'uw_match'], 'IFCB_match_uw_results')
+% disp([p f 'uw_match.mat'])
+% if ~isempty(castind)
+%     save([p f 'cast_match'], 'IFCB_match_btl_results')
+%     disp([p f 'cast_match.mat'])
+% end
+% if ~isempty(uwdind)
+%     save([p f 'uwdiscrete_match'], 'IFCB_match_uwdiscrete_results')
+%     disp([p f 'uwdiscrete_match.mat'])
+%end
 end
 
