@@ -146,7 +146,7 @@ if ~isempty(castind)
 end %end if ~isempty(castind)
 
 %% include any tags and comments from totag file and from IFCB log file
-if exist(IFCBlog, 'var')
+if exist('IFCBlog', 'var')
     [~,ia,ib] = intersect(totag.filename, IFCBlog.filename);
     tagindlog = find(strncmp('tag', IFCBlog.Properties.VariableNames,3));
     tagindtag = find(strncmp('tag', totag.Properties.VariableNames,3));
