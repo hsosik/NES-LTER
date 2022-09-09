@@ -21,9 +21,6 @@ totag = addvars(totag,t,t,t,t, 'NewVariableNames', {'lat' 'lon' 'depth' 'niskin'
 %load the ship's underway data
 uw = webread([apibase 'underway/' cruise '.csv'], options);
 
-%load the ship's underway data
-bottle_data = webread([apibase 'ctd/' cruise '/bottles.csv'], options);
-
 %load the event log
 %event_log = webread([apibase 'events/' cruise '.csv'], options);
 
@@ -55,91 +52,96 @@ totag.niskin(uwind) = NaN;
 %% Find and assign the Cast and Niskin numbers from the log file
 %find the cast rows in totag
 castind = strmatch('cast', totag.(tagstr));
-%find and read the cruise-specific IFCB logfile
-logfilelist = readtable('\\sosiknas1\IFCB_data\NESLTER_transect\to_tag\NESLTER_transect_IFCB_log_tag_filelist.xlsx');
-cruise_ind = strmatch(cruise, logfilelist.cruise);
-if ~isempty(logfilelist.log_file{cruise_ind})
-    % set opts so make sure 'Cast' columne is read a char to handle option
-    % for underway_discretes as 'UW1', 'UW2', etc.
-    opts = detectImportOptions(logfilelist.log_file{cruise_ind});
-    opts = setvartype(opts, 'Cast', 'char');
-    opts.DataRange = 'A2';
-    IFCBlog = readtable(logfilelist.log_file{cruise_ind}, opts);
-    %avoid case mis-matches
-    IFCBlog.Properties.VariableNames = lower(IFCBlog.Properties.VariableNames);
-    %check if any files are missing from tag file
-    [~,ia] = setdiff(totag.filename(castind), IFCBlog.filename);
-    if ~isempty(ia)
-        disp('Missing from log file: ')
-        disp(totag.filename(castind(ia)))
-        keyboard
-    end
-    %check if any files missing from log file
-    %[~,ia] = setdiff( IFCBlog.filename, totag.filename(castind));
-    %if ~isempty(ia)
-    %    disp('Missing from log file: ')
-    %    disp(IFCBlog.filename(ia))
-    %    keyboard
-    %end
+if ~isempty(castind)
+    %load the ship's CTD btl data
+    bottle_data = webread([apibase 'ctd/' cruise '/bottles.csv'], options);
     
-    %now do the match up and assign cast and niskin in totag
-    if ~isempty(castind)
-        [~,ia,ib] = intersect(totag.filename(castind), IFCBlog.filename);
-        if ~iscell(IFCBlog.cast(ib(1)))
-            totag.cast(castind(ia)) = cellstr(num2str(IFCBlog.cast(ib)));
-        else
-            totag.cast(castind(ia)) = IFCBlog.cast(ib);
+    %find and read the cruise-specific IFCB logfile
+    logfilelist = readtable('\\sosiknas1\IFCB_data\NESLTER_transect\to_tag\NESLTER_transect_IFCB_log_tag_filelist.xlsx');
+    cruise_ind = strmatch(cruise, logfilelist.cruise);
+    if ~isempty(logfilelist.log_file{cruise_ind})
+        % set opts so make sure 'Cast' columne is read a char to handle option
+        % for underway_discretes as 'UW1', 'UW2', etc.
+        opts = detectImportOptions(logfilelist.log_file{cruise_ind});
+        opts = setvartype(opts, 'Cast', 'char');
+        opts.DataRange = 'A2';
+        IFCBlog = readtable(logfilelist.log_file{cruise_ind}, opts);
+        %avoid case mis-matches
+        IFCBlog.Properties.VariableNames = lower(IFCBlog.Properties.VariableNames);
+        %check if any files are missing from tag file
+        [~,ia] = setdiff(totag.filename(castind), IFCBlog.filename);
+        if ~isempty(ia)
+            disp('Missing from log file: ')
+            disp(totag.filename(castind(ia)))
+            keyboard
         end
-        if iscell(IFCBlog.niskin(ib(1)))
-            totag.niskin(castind(ia)) = str2double(IFCBlog.niskin(ib));
-        else
-            totag.niskin(castind(ia)) = IFCBlog.niskin(ib);
+        %check if any files missing from log file
+        %[~,ia] = setdiff( IFCBlog.filename, totag.filename(castind));
+        %if ~isempty(ia)
+        %    disp('Missing from log file: ')
+        %    disp(IFCBlog.filename(ia))
+        %    keyboard
+        %end
+        
+        %now do the match up and assign cast and niskin in totag
+        if ~isempty(castind)
+            [~,ia,ib] = intersect(totag.filename(castind), IFCBlog.filename);
+            if ~iscell(IFCBlog.cast(ib(1)))
+                totag.cast(castind(ia)) = cellstr(num2str(IFCBlog.cast(ib)));
+            else
+                totag.cast(castind(ia)) = IFCBlog.cast(ib);
+            end
+            if iscell(IFCBlog.niskin(ib(1)))
+                totag.niskin(castind(ia)) = str2double(IFCBlog.niskin(ib));
+            else
+                totag.niskin(castind(ia)) = IFCBlog.niskin(ib);
+            end
+            %% Find the cast matchup data
+            IFCB_match_btl_results = IFCB_match_btl(totag.filename(castind),str2num(char(totag.cast(castind))), totag.niskin(castind), bottle_data);
+            IFCB_match_btl_results.cruise = repmat(cellstr(cruise),size(IFCB_match_btl_results,1),1);
+            totag.lat(castind) = IFCB_match_btl_results.lat;
+            totag.lon(castind) = IFCB_match_btl_results.lon;
+            totag.datetime(castind) = IFCB_match_btl_results.datetime;
+            totag.depth(castind) = IFCB_match_btl_results.depth;
         end
-        %% Find the cast matchup data
-        IFCB_match_btl_results = IFCB_match_btl(totag.filename(castind),str2num(char(totag.cast(castind))), totag.niskin(castind), bottle_data);
-        IFCB_match_btl_results.cruise = repmat(cellstr(cruise),size(IFCB_match_btl_results,1),1);
-        totag.lat(castind) = IFCB_match_btl_results.lat;
-        totag.lon(castind) = IFCB_match_btl_results.lon;
-        totag.datetime(castind) = IFCB_match_btl_results.datetime;
-        totag.depth(castind) = IFCB_match_btl_results.depth;
-    end
-    %check for casts with no info in bottle file
-    ind = find(isnan(totag.lat(castind)));
-    if ~isempty(ind)
-        ctd_meta = webread([apibase 'ctd/' cruise '/metadata.csv'], options);
-        unqcast = unique(totag.cast(castind(ind)));
-        for count = 1:length(unqcast)
-            %iii = find(totag.cast(castind(ind)) == unqcast(count));
-            %cind = find(ctd_meta.cast == unqcast(count)));
-            iii = strmatch(unqcast(count), totag.cast(castind(ind)));
-            cind = find(ctd_meta.cast == str2num(unqcast{count}));
-            totag.lat(castind(ind(iii))) = ctd_meta.latitude(cind);
-            totag.lon(castind(ind(iii))) = ctd_meta.longitude(cind);
-            totag.datetime(castind(ind(iii))) = ctd_meta.date(cind);
-        end
-        if ismember('depth_override', IFCBlog.Properties.VariableNames)
-            totag.depth(castind(ind)) = IFCBlog.depth_override(ib(ind));
-        else
+        %check for casts with no info in bottle file
+        ind = find(isnan(totag.lat(castind)));
+        if ~isempty(ind)
+            ctd_meta = webread([apibase 'ctd/' cruise '/metadata.csv'], options);
+            unqcast = unique(totag.cast(castind(ind)));
+            for count = 1:length(unqcast)
+                %iii = find(totag.cast(castind(ind)) == unqcast(count));
+                %cind = find(ctd_meta.cast == unqcast(count)));
+                iii = strmatch(unqcast(count), totag.cast(castind(ind)));
+                cind = find(ctd_meta.cast == str2num(unqcast{count}));
+                totag.lat(castind(ind(iii))) = ctd_meta.latitude(cind);
+                totag.lon(castind(ind(iii))) = ctd_meta.longitude(cind);
+                totag.datetime(castind(ind(iii))) = ctd_meta.date(cind);
+            end
+            if ismember('depth_override', IFCBlog.Properties.VariableNames)
+                totag.depth(castind(ind)) = IFCBlog.depth_override(ib(ind));
+            else
+                disp(totag(castind(ind),:))
+                disp('Seems like some bottle files are missing. Need to add depth_override column to IFCBlog file for above cases.')
+            end
+            disp('No match up with bottle file info for samples listed below. Lat/Lon from CTD metadata, depth from IFCB_log')
             disp(totag(castind(ind),:))
-            disp('Seems like some bottle files are missing. Need to add depth_override column to IFCBlog file for above cases.')
+            disp('No match up with bottle file info for samples listed above. Lat/Lon from CTD metadata, depth from IFCB_log')
+            disp('Hit any key to continue')
+            pause
         end
-        disp('No match up with bottle file info for samples listed below. Lat/Lon from CTD metadata, depth from IFCB_log')
-        disp(totag(castind(ind),:))
-        disp('No match up with bottle file info for samples listed above. Lat/Lon from CTD metadata, depth from IFCB_log')
-        disp('Hit any key to continue')
-        pause
-    end
-    %now check if any IFCB_match_btl results need to be filled with basic meta data
-    if ~isempty(castind)
-        ind = find(isnan(IFCB_match_btl_results.lat));
-        [~,a,b] = intersect(IFCB_match_btl_results.pid(ind), totag.filename);
-        IFCB_match_btl_results.datetime(ind(a)) = totag.datetime(b);
-        IFCB_match_btl_results.depth(ind(a)) = totag.depth(b);
-        IFCB_match_btl_results.lat(ind(a)) = totag.lat(b);
-        IFCB_match_btl_results.lon(ind(a)) = totag.lon(b);
-        IFCB_match_btl_restuls.mdate = datenum(IFCB_match_btl_results.datetime, 'yyyy-mm-dd hh:MM:SS+00:00');
-    end
-end %end if log file exists
+        %now check if any IFCB_match_btl results need to be filled with basic meta data
+        if ~isempty(castind)
+            ind = find(isnan(IFCB_match_btl_results.lat));
+            [~,a,b] = intersect(IFCB_match_btl_results.pid(ind), totag.filename);
+            IFCB_match_btl_results.datetime(ind(a)) = totag.datetime(b);
+            IFCB_match_btl_results.depth(ind(a)) = totag.depth(b);
+            IFCB_match_btl_results.lat(ind(a)) = totag.lat(b);
+            IFCB_match_btl_results.lon(ind(a)) = totag.lon(b);
+            IFCB_match_btl_restuls.mdate = datenum(IFCB_match_btl_results.datetime, 'yyyy-mm-dd hh:MM:SS+00:00');
+        end
+    end %end if log file exists
+end %end if ~isempty(castind)
 
 %% include any tags and comments from totag file and from IFCB log file
 [~,ia,ib] = intersect(totag.filename, IFCBlog.filename);
