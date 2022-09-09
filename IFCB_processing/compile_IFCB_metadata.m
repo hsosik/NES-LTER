@@ -62,18 +62,20 @@ if ~isempty(castind)
     if ~isempty(logfilelist.log_file{cruise_ind})
         % set opts so make sure 'Cast' columne is read a char to handle option
         % for underway_discretes as 'UW1', 'UW2', etc.
-        opts = detectImportOptions(logfilelist.log_file{cruise_ind});
-        opts = setvartype(opts, 'Cast', 'char');
-        opts.DataRange = 'A2';
-        IFCBlog = readtable(logfilelist.log_file{cruise_ind}, opts);
-        %avoid case mis-matches
-        IFCBlog.Properties.VariableNames = lower(IFCBlog.Properties.VariableNames);
-        %check if any files are missing from tag file
-        [~,ia] = setdiff(totag.filename(castind), IFCBlog.filename);
-        if ~isempty(ia)
-            disp('Missing from log file: ')
-            disp(totag.filename(castind(ia)))
-            keyboard
+        if ~isequal('NA', logfilelist.log_file{cruise_ind})
+            opts = detectImportOptions(logfilelist.log_file{cruise_ind});
+            opts = setvartype(opts, 'Cast', 'char');
+            opts.DataRange = 'A2';
+            IFCBlog = readtable(logfilelist.log_file{cruise_ind}, opts);
+            %avoid case mis-matches
+            IFCBlog.Properties.VariableNames = lower(IFCBlog.Properties.VariableNames);
+            %check if any files are missing from tag file
+            [~,ia] = setdiff(totag.filename(castind), IFCBlog.filename);
+            if ~isempty(ia)
+                disp('Missing from log file: ')
+                disp(totag.filename(castind(ia)))
+                keyboard
+            end
         end
         %check if any files missing from log file
         %[~,ia] = setdiff( IFCBlog.filename, totag.filename(castind));
