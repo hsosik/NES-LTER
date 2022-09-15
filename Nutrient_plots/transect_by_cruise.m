@@ -8,17 +8,22 @@
 %    'EN655' 'EN657' 'AR39B'};  
 
 %cruises = {'EN657'}; %use this option to run one cruise OR above case for saving and plottting multiple cruises
-cruises = {'en627' 'ar34b' 'en644' 'ar39b'};
+%cruises = {'en627' 'ar34b' 'en644' 'ar39b'};
+
+%cruises = readtable("C:\Users\heidi\Downloads\cruise_metadata.csv");
+%cruises = cruises.cruise;
 if 1 %1 to read from the APIs, 0 to load the stored (multi-cruise) file
     nut = table;
     for count1 = 1:length(cruises)
         disp(cruises{count1})
         opt = weboptions('Timeout', 30);
-        n = webread(['https://nes-lter-data.whoi.edu/api/nut/' cruises{count1} '.csv'], opt);
-        n.alternate_sample_id = []; %move this column since the type doesn't match between all cruises
-        n.nearest_station = [];
-        n.distance_km = [];
-        nut = [nut; n];
+        try
+            n = webread(['https://nes-lter-data.whoi.edu/api/nut/' cruises{count1} '.csv'], opt);
+            n.alternate_sample_id = []; %move this column since the type doesn't match between all cruises
+            n.nearest_station = [];
+            n.distance_km = [];
+            nut = [nut; n];
+        end
     end
     nut.mdate = datenum(nut.date, 'yyyy-mm-dd hh:MM:ss+00:00');
     save('c:\work\LTER\nut_all', 'nut', 'cruises')
@@ -26,6 +31,7 @@ else
     load('c:\work\LTER\nut_all')
 end
 
+%%
 ilat = 39.5:.05:41.5;
 ilon = ones(size(ilat)).*-70.8855;
 idpth = 0:1:200;
@@ -39,8 +45,8 @@ latfactor = 100;
     
 for count = 1:length(cruises)
     cstr = cruises{count};
-    nind = find(ismember(nut.cruise, cstr));
-
+    nind = find(ismember(lower(nut.cruise), lower(cstr)));
+if ~isempty(nind)
     inut(:,:,1) = griddata(nut.latitude(nind)*latfactor,nut.depth(nind),nut.nitrate_nitrite(nind),ilat*latfactor,idpth');
     inut(:,:,2) = griddata(nut.latitude(nind)*latfactor,nut.depth(nind),nut.ammonium(nind),ilat*latfactor,idpth');
     inut(:,:,3) = griddata(nut.latitude(nind)*latfactor,nut.depth(nind),nut.phosphate(nind),ilat*latfactor,idpth');
@@ -68,6 +74,7 @@ for count = 1:length(cruises)
     end
     set(gcf, 'position', [488 41.8 560 740.8])
     print(['c:\work\lter\nutrient_sections\' cruises{count}], '-dpng')
+end
 end
 
 
