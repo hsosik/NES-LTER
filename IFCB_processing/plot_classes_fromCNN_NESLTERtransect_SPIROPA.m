@@ -78,15 +78,18 @@ s2018b = load('\\sosiknas1\IFCB_products\SPIROPA\summary\summary_biovol_allHDF_m
 s2019b = load('\\sosiknas1\IFCB_products\SPIROPA\summary\summary_biovol_allHDF_min20_2019.mat');
 tag5 = repmat(cellstr(''),size(s2018b.meta_data,1),1);
 s2018b.meta_data = addvars(s2018b.meta_data, tag5, 'After', 'tag4', 'NewVariableNames', 'tag5' );
-s2018b.meta_data.cast = cellstr(num2str(s2018b.meta_data.cast));
-s2018b.meta_data.tag4 = cellstr(num2str(s2018b.meta_data.tag4));
+%s2018b.meta_data.cast = cellstr(num2str(s2018b.meta_data.cast));
+s2018b.meta_data.cast = cellstr((s2018b.meta_data.cast));
+%s2018b.meta_data.tag4 = cellstr(num2str(s2018b.meta_data.tag4));
+s2018b.meta_data.tag4 = cellstr((s2018b.meta_data.tag4));
 tag5 = repmat(cellstr(''),size(s2019b.meta_data,1),1);
 s2019b.meta_data = addvars(s2019b.meta_data, tag5, 'After', 'tag4', 'NewVariableNames', 'tag5' );
-s2019b.meta_data.cast = cellstr(num2str(s2019b.meta_data.cast));
-s2019b.meta_data.tag4 = cellstr(num2str(s2019b.meta_data.tag4));
+s2019b.meta_data.cast = cellstr((s2019b.meta_data.cast));
+s2019b.meta_data.tag4 = cellstr((s2019b.meta_data.tag4));
 %s2017 = load('c:\work\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2017.mat');
 %s2018 = load('c:\work\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2018.mat');
 %s2019 = load('c:\work\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2019.mat');
+s2019b.meta_data = removevars(s2019b.meta_data, 'transect');
 
 IFCBsum = table;
 slist = {'filelist' 'classcount' 'meta_data' 'classbiovol' 'mdate'};
@@ -127,19 +130,26 @@ group_table = readtable('\\sosiknas1\training_sets\IFCB\config\IFCB_classlist_ty
 [~,ia,ib] = intersect(group_table.CNN_classlist, class2use);
 diatom_ind = ib(find(group_table.Diatom(ia)));
 dino_ind = ib(find(group_table.Dinoflagellate(ia)));
+ciliate_ind = ib(find(group_table.Ciliate(ia)));
+nano_ind = ib(find(group_table.Nano(ia) | group_table.flagellate(ia) | group_table.Coccolithophore(ia)));
 
 dv = datevec(match_uw.mdate);
 yd_vec = match_uw.mdate-datenum(dv(:,1),1,0);
 
-Z2 = (sum(IFCBsum.classbiovol(b,diatom_ind),2)./IFCBsum.meta_data.ml_analyzed(b));
-
-Z2all = IFCBsum.classbiovol(b,diatom_ind)./IFCBsum.meta_data.ml_analyzed(b);
 ind = find(match_uw.lon < -70.883+.24 & match_uw.lon > -70.883-.24); 
-
 for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
 lat_smooth = round(match_uw.lat,1);
 ilat = unique(lat_smooth);
 ilat = ilat(~isnan(ilat));
+%%
+groupstr = 'Diatom'; group_ind = diatom_ind;
+%groupstr = 'Dinoflagellate'; group_ind = dino_ind;
+groupstr = 'Ciliate'; group_ind = ciliate_ind; emode_max = .2e6;
+%groupstr = 'Nanoplankton'; group_ind = nano_ind;
+%Z2 = log10((sum(IFCBsum.classbiovol(b,group_ind),2)./IFCBsum.meta_data.ml_analyzed(b)));
+%Z2all = log10(IFCBsum.classbiovol(b,group_ind)./IFCBsum.meta_data.ml_analyzed(b));
+Z2 = ((sum(IFCBsum.classbiovol(b,group_ind),2)./IFCBsum.meta_data.ml_analyzed(b)));
+Z2all = (IFCBsum.classbiovol(b,group_ind)./IFCBsum.meta_data.ml_analyzed(b));
 
 %%
 for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
@@ -158,18 +168,18 @@ for iii = 1:11
     text(3.1, yl(2)*.8, datestr(datenum(2020,iii,1), 'mmm'))
 end
 ylabel(tl, 'Frequency of samples (transect 2017-2020)')
-xlabel(tl, {'Diatom biovolume concentration';  '(log10 \mum^3 ml^{-1})'})
+xlabel(tl, {[groupstr ' biovolume concentration'];  '(log10 \mum^3 ml^{-1})'})
 set(gca, 'xticklabelmode', 'auto')
 nexttile(6)
 legend(num2str(yy'), 'location', 'southeast')
 set(gcf, 'paperposition', [.25 .25 4 10.5])
 set(gcf, 'position', [200 50 400 600])
 
-print('c:\work\diatom_bv_month', '-dpng')
+%print('c:\work\diatom_bv_month', '-dpng')
 
 %%
 figure
-boxplot(Z2(ind),dv(ind,2), 'whisker', 3, 'notch', 'on', 'datalim', [0 1.5e6], 'extrememode', 'compress', 'outliersize', 4)
+boxplot(Z2(ind),dv(ind,2), 'whisker', 3, 'notch', 'on', 'datalim', [0 emode_max], 'extrememode', 'compress', 'outliersize', 4)
 xlim([.5 12.5])
 set(gca, 'xtick', 1:12)
 set(gca, 'xticklabel', num2str(get(gca, 'xtick')'))
@@ -179,9 +189,9 @@ text(1:12,2e6*ones(12,1),tt, 'fontsize', 10, 'horizontalalignment', 'center', 'c
 for ii = 1:12, numyrs(ii) = length(unique(dv(ind(find(dv(ind,2) == ii)),1))); end
 text(1:12,2.15e6*ones(12,1),num2str(numyrs'), 'fontsize', 10, 'horizontalalignment', 'center', 'color', 'b')
 set(gca, 'xticklabel', ['JFMAMJJASOND']')
-ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+ylabel([groupstr ' biovolume concentration (\mum^3 ml^{-1})'])
 
-print('c:\work\diatom_bv_monthly_box', '-dpng')
+%print('c:\work\diatom_bv_monthly_box', '-dpng')
 
 %%
 %[ mdate_mat, y_mat, yearlist, yd ] = timeseries2ydmat( match_uw.mdate, Z2 );
@@ -207,9 +217,9 @@ figure
 t = boxplot(Z2(ind),lat_smooth(ind), 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'inline');
 set(gca, 'xdir', 'rev')
 yl = ylim; ylim([0 yl(2)])
-ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+ylabel([groupstr ' biovolume concentration (\mum^3 ml^{-1})'])
 xlabel('Latitude')
-print('c:\work\diatom_bv_lat_box', '-dpng')
+%print('c:\work\diatom_bv_lat_box', '-dpng')
 
 LTER = [41 11.8 70 53; 41 1.8 70 53; 40 51.8 70 53; 40 41.8 70 53; 40 30.8 70 53; 40 21.8 70 53; 40 13.6 70 53; ...
     40 08.2 70 46.5; 40 5.9 70 53; 39 56.4 70 53; 39 46.4 70 53];
@@ -233,18 +243,20 @@ print('c:\work\samplenum_by_lat', '-dpng')
 %%
 
 figure 
-%set(gcf,'paperposition', [.5 .5 5 10])
+set(gcf,'position', [350 50 370 600])
 tl = tiledlayout(5,1, 'TileSpacing', 'compact')
 for cc = 2:2:9
     %subplot(5,1,cc/2)
     nexttile
     ii = find(dv(ind,2)==cc |dv(ind,2)==cc+1); 
     %boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on');
-    boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
-    set(gca, 'xdir', 'rev', 'xticklabel', [])
+%    boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 emode_max], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
+    boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'notch', 'on', 'LabelOrientation', 'horizontal');
+    set(gca, 'xdir', 'rev', 'xticklabel', [],'ygrid', 'on')
     a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
-    yl = ylim; ylim([0 yl(2)]); %auto y-scale
-    text(5, yl(2)*.7, [a(1,:) '-' a(2,:)], 'fontsize', 14)
+   % yl = ylim; ylim([0 yl(2)]); %auto y-scale
+    ylim([3 6.5]), yl = ylim;
+    text(6, yl(2)*.95, [a(1,:) '-' a(2,:)], 'fontsize', 12)
     %ylim([0 1.83e6]) %all same y scale
     %text(5, 12e5, [a(1,:) '-' a(2,:)], 'fontsize', 14)
 end
@@ -254,14 +266,15 @@ ii = find(dv(ind,2)==cc |dv(ind,2)==cc+1);
 boxplot([Z2(ind(ii)); NaN(size(ilat))],[lat_smooth(ind(ii)); ilat], 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on', 'LabelOrientation', 'horizontal');
 set(gca, 'xdir', 'rev')
 %yl = ylim; ylim([0 yl(2)]);
-ylim([0 1.83e6]);
+%ylim([0 1.83e6]);
+ylim([3 6.5])
 a = datestr(datenum(2020, unique(dv(ind(ii),2)),1), 'mmm');
-text(5, 12e5, [a(1,:) '-' a(2,:)], 'fontsize', 14)
-set(gca, 'XTickLabelRotation',90)
+text(6, yl(2)*.95, [a(1,:) '-' a(2,:)], 'fontsize', 12)
+set(gca, 'XTickLabelRotation',90,'ygrid', 'on')
 set(gcf, 'paperposition', [.25 .25 6 10.5])
-print('c:\work\diatom_bv_lat_by_2mon_box', '-dpng')
+%print('c:\work\diatom_bv_lat_by_2mon_box', '-dpng')
 
-ylabel(tl, 'Diatom biovolume concentration (\mum^3 ml^{-1})')
+ylabel(tl, ['Log ' groupstr ' biovolume concentration (\mum^3 ml^{-1})'])
 xlabel(tl, 'Latitude')
 
 %%
@@ -295,7 +308,7 @@ text(5, 12e5, tstr{cc/2}, 'fontsize', 14)
 set(gca, 'XTickLabelRotation',90)
 set(gcf, 'paperposition', [.25 .25 6 10.5])
 
-ylabel(tl, 'Diatom biovolume concentration (\mum^3 ml^{-1})')
+ylabel(tl, [groupstr ' biovolume concentration (\mum^3 ml^{-1})'])
 xlabel(tl, 'Latitude')
 title(tl, yy)
 end
@@ -415,7 +428,7 @@ iT = iT(~isnan(iT));
 figure
 t = boxplot(Z2(ind),T_smooth(ind), 'whisker', 3, 'datalim', [0 1.5e6], 'extrememode', 'compress', 'notch', 'on');
 yl = ylim; ylim([0 yl(2)])
-ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+ylabel([groupstr ' biovolume concentration (\mum^3 ml^{-1})'])
 xlabel('Temperature (\circC)')
 set(gca, 'yscale', 'log')
 ylim([1e3 2e6])
@@ -427,10 +440,10 @@ tt = find(dv(ind,1) == 2018 & dv(ind,2) < 3);
 semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), '.'), hold on
 ylim([1e3 2e6])
 xlim([0 30])
-ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+ylabel([groupstr ' biovolume concentration (\mum^3 ml^{-1})'])
 xlabel('Temperature (\circC)')
 legend('2018 winter')
-print('c:\work\lter\diatom_bv_T1', '-dpng')
+%print('c:\work\lter\diatom_bv_T1', '-dpng')
 %pause
 tt = find(dv(ind,1) == 2018 & (dv(ind,2) == 7 | dv(ind,2) ==8));
 semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), '.')
@@ -457,13 +470,13 @@ tt = find(dv(ind,1) == 2021 & dv(ind,2) < 3);
 semilogy(match_uw.temperature(ind(tt)), Z2(ind(tt)), '.')
 legend('2018 winter', '2018 summer', '2019 winter', '2019 summer', '2020 winter', '2020 summer', '2021 winter', 'location', 'southwest')
 print('c:\work\lter\diatom_bv_T7', '-dpng')
-
+%%
 figure
-scatter(match_uw.temperature(ind), Z2(ind),10, dv(ind,2))
+scatter(match_uw.temperature(ind), Z2(ind),5, dv(ind,2), 'filled')
 set(gca, 'yscale', 'log')
 ylim([1e3 2e6])
 xlim([0 30])
-ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+ylabel([groupstr ' biovolume concentration (\mum^3 ml^{-1})'])
 xlabel('Temperature (\circC)')
 cbh = colorbar;
 colormap hsv
@@ -474,7 +487,7 @@ caxis([1 13])
 set(cbh, 'Ticks', 1.5:12.5, 'TickLabels', ['JFMAMJJASOND']', 'Direction', 'rev')
 set(gca, 'box', 'on')
 
-print('c:\work\lter\diatom_bv_T_all', '-dpng')
+%print('c:\work\lter\diatom_bv_T_all', '-dpng')
 
 %%
 %ii = find((dv(ind,2)==cc | dv(ind,2)==cc+1) & dv(ind,1) == yy);
@@ -486,7 +499,7 @@ scatter(match_uw.salinity(ind(ii)), Z2(ind(ii)),10, dv(ind(ii),2), 'filled')
 set(gca, 'yscale', 'log')
 ylim([1e3 2e6])
 xlim([30 36])
-ylabel('Diatom biovolume concentration (\mum^3 ml^{-1})')
+ylabel([groupstr ' biovolume concentration (\mum^3 ml^{-1})'])
 xlabel('Salinity')
 cbh = colorbar;
 colormap hsv
@@ -607,7 +620,7 @@ set(gca, 'XTickLabelRotation',90)
 set(gcf, 'paperposition', [.25 .25 6 10.5])
 %xlim([5 27.5])
 
-ylabel(tl, 'Diatom biovolume concentration (\mum^3 ml^{-1})')
+ylabel(tl, [groupstr ' biovolume concentration (\mum^3 ml^{-1})'])
 xlabel(tl, 'Latitude')
 title(ax1, yy, 'fontsize', 14)
 end

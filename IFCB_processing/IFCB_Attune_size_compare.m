@@ -1,6 +1,6 @@
-%%2021:'EN661' 'EN668'  2020:'EN649' 'EN655' 'EN657' 2019:'EN627' 'EN644' 2018:'EN608' 'EN617'
+%% 2022:'AT46' 2021:'EN661' 'EN668'  2020:'EN649' 'EN655' 'EN657' 2019:'EN627' 'EN644' 2018:'EN608' 'EN617'
 %SPIROPA 'TN368'; 'RB1904' 'AR29'
-cruiseStr = 'AR39';
+cruiseStr = 'AR63';
 %ifcbbase = '\\sosiknas1\IFCB_products\NESLTER_transect\summary\';
 ifcbbase = 'C:\work\IFCB_products\NESLTER_transect\summary\';
 %ifcbbase = 'C:\work\IFCB_products\SPIROPA\summary\';
@@ -25,7 +25,11 @@ ifcb_yr = load([ifcbbase 'summary_biovol_allHDF_min20_' yr]);
 %ifcb_uwind = find(ifcb_yr.meta_data.cruise==cruiseStr & ifcb_yr.meta_data.sample_type == 'underway' & ~ifcb_yr.meta_data.skip);
 % handle case for example AR39 (attune all AR39, IFCB AR39A, AR39B
 ifcb_uwind = find(startsWith(ifcb_yr.meta_data.cruise,cruiseStr) & ifcb_yr.meta_data.sample_type == 'underway' & ~ifcb_yr.meta_data.skip);
-
+if isequal(cruiseStr, 'AR62')
+        dt = datetime(ifcb_yr.meta_data.sample_time, 'InputFormat', 'yyyy-MM-dd hh:mm:ss+00:00');
+        ifcb_uwind = find(dt>datetime(2021,11,17) & dt<datetime(2021,11,24));
+        disp('FIX THIS LATER--special case for missing metadata for AR62')
+end
 %%
 group_table = readtable('\\sosiknas1\training_sets\IFCB\config\IFCB_classlist_type.csv');
 [~,ia,ib] = intersect(group_table.CNN_classlist, ifcb_yr.class2use);
@@ -40,7 +44,7 @@ particle_ind = setdiff(1:length(ifcbL.class2use),artifact_ind); %all except arti
 %%
 Twin = 12/60/24; %12 minutes as days
 diambins = logspace(-.5,log10(50),100);
-for count = 467:length(ifcb_uwind)
+for count = 1:length(ifcb_uwind)
     temp = array2table(cat(1,ifcbL.classFeaList{ifcb_uwind(count),[phyto_ind; ciliate_ind]}), 'VariableNames', ifcbL.classFeaList_variables);
     %temp = array2table(cat(1,ifcbL.classFeaList{ifcb_uwind(count),:}), 'VariableNames', ifcbL.classFeaList_variables);
     ifcbH = histcounts(temp.ESD,[diambins inf]);
@@ -81,4 +85,4 @@ for count = 467:length(ifcb_uwind)
     grid
     set(gca, 'xtick',0:5:50, 'xlim',[0 50])
    print([attunebase_out ifcb_yr.filelist{ifcb_uwind(count)} '.png'], '-dpng')
-end
+ end
