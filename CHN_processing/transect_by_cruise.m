@@ -19,11 +19,12 @@ latfactor = 100;
 %%
 for count = 1:length(cruises)
     cstr = cruises{count};
-    nind = find(ismember(lower(CHNtable.Cruise), lower(cstr)));
+    nind = find(ismember(lower(CHNtable.Cruise), lower(cstr)) & ~isnan(CHNtable.umol_C));
 if ~isempty(nind)
     inut(:,:,1) = griddata(CHNtable.latitude(nind)*latfactor,CHNtable.depth(nind),CHNtable.POC_ugperL(nind),ilat*latfactor,idpth');
     inut(:,:,2) = griddata(CHNtable.latitude(nind)*latfactor,CHNtable.depth(nind),CHNtable.PON_ugperL(nind),ilat*latfactor,idpth');
-    inut(:,:,3) = griddata(CHNtable.latitude(nind)*latfactor,CHNtable.depth(nind),CHNtable.C_to_N_molar_ratio(nind),ilat*latfactor,idpth');
+    nind2 = nind(~isinf(CHNtable.C_to_N_molar_ratio(nind)));
+    inut(:,:,3) = griddata(CHNtable.latitude(nind2)*latfactor,CHNtable.depth(nind2),CHNtable.C_to_N_molar_ratio(nind2),ilat*latfactor,idpth');
 
     for ii = 1:length(ilat)
         iCHNtable(idpth>ibdpth(ii),ii,:) = NaN; 
@@ -48,6 +49,6 @@ if ~isempty(nind)
     set(gcf, 'position', [488 41.8 560 740.8])
     print([p 'plots' filesep datestr(min(dateshift(CHNtable.datetime(nind),'start', 'day')),'yyyymmdd') '_' cruises{count}], '-dpng')
 end
-    pause
+   % pause
 end
 
