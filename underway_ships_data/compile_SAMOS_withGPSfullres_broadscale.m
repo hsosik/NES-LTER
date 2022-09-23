@@ -50,6 +50,8 @@ for count = 1:length(ncfiles)
     uw = [uw; T];
 end
 uw.matdate = datenum(datenum('1-1-1980') + double(uw.time)/60/24);
+%%adjust some SAMOS cases with longitude >180
+uw.lon(uw.lon>180) = uw.lon(uw.lon>180)-360;
 
 if exist('gps', 'var')
     ind = NaN(size(uw.matdate));
@@ -130,7 +132,8 @@ if exist('gps', 'var')
     uw.latitude_fullres(ii) = uw.lat_SAMOS(ii);
     uw.longitude_fullres(ii) = uw.lon_SAMOS(ii);
     uw = sortrows(uw,'mdate_fullres');
-    end
+end
+
 notes = {'Heidi Sosik, WHOI, produced with compile_SAMOS_withGPSfullres_broadscale.m from downloaded SAMOS netcdf files and appended higher resolution lat, lon from raw data provided by ship or NCEI download'};
 save(outfile, 'uw', 'notes')
 disp('results saved: ') 
