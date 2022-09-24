@@ -6,10 +6,13 @@ cruise = strsplit(f, '_');
 cruise = cruise{3};
 apibase = 'https://nes-lter-data.whoi.edu/api/';
 myreadtable = @(filename)readtable(filename,'Delimiter','comma');
-options = weboptions('ContentReader',myreadtable);
+options = weboptions('ContentReader',myreadtable, 'timeout', 30);
 %options = weboptions('ContentType', 'table');
 
-totag = readtable(ToTag_xlsFile);
+opts = detectImportOptions(ToTag_xlsFile);
+opts = setvartype(opts, {'tag1' 'tag2' 'comments'}, 'char');
+totag = readtable(ToTag_xlsFile, opts);
+
 %avoid case mis-matches
 totag.Properties.VariableNames = lower(totag.Properties.VariableNames);
 %initialize the new numbers
