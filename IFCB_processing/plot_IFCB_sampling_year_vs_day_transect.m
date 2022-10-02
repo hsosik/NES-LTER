@@ -41,7 +41,8 @@ yd = mdate-datenum(d(:,1),1,0);
 
 figure
 plot(yd, d(:,1), 'r.', 'markersize',20)
-datetick('x', 'm')
+xlim([1 365])
+datetick('x', 'm', 'keeplimits')
 ylim([min(d(:,1))-.2 max(d(:,1))+.2])
 set(gca, 'ydir', 'rev', 'ytick', min(d(:,1)):max(d(:,1)))
 set(gcf, 'position', [550 200 300 340])
