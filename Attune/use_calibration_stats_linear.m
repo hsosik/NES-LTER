@@ -45,9 +45,9 @@ if exist([classpath '/calibration/table.mat'])
 end
 end
 
-if exist([outpath, 'beadstat_2021.mat'])
-    load([outpath, 'beadstat_2021.mat'])
-else 
+if exist([outpath, 'beadstat.mat'])
+    load([outpath, 'beadstat.mat'])
+else
     beadtype = 'PT only'; 
 end
 
