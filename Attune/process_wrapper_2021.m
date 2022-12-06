@@ -148,7 +148,7 @@ end
 %% STEP 7 
 % make a movie 
 if step7
-    attune_lter_moviemaker_HighQualityOnly(fpath, classpath, OD2setting, framemaker, moviechannels, stepsize)
+    attune_lter_moviemaker(fpath, classpath, OD2setting, framemaker, moviechannels, stepsize)
 end
 
 end
