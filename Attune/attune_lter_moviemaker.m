@@ -20,10 +20,15 @@
  %This script assumes FCSfileinfo.mat exists one dir up from class files
  
  
-function [] = attune_lter_moviemaker(fpath, classpath, ssc_name, framemaker)
+ function [] = attune_lter_moviemaker(fpath, classpath, OD2setting, framemaker, channels, stepsize)
 %  For example:
 %attune_lter_moviemaker('\\sosiknas1\Lab_data\Attune\cruise_data\20180414_AR29\FCS\', '\\sosiknas1\Lab_data\Attune\cruise_data\20180414_AR29\bead_calibrated\class\', 'GL1', 'make_movieframe_EN649')
 
+if ~exist('stepsize','var')
+     % third parameter does not exist, so default it to something
+      stepsize = 1;
+end
+ 
 %% First, some file management 
 % get list of all class files
 temp = dir([classpath, '*.mat']); 
@@ -34,7 +39,7 @@ clear temp
 filelist = regexprep(classfilelist,'mat', 'fcs'); 
 
 % initialize movie output
-v = VideoWriter([classpath 'Attune_cyto_vid.avi']); 
+v = VideoWriter([classpath 'Attune_cyto_vid_new.avi']); 
 v.FrameRate = 10; 
 open(v)
 
@@ -42,16 +47,19 @@ open(v)
 %assume FCSfileinfo.mat exists one dir up from class files
 temp_path = regexprep(classpath, 'class\', '');
 temp = load([temp_path 'FCSfileinfo']);
-[~,a,b] = intersect(filelist, temp.FCSfileinfo.filelist);
+[~,a,b] = intersect(filelist, temp.FCSfileinfo.fcslist);
 matdate = NaN(size(filelist));
+QC_flags = matdate; 
 matdate(a) = temp.FCSfileinfo.matdate_start(b);
+QC_flags(a) = temp.FCSfileinfo.QC_flag(b); 
 [matdate,sort_ind] = sort(matdate);
 filelist = filelist(sort_ind);
 classfilelist = classfilelist(sort_ind);
+QC_flags = QC_flags(sort_ind); 
+
 
 %% now go through list and make frames to save to video
-for count = 1:100:length(filelist)
-    
+for count = 1:stepsize:length(filelist)
     if ~rem(count,10)
         disp([num2str(count) ' of ' num2str(length(filelist))])
     end
@@ -65,6 +73,11 @@ for count = 1:100:length(filelist)
     
     %% one step of data cleaning
     % assign scattering channels
+    if strcmp(OD2setting, 'GL1')
+        ssc_name = 'GL1'; 
+    else
+        ssc_name = 'SSC'; 
+    end
      ssc_ch = strmatch([ssc_name '-A'], {fcshdr.par.name});
      ssch = strmatch([ssc_name '-H'], {fcshdr.par.name});
 
@@ -73,14 +86,12 @@ for count = 1:100:length(filelist)
     cf = cf.Coefficients.Estimate;
     fcsdat(fcsdat(:,ssc_ch)<0, ssc_ch) = cf*fcsdat(fcsdat(:,ssc_ch)<0, ssch);
     
-    % call the function to make the plots
-    eval([framemaker, '(fcsdat, fcshdr, class)']); 
-    
-    % resize frame and add to movie
-    F = gcf ; 
-    F.Position = [27.6667 179.6667 1.1867e+03 429.3333]; 
-    Frame = getframe(gcf); 
-    writeVideo(v, Frame); 
+    % call the function to make the plots and getframe     
+    eval(['Frame = ', framemaker, '(fcsdat, fcshdr, class, channels, QC_flags(count))']);
+            
+    % add to movie
+    writeVideo(v, Frame);
+
     
     clear class fcsdat fcshdr
   

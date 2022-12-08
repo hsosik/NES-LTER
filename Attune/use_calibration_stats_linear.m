@@ -47,7 +47,7 @@ end
 
 if exist([outpath, 'beadstat_2021.mat'])
     load([outpath, 'beadstat_2021.mat'])
-else 
+else
     beadtype = 'PT only'; 
 end
 
