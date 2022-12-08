@@ -35,6 +35,10 @@ if exist('FCSfileinfo_name', 'var')
             FCSfileinfo.matdate_start(a+1:a+b) = NaN;
             FCSfileinfo.matdate_stop(a+1:a+b) = NaN;
             FCSfileinfo.vol_analyzed(a+1:a+b) = NaN;
+            FCSfileinfo.trigger1_parameter(a+1:a+b) = NaN;
+            FCSfileinfo.trigger1_threshhold(a+1:a+b) = NaN;
+            FCSfileinfo.trigger2_parameter(a+1:a+b) = NaN;
+            FCSfileinfo.trigger2_threshhold(a+1:a+b) = NaN;
         else % the variable is old and still a structure. Needs to be converted. 
             FCSfileinfo = struct2table(FCSfileinfo); 
             fcslist = setdiff(fcslist, FCSfileinfo.filelist);
@@ -50,6 +54,10 @@ else  %initialize
             FCSfileinfo.matdate_start = NaN(size(fcslist));
             FCSfileinfo.matdate_stop = FCSfileinfo.matdate_start;
             FCSfileinfo.vol_analyzed = FCSfileinfo.matdate_start;
+            FCSfileinfo.trigger1_parameter = cell(size(FCSfileinfo.matdate_start));
+            FCSfileinfo.trigger1_threshhold = FCSfileinfo.matdate_start;
+            FCSfileinfo.trigger2_parameter = cell(size(FCSfileinfo.matdate_start));
+            FCSfileinfo.trigger2_threshhold = FCSfileinfo.matdate_start;
             FCSfileinfo.QC_flag = FCSfileinfo.matdate_start;
             FCSfileinfo.QC_flowrates = NaN(length(fcslist), 2);
             a = 0;
@@ -66,7 +74,12 @@ if b > 0 %now add to existing table
             FCSfileinfo.matdate_start(ii) = datenum([fcshdr.date ', ' fcshdr.starttime]);
             FCSfileinfo.matdate_stop(ii) = datenum([fcshdr.date ', ' fcshdr.stoptime]);
             FCSfileinfo.vol_analyzed(ii) = fcshdr.VOL;
-            
+            FCSfileinfo.trigger1_parameter(ii) = {fcshdr.tr1_par};
+            FCSfileinfo.trigger1_threshhold(ii) = fcshdr.tr1_level;
+            if isfield(fcshdr, 'tr2_par')
+                FCSfileinfo.trigger2_parameter(ii) = {fcshdr.tr2_par};
+                FCSfileinfo.trigger2_threshhold(ii) = fcshdr.tr2_level;
+            end
             %adding quality control flags 
             t = find(fcsdat(:,12)>200 & fcsdat(:,3)>200);
             QC_flowrate(1) = (median(fcsdat(t,3)./fcsdat(t,12)));

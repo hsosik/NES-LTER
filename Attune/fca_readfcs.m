@@ -78,6 +78,10 @@ function [fcsdat, fcshdr, fcsdatscaled, fcsdatcomp] = fca_readfcs(filename)
 %Jan 2019
 %updated to read high voltage values from header
 %Heidi M. Sosik, Woods Hole Oceanographic Institution
+%
+%Dec 2022
+%updated to read trigger values from header
+%Heidi M. Sosik, Woods Hole Oceanographic Institution
 
 % if noarg was supplied
 if nargin == 0
@@ -184,6 +188,15 @@ elseif  strcmp(fcsheader_type,'FCS2.0') || strcmp(fcsheader_type,'FCS3.0')  || s
     end
     fcshdr.NumOfPar = str2num(get_mnemonic_value('$PAR',fcsheader_main, mnemonic_separator));
     fcshdr.VOL = str2num(get_mnemonic_value('$VOL',fcsheader_main, mnemonic_separator));
+    temp = split(get_mnemonic_value('#TR1',fcsheader_main, mnemonic_separator),',');
+    fcshdr.tr1_par = temp{1};
+    fcshdr.tr1_level = str2num(temp{2});
+    temp = get_mnemonic_value('#TR2',fcsheader_main, mnemonic_separator);
+    if ~isempty(temp)
+        temp = split(temp,',');
+        fcshdr.tr2_par = temp{1};
+        fcshdr.tr2_level = str2num(temp{2});
+    end
 
 %     if strcmp(mnemonic_separator,'LF')
 %         fcshdr.NumOfPar = fcshdr.NumOfPar + 1;
