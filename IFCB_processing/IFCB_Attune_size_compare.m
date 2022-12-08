@@ -45,13 +45,16 @@ particle_ind = setdiff(1:length(ifcbL.class2use),artifact_ind); %all except arti
 Twin = 12/60/24; %12 minutes as days
 diambins = logspace(-.5,log10(50),100);
 for count = 1:length(ifcb_uwind)
-    temp = array2table(cat(1,ifcbL.classFeaList{ifcb_uwind(count),[phyto_ind; ciliate_ind]}), 'VariableNames', ifcbL.classFeaList_variables);
-    %temp = array2table(cat(1,ifcbL.classFeaList{ifcb_uwind(count),:}), 'VariableNames', ifcbL.classFeaList_variables);
+    %temp = array2table(cat(1,ifcbL.classFeaList{ifcb_uwind(count),[phyto_ind; ciliate_ind]}), 'VariableNames', ifcbL.classFeaList_variables);
+    tempFea = ifcbL.classFeaList{ifcb_uwind(count),[phyto_ind; ciliate_ind]};
+    temp = array2table(cat(1,tempFea{:}), 'VariableNames', ifcbL.classFeaList_variables);
     ifcbH = histcounts(temp.ESD,[diambins inf]);
     figure(1), clf
     semilogy(diambins,ifcbH./ifcb_yr.meta_data.ml_analyzed(ifcb_uwind(count)), 'b.-')
     hold on
-    temp = array2table(cat(1,ifcbL.classFeaList{ifcb_uwind(count),particle_ind}), 'VariableNames', ifcbL.classFeaList_variables);
+   % temp = array2table(cat(1,ifcbL.classFeaList{ifcb_uwind(count),particle_ind}), 'VariableNames', ifcbL.classFeaList_variables);
+    tempFea = ifcbL.classFeaList{ifcb_uwind(count),particle_ind};
+    temp = array2table(cat(1,tempFea{:}), 'VariableNames', ifcbL.classFeaList_variables);
     ifcbH = histcounts(temp.ESD,[diambins inf]);
     semilogy(diambins,ifcbH./ifcb_yr.meta_data.ml_analyzed(ifcb_uwind(count)), 'b-.')
     t = datenum(AttuneTable.StartDate);
@@ -84,5 +87,6 @@ for count = 1:length(ifcb_uwind)
     xlabel('ESD (\mum)')
     grid
     set(gca, 'xtick',0:5:50, 'xlim',[0 50])
-   print([attunebase_out ifcb_yr.filelist{ifcb_uwind(count)} '.png'], '-dpng')
+ %   print([attunebase_out ifcb_yr.filelist{ifcb_uwind(count)} '.png'], '-dpng')
+ pause
  end
