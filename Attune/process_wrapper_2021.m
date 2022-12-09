@@ -44,16 +44,16 @@ step1 = 0; %Generate FCSfileinfo
 
 step2 = 1; %make new class files
     dont_overwrite_volumes = 1; %change classes without changing volume estimates
-    assign_class_function = 'assign_class_AR28'; 
+    assign_class_function = 'assign_class_EN687'; 
     filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; 'test'; 'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Dilution"; "Filter config"; "Grazer"; "Cultures"; "cast"}; %needed for Step2
-    OD2setting = 'SSC'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
+    OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
     
     appendonly = 0; %set to 1 if we don't want to change any existing class files.
     
     makemovieasyougo = 0; %option to make things more efficient. 
     framemaker = 'make_movieframe_density';
     stepsize = 1; %controls resolution of movie
-    moviechannels = 'early'; %{'BL3-H', 'GL2-H', 'GL1-H', 'GL2-H'}; %parameter numbers for euk X euk Y synX and SynY polygons if framemaker is general
+    moviechannels = 'late'; %{'BL3-H', 'GL2-H', 'GL1-H', 'GL2-H'}; %parameter numbers for euk X euk Y synX and SynY polygons if framemaker is general
             %typically this is GL1-H for older cruises and GL2-H for new
     
 
@@ -81,7 +81,7 @@ step7 = 1; %Make a movie out of class files after the fact.
 %% some file structure setup  
 fpath = [basepath filesep 'FCS' filesep];
 outpath = [basepath filesep 'bead_calibrated' filesep];
-beadfigpath = [outpath filesep 'bead_plots'];
+beadfigpath = [outpath filesep 'bead_plots_2021'];
 classpath = [outpath 'class' filesep];
 
 if ~exist(outpath, 'dir')

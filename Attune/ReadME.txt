@@ -10,7 +10,7 @@ Make sure that if you are starting a new cruise, Step 1 = 1. In theory you shoul
 but frequently you have to redo parts, so they can all be turned on or off. You just need to make sure the previous steps have been done already for any new steps you are going to run. 
 
 
-In order to perform class assignments, step2 of the wrapper, you need a classifier function. 
+In order to perform class assignments or test_class_assignments.m, step2 of the wrapper, you need a classifier function. 
 We have been making cruise-specific classifier functions such as "assign_class_EN657"
 
 It may make sense to start with a copy of a classifier from a different cruise with similar settings or at a similar time of year. 
@@ -44,7 +44,8 @@ Beadtype will always be "FCB". That variabile is a relic of me trying to use the
 Once the wrapper has been run for steps 1-7 (or 1-6 with makemovieasyougo), 
 run match_Attune_underway_LTER.m  to combine Attune table with underway data from REST API 
 
-
+***************
+***Emily can probably skip this part for now... Bethany used it as described here
 Because I was interested in having size distributions for Syn and Euks, I then ran get_cruise_voldists_fromEDItable2.m to generate AttuneVolTable. 
 This script also includes parsing of the underway data names to get a single measurements of latitude, longitude, salinity and other underway data of interest based on Stace's recommendations of which variabiles were best. 
 Her recommendations are here: 
@@ -59,8 +60,33 @@ R2R post-navigation products available for EN and AR (expect about a year or so 
     https://www.rvdata.us/search/cruise/EN649
 
 Last is to check each cruise ship-provided data README for notes.
+***************
 
 
 Finally, I ran generate_attune_table_EDI.m to cut AttuneVolTable down to just the files and variables we share with EDI. 
+
+
+Questions from Emily 7 Dec 2022:
+
+-What to look for on beads steps. What might tip me off about a problem?
+
+-How to do phases of the gating if needed:
+
+Example for different phases in EN655 simpler, TN368 big mess example. The phase is only within the asign class fiile.
+Basically put time with matlab dates at the top, and then phases around sections of the thresholds.
+-> the assign_class_EN687 that I am currently using is one that floats the bottom of the Syn, not all of them do. 
+
+
+-what else do you look for when making the movies? I was mostly looking at Syn. The green Euks semed fine. The other Euks I didn’t pay much attention, yet. Maybe need a different plot?
+
+-Diagonal line – what to look for?
+
+-How to make the movies
+
+-Keeping track of what’s done
+
+-Final steps after process wrapper? Should I do all of them. Need the EDI table!
+-Going to revisit this after current EDI submission
+
 
 
