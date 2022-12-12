@@ -4,16 +4,16 @@
 
 %list of attune directories for cruises to include
 dirlist = {'20180131_EN608'; 
-'20180404_AR28';
+'20180404_AR28B';
 '20180414_AR29'; 
 '20180720_EN617'; 
-'20181020_AR31';  
+'20181020_AR31A';  
 '20190201_EN627'; 
-'20190414_AR34'; 
+'20190414_AR34B'; 
 '20190512_RB1904';  
 '20190705_TN368'; 
 '20190820_EN644'; 
-'20191005_AR39';  
+'20191005_AR39B';  
 '20200201_EN649'; 
 '20200311_AR43'; 
 '20200725_EN655';   
@@ -24,6 +24,7 @@ dirlist = {'20180131_EN608';
 '20211117_AR62'; 
 '20211126_AR63'; 
 '20220216_AT46'; }; 
+
 
 
 flaglist = [0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; 
@@ -54,7 +55,10 @@ a = a(1).folder;
 Attune = load([a filesep 'AttuneVolTable.mat']);
 AttuneT = load([a filesep 'AttuneTable.mat']);
 
-cruiseStr = a(50:end-16);
+test = split(a, '\');
+test = test{7}; 
+test = split(test, '_');
+cruiseStr = test{2};
  if startsWith(cruiseStr, 'EN') 
      depth = 5; %5 meters
  elseif startsWith(cruiseStr, 'AR')
