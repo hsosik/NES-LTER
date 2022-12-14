@@ -1,15 +1,15 @@
 
 %test class assignments for a cruise WITHOUT overwriting class data 
 
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20181020_AR31\'; 
-assign_class_function = 'assign_class_AR31'; 
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20220806_EN688\'; 
+assign_class_function = 'assign_class_EN688'; 
 
 filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; '(lab test)'; 'test';'Dockwater'; 'Daily'; 'Rinses'; 'discrete'; "Filter config"; "Grazer"; "SFD_AR29_Grazer"; "Cultures";}; %needed for Step2
 OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
 
 framemaker = 'make_movieframe_density';
-stepsize = 14; %controls resolution of movie
-moviechannels = 'early'; 
+stepsize = 35; %controls resolution of movie
+moviechannels = 'late'; 
     
 
 %assign useful paths
@@ -25,7 +25,7 @@ else
     ssc_name = 'SSC'; 
 end
 
- %remove filetype2exclude from FCSfileinfo and generate filelist 
+ %remove filetype2exclude from FCSfileinfo and generate filelist
         %this part has been updated  for Table structure FCS filinfo 
     for iii = 1:length(filetype2exclude)    
          t = contains(FCSfileinfo.fcslist, filetype2exclude{iii});
@@ -50,7 +50,7 @@ end
 
     length(filelist)
     %now go through files of interest, assign classes, and save results
-    for count = 10:stepsize:length(filelist) %2050
+    for count = 5500:stepsize:length(filelist)
         pause(.02)
          if ~rem(count,10)
             disp([num2str(count) ' of ' num2str(length(filelist))])
@@ -77,5 +77,5 @@ end
      
 
             set(gcf, 'position', [2.1483e+03 -187 905.3333 590.6667])
-
+pause
     end

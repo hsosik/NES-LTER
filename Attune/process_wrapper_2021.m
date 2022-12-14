@@ -43,8 +43,8 @@ function process_wrapper_2021(basepath)
 step1 = 0; %Generate FCSfileinfo
 
 step2 = 1; %make new class files
-    dont_overwrite_volumes = 1; %change classes without changing volume estimates
-    assign_class_function = 'assign_class_EN687'; 
+    dont_overwrite_volumes = 0; %change classes without changing volume estimates
+    assign_class_function = 'assign_class_EN688'; 
     filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; 'test'; 'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Dilution"; "Filter config"; "Grazer"; "Cultures"; "cast"}; %needed for Step2
     OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
     
@@ -57,20 +57,20 @@ step2 = 1; %make new class files
             %typically this is GL1-H for older cruises and GL2-H for new
     
 
-step3 = 0; %Assign beads to make beadstats table and bead plots
+step3 = 1; %Assign beads to make beadstats table and bead plots
     beadfiles2include = {'FCB_bead'};
-    beadtype = 'FCB'; 
+    beadtype = 'FCB';   
     %check OD2setting above 
     
-step4 = 0; %set up calibration, only if OD2setting is 'GL1'
+step4 = 1; %set up calibration, only if OD2setting is 'GL1'
     SSCDIM = 'A'; %needed for Step 4 & 5, SSCDIM = 'A' or 'H'
     
-step5 = 0; %apply calibration to add volume to class files 
+step5 = 1; %apply calibration to add volume to class files 
     %Check SSCDIM above anpd OD2setting
     
-step6 = 0; %Generate attune table
+step6 = 1; %Generate attune table
 
-step7 = 1; %Make a movie out of class files after the fact. 
+step7 = 0; %Make a movie out of class files after the fact. 
     %Check moviechannels, framemaker and stepsize above. 
 
     
@@ -200,7 +200,7 @@ end
     
     %keyboard
     %now go through files of interest, assign classes, and save results
-    for count = 1400:2400%:length(filelist)
+    for count = 1:length(filelist)
          if ~rem(count,10)
             disp([num2str(count) ' of ' num2str(length(filelist))])
          end

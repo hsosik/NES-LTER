@@ -19,7 +19,7 @@ plot_flag = 0;
     synminX = 700 ; 
     synXcorners = [7000 18500]; 
 
-    eukminX = 500; 
+    eukminX = 1500; 
     eukcorner = [20000 1200]; 
     eukmaxY = 4e4; 
     eukmaxYlower = 300; 
