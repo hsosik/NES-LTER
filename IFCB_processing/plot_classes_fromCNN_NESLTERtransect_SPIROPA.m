@@ -1,6 +1,6 @@
 cruises = {'AR22' 'AR24A' 'AR24B' 'AR24C' 'EN608' 'AR28A' 'AR28B' 'EN617'...
     'AR31A' 'AR31B' 'AR31C' 'AR32' 'AR44' 'EN627' 'AR34A' 'AR34B' 'AR38' 'AR39a'...
-    'AR39B' 'EN644' 'EN649' 'EN655' 'EN657' 'EN661'};  %'AR16' 'AR48A' 'AR48B'  
+    'AR39B' 'AR44' 'AR48A' 'AR48B' 'AR52A' 'AR52B' 'AR61B' 'AR63' 'AR66A' 'EN644' 'EN649' 'EN655' 'EN657' 'EN661' 'EN668' 'EN687' 'AT46'};  %'AR16' 'AR48A' 'AR48B'  
 cruises2 = {'AR29' 'RB1904' 'TN368' };
 
 ubase = '\\sosiknas1\IFCB_data\NESLTER_transect\match_up\';
@@ -74,6 +74,7 @@ s2018 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_
 s2019 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2019.mat');
 s2020 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2020.mat');
 s2021 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2021.mat');
+s2022 = load('\\sosiknas1\IFCB_products\NESLTER_transect\summary\summary_biovol_allHDF_min20_2022.mat');
 s2018b = load('\\sosiknas1\IFCB_products\SPIROPA\summary\summary_biovol_allHDF_min20_2018.mat');
 s2019b = load('\\sosiknas1\IFCB_products\SPIROPA\summary\summary_biovol_allHDF_min20_2019.mat');
 tag5 = repmat(cellstr(''),size(s2018b.meta_data,1),1);
@@ -94,7 +95,7 @@ s2019b.meta_data = removevars(s2019b.meta_data, 'transect');
 IFCBsum = table;
 slist = {'filelist' 'classcount' 'meta_data' 'classbiovol' 'mdate'};
 for count = 1:length(slist)
-    s = slist{count}; IFCBsum.(s) = [s2017.(s); s2018.(s); s2019.(s); s2020.(s); s2021.(s); s2018b.(s); s2019b.(s)];
+    s = slist{count}; IFCBsum.(s) = [s2017.(s); s2018.(s); s2019.(s); s2020.(s); s2021.(s); s2022.(s); s2018b.(s); s2019b.(s)];
 end
 
 class2use = s2017.class2use;

@@ -1,11 +1,16 @@
 function [] = mapZ_broadscale(input2plot)
 %UNTITLED2 Summary of this function goes here
 %   Detailed explanation goes here
-    m_proj('Mollweide','long',[-72.5 -69.5],'lat',[39.5 43]);
-  %  m_proj('Mollweide','long',[-73 -69],'lat',[38.5 43]); %spiropa
+persistent transect_bathy_Z transect_bathy_lat transect_bathy_lon
+    lon = [-72.5 -69.5];
+    lat = [39.5 43];
+    m_proj('Mollweide','long',lon,'lat',lat);
     m_usercoast('gumby3','patch',[.8 .8 .8],'edgecolor','k');
-    m_grid('box','fancy','tickdir','out','fontsize', 10, 'fontname','Times New Roman');
-    m_elev('contour',[-200 -100],'edgecolor','b');
+    m_grid('box','fancy','tickdir','out','fontsize', 10, 'fontname','Times New Roman'); hold on
+    if isempty(transect_bathy_Z)
+        [transect_bathy_Z,transect_bathy_lat,transect_bathy_lon]=mygrid_sand2([lon lat ]); transect_bathy_lon = transect_bathy_lon-360;
+    end
+    m_contour(transect_bathy_lon,transect_bathy_lat,transect_bathy_Z,[-100 -200],'k-')
     [X,Y] = m_ll2xy(input2plot.lon, input2plot.lat); %convert positions of IFCB manual points to map coordinates
     Z = input2plot.Z;
     ii = find(isinf(Z));

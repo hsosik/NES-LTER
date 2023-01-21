@@ -5,7 +5,8 @@
 %f1load("C:\work\CNN_models\20201102_NES_norm_seed__THIS IS really 20210429_Dec2020_NES\results.mat")
 %load("C:\work\CNN_models\20210430_Dec2020_NES_norm_1.7\results.mat")
 %load("C:\work\CNN_models\202106_Dec2020_NES_1.6\results.mat")
-load('\\sosiknas1\training_sets\IFCB\training-output\20220416_Delmar_NES_1\results')
+%load('\\sosiknas1\training_sets\IFCB\training-output\20220416_Delmar_NES_1\results')
+load('\\sosiknas1\training_sets\IFCB\training-output\20220209_Jan2022_NES_2.4\results')
 
 figure
 subplot(1,2,2)
