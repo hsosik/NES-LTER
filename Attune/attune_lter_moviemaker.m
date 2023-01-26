@@ -1,4 +1,5 @@
-%% Make a movie of attune data given FCS files and class files
+
+ 	%% Make a movie of attune data given FCS files and class files
 
 %inputs : 
 % fpath = string path of folder where FCS files are, 
@@ -100,4 +101,4 @@ end
 close(v) 
 disp(['Result file saved:' classpath 'Attune_cyto_vid.avi'])
 
-end
+ end

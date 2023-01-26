@@ -40,12 +40,12 @@ end
 
 uw_match = uw(match_ind,:);
 Attune_uw_match = [AttuneTable uw_match];
-good = find(AttuneTable.QC_flowrate_std<2 & AttuneTable.QC_flowrate_median<1.5);
+%good = find(AttuneTable.QC_flowrate_std<2 & AttuneTable.QC_flowrate_median<1.5);
 
 [AttuneTable_path, AttuneTable_file] = fileparts(AttuneTable_fullname); 
 
 outFullFileName = fullfile(AttuneTable_path,[AttuneTable_file '_uw_match']);
-save(outFullFileName, 'Attune_uw_match', 'good')
+save(outFullFileName, 'Attune_uw_match')%, 'good')
 disp('results saved: ') 
 disp(outFullFileName)
 disp(['Max time difference in minutes: ' num2str(max(tdiff)*24*60)])
