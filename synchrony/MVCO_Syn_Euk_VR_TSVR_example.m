@@ -1,5 +1,5 @@
-%let's try an example of variance ratio and time-scale dependent variance
-%ratio for three components of the phytoplankton in the MVCO time series
+% Let's try an example of variance ratio and time-scale dependent variance
+% ratios for three components of the phytoplankton in the MVCO time series
 % Syn, Euk<=2microns (pico), Euk2-10microns (small nano)
 %
 % Heidi M. Sosik, Woods Hole Oceanographic Institution, Jan 2023
@@ -43,7 +43,7 @@ pd_year.year = x_year;
 
 if true % this is slow to plot so skip if desired
     for ii = 1:length(class2use)
-        figure, subplot(2,1,1),[pd, x_doy] = plotPartialDependence(m.(class2use{ii}), 'doy')
+        figure, subplot(2,1,1),plotPartialDependence(m.(class2use{ii}), 'doy')
         subplot(2,1,2), plotPartialDependence(m.(class2use{ii}), 'year')
     end
 end
@@ -63,6 +63,14 @@ VR_total = variance_ratio(yfit_nogaps{:,:})
 VR_doy_effect = variance_ratio(pd_doy{:,class2use})
 VR_year_effect = variance_ratio(pd_year{:,class2use})
 
+figure
+bar([VR_total VR_doy_effect VR_year_effect])
+line(xlim, [1 1], 'color', 'k', 'linestyle', '--')
+set(gca, 'xTickLabel', {'Total' 'Year day effect' 'Year effect'})
+ylabel('VR')
+title(class2use, 'interpreter', 'none')
+
+%%
 %full time-scale specific VR
 [phi_sigma,freq] = tsvr_all_sigma(yfit_nogaps{:,:}')
 figure
@@ -79,9 +87,8 @@ thresholds = [7 30 90 180 365]; %day edges: 1-7, 7-30..., >365
 [vr_scales] = tsvr_scale(yfit_nogaps{:,:}',thresholds)
 figure
 bar(vr_scales)
+line(xlim, [1 1], 'color', 'k', 'linestyle', '--')
 ylabel('VR')
 xlabel('Day range')
 set(gca, 'xTickLabel', {'<7' '7-30' '30-90' '90-180' '180-365' '>365'})
 title(class2use, 'interpreter', 'none')
-
-
