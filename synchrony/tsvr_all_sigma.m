@@ -18,7 +18,7 @@ numer(:,1)=cosp_tot(1,1,2:end); % enumerator
 freq=freq(:,2:end);
 all_spects=zeros(length(ts_pops)-1,npops);
 for k=1:npops
-    [h_cosp,h_freq]=cospectrum(ts_pops(:,k));
+    [h_cosp,h_freq]=cospectrum(ts_pops(:,k)');
     all_spects(:,k)=h_cosp(1,1,2:end);
 end
 denom=sum(all_spects,2); % denominator
