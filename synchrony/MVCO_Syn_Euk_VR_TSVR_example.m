@@ -19,13 +19,20 @@ Tt.year = year(Tt.Time); %predictor variable 2
 Tt = timetable2table(Tt); %ftirgam does not take timetables as input
 
 %fill the gaps with a GAM fit
-for ii = 1:length(class2use)
+for ii = 19:length(class2use)
     disp(class2use(ii))
     m.(class2use{ii}) = fitrgam(Tt,class2use{ii}, 'PredictorNames', {'doy' 'year'}, 'Interactions', 'all', 'OptimizeHyperparameters', 'auto', 'HyperparameterOptimizationOptions',struct('UseParallel',true), 'Verbose',false, 'MaxPValue', .05);
     yfit_nogaps.(class2use{ii}) = predict(m.(class2use{ii}), Tt(:,["doy" "year"]));
 end
-%here's the whole gap-filled time series for VR input
+%here's the whole predicted time series
 yfit_nogaps = struct2table(yfit_nogaps);
+
+%now make a gap-filled time series for VR input
+Tt_nogaps = Tt(:,['Time' class2use]);
+for ii = 1:length(class2use)
+    iii = isnan(Tt.(class2use{ii}));
+    Tt_nogaps.(class2use{ii})(iii) = yfit_nogaps.(class2use{ii})(iii);
+end
 %%
 %save the GAM-derived partial effects for day of year and year
 %these could be VR inputs for different scales
@@ -59,7 +66,7 @@ end
 
 %%
 %Now get various VR values
-VR_total = variance_ratio(yfit_nogaps{:,:})
+VR_total = variance_ratio(Tt_nogaps{:,class2use})
 VR_doy_effect = variance_ratio(pd_doy{:,class2use})
 VR_year_effect = variance_ratio(pd_year{:,class2use})
 
@@ -72,7 +79,7 @@ title(class2use, 'interpreter', 'none')
 
 %%
 %full time-scale specific VR
-[phi_sigma,freq] = tsvr_all_sigma(yfit_nogaps{:,:}')
+[phi_sigma,freq] = tsvr_all_sigma(Tt_nogaps{:,class2use});
 figure
 semilogx(1./freq, phi_sigma)
 line(xlim, [1 1], 'color', 'k', 'linestyle', '--')
@@ -84,7 +91,7 @@ title(class2use, 'interpreter', 'none')
 %%
 %now do some time-scale specific ranges
 thresholds = [7 30 90 180 365]; %day edges: 1-7, 7-30..., >365
-[vr_scales] = tsvr_scale(yfit_nogaps{:,:}',thresholds)
+[vr_scales] = tsvr_scale(Tt_nogaps{:,class2use},thresholds);
 figure
 bar(vr_scales)
 line(xlim, [1 1], 'color', 'k', 'linestyle', '--')
