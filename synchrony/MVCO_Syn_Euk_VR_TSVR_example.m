@@ -18,14 +18,13 @@ Tt.doy = day(Tt.Time,"dayofyear"); %predictor variable 1
 Tt.year = year(Tt.Time); %predictor variable 2
 Tt = timetable2table(Tt); %ftirgam does not take timetables as input
 
-%fill the gaps with a GAM fit
-for ii = 19:length(class2use)
+%Creat GAM fits
+yfit_nogaps = table;
+for ii = 1:length(class2use)
     disp(class2use(ii))
-    m.(class2use{ii}) = fitrgam(Tt,class2use{ii}, 'PredictorNames', {'doy' 'year'}, 'Interactions', 'all', 'OptimizeHyperparameters', 'auto', 'HyperparameterOptimizationOptions',struct('UseParallel',true), 'Verbose',false, 'MaxPValue', .05);
+    m.(class2use{ii}) = fitrgam(Tt,class2use{ii}, 'PredictorNames', {'doy' 'year'}, 'CategoricalPredictors', [2], 'Interactions', 'all', 'OptimizeHyperparameters', 'auto', 'HyperparameterOptimizationOptions',struct('UseParallel',true), 'Verbose',false, 'MaxPValue', .05);
     yfit_nogaps.(class2use{ii}) = predict(m.(class2use{ii}), Tt(:,["doy" "year"]));
 end
-%here's the whole predicted time series
-yfit_nogaps = struct2table(yfit_nogaps);
 
 %now make a gap-filled time series for VR input
 Tt_nogaps = Tt(:,['Time' class2use]);
