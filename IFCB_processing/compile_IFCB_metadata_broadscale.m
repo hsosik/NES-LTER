@@ -24,7 +24,7 @@ totag.lon(uwind) = IFCB_match_uw_results.lon;
 %% save results
 totag.cruise = repmat(cellstr(cruise),size(totag,1),1);
 f = strsplit(ToTag_xlsFile, '.');
-writetable(totag, [f{1} '_meta.csv']);
+%writetable(totag, [f{1} '_meta.csv']);
 disp(['CSV file for dashboard upload: ' f{1} '_meta.csv']) 
 [p f] = fileparts(f{1});
 p = regexprep(p, 'to_tag', 'match_up\');

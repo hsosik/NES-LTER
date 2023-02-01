@@ -47,6 +47,9 @@ end
 pd_doy.doy = x_doy;
 pd_year.year = x_year;
 
+save([synchrony_path 'Syn_Euk2_Euk10_filled'], 'm', 'pd_doy', 'pd_year', 'yfit_nogaps', 'Tt', 'Tt_nogaps')
+%%
+
 if true % this is slow to plot so skip if desired
     for ii = 1:length(class2use)
         figure, subplot(2,1,1),plotPartialDependence(m.(class2use{ii}), 'doy')
@@ -65,14 +68,15 @@ end
 
 %%
 %Now get various VR values
-VR_total = variance_ratio(Tt_nogaps{:,class2use})
+ii = ~isnan(sum(Tt{:,class2use},2)); %find the rows with no NaNs
+VR_total_gaps = variance_ratio(Tt{ii,class2use});
+VR_total_filled = variance_ratio(Tt_nogaps{:,class2use})
 VR_doy_effect = variance_ratio(pd_doy{:,class2use})
 VR_year_effect = variance_ratio(pd_year{:,class2use})
-
 figure
-bar([VR_total VR_doy_effect VR_year_effect])
+bar([VR_total_gaps VR_total_filled VR_doy_effect VR_year_effect])
 line(xlim, [1 1], 'color', 'k', 'linestyle', '--')
-set(gca, 'xTickLabel', {'Total' 'Year day effect' 'Year effect'})
+set(gca, 'xTickLabel', {'Total (w/gaps)' 'Total (filled)' 'Year day effect' 'Year effect'})
 ylabel('VR')
 title(class2use, 'interpreter', 'none')
 

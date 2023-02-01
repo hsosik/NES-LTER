@@ -36,16 +36,28 @@ for cc = 1:length(temp2)
     keep(ii(v(ii)<max(v(ii)))) = 0;
 end
 ncfiles(~keep) = [];
-info = ncinfo([ncpath ncfiles{1}]);
+info = ncinfo([ncpath ncfiles{3}]); %start with 3rd file since EX1305
 varname = {info.Variables.Name};
 varname = setdiff(varname,{'flag', 'history'});
 uw = table;
 for count = 1:length(ncfiles)
     T = table;
     for vcount = 1:length(varname)
-        T.(varname{vcount})  = ncread([ncpath ncfiles{count}],varname{vcount});
-        T.Properties.VariableUnits{varname{vcount}} = ncreadatt([ncpath ncfiles{count}],varname{vcount}, 'units');
-        T.Properties.VariableDescriptions{varname{vcount}} = ncreadatt([ncpath ncfiles{count}],varname{vcount}, 'long_name');   
+        try
+            T.(varname{vcount}) = ncread([ncpath ncfiles{count}],varname{vcount});
+            T.Properties.VariableUnits{varname{vcount}} = ncreadatt([ncpath ncfiles{count}],varname{vcount}, 'units');
+            T.Properties.VariableDescriptions{varname{vcount}} = ncreadatt([ncpath ncfiles{count}],varname{vcount}, 'long_name');   
+        catch me
+            if isequal(me.identifier, 'MATLAB:imagesci:netcdf:unknownLocation')
+                disp([varname{vcount} ' missing: ' ncfiles{count}])
+                if isempty(T)
+                    temp = ncread([ncpath ncfiles{count}],'time');
+                else
+                    temp = T(:,1);
+                end                
+                T.(varname{vcount}) = NaN(size(temp));
+            end
+        end
     end
     uw = [uw; T];
 end

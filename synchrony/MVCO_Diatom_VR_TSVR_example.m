@@ -65,7 +65,7 @@ pd_doy.doy = x_doy;
 pd_year.year = x_year;
 
 %%
-save([synchrony_path 'top20diatom_filled_yrCat'], 'Cconc_day_top20diatom', 'm', 'pd_doy', 'pd_year', 'yfit_nogaps', 'Tt', 'Tt_nogaps')
+save([synchrony_path 'top20diatom_filled'], 'Cconc_day_top20diatom', 'm', 'pd_doy', 'pd_year', 'yfit_nogaps', 'Tt', 'Tt_nogaps')
 
 %%
 if true % this is slow to plot so skip if desired
