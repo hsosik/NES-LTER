@@ -1,5 +1,8 @@
 function [vr_scales] = tsvr_scale(ts_pops,thresholds)
 
+% Created by Silke van Daalen, January 2023, last edit 27-Jan-2023
+% Adjusting the timescale-specific variance ratio from returning only two
+% timespans, as in Zhao et al, 2020, and Shoemaker et al., 2022
 % This function computes a timescale-specific variance ratio, at several scales,
 % it requires:
 %   - ts_pops should contain a timeseries of all populations, with pop identity
@@ -9,17 +12,17 @@ function [vr_scales] = tsvr_scale(ts_pops,thresholds)
 %   week-to-month (7-30), month-to-year (30-365), and interannual variance ratio (>365))
 %   Currently, the maximum nr. of thresholds is 6
 
-npops=size(ts_pops,1);
-ts_tot=sum(ts_pops);
+npops=size(ts_pops,2);
+ts_tot=sum(ts_pops,2);
 
-[cosp_tot,freq]=cospectrum(ts_tot);
+[cosp_tot,freq]=cospectrum(ts_tot');
 tslength=length(ts_tot);
 numer=zeros(tslength-1,1);
 numer(:,1)=cosp_tot(1,1,2:end);
 freq=freq(:,2:end);
 all_spects=zeros(length(ts_pops)-1,npops);
 for k=1:npops
-    [h_cosp,h_freq]=cospectrum(ts_pops(k,:));
+    [h_cosp,h_freq]=cospectrum(ts_pops(:,k)');
     all_spects(:,k)=h_cosp(1,1,2:end);
 end
 denom=sum(all_spects,2);
@@ -32,11 +35,11 @@ cv2_com=numer/(mutot^2);
 cv2_comip=denom/(mutot^2);
 
 
-[cospec,freq]=cospectrum(ts_pops);
+[cospec,freq]=cospectrum(ts_pops');
 lenfreq=length(freq);
 freq=freq(:,2:lenfreq);
 cospec=cospec(:,:,2:lenfreq);
-tsvar=var(ts_pops');
+tsvar=var(ts_pops);
 sdg_cospec=zeros(lenfreq-1,1);
 for i=1:(lenfreq-1)
     cospec_i=cospec(:,:,i);
