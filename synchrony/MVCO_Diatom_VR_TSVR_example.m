@@ -77,7 +77,7 @@ axis square
 colorbar
 caxis([0 2])
 title('VR year day effect')
-figurei
+figure
 pcolor(VR_mat_year)
 set(gca, 'YTick',1.5:20.5, 'YTickLabel' ,regexprep(class2use, '_', ' '))
 set(gca, 'xTick',1:20, 'xTickLabel' ,regexprep(class2use, '_', ' '), 'XTickLabelRotationMode', 'auto')
@@ -110,6 +110,7 @@ xlabel('Day range')
 set(gca, 'xTickLabel', {'<7' '7-30' '30-90' '90-180' '180-365' '>365'})
 %title(class2use, 'interpreter', 'none')
 title('Top 20 diatom types at MVCO')
+
 return
 
 %below here is how to load time series data, fit GAM and save gap-filled time series
