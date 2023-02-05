@@ -117,7 +117,11 @@ return
 %%
 % from MVCO_compile_hourly_daily_from_class_tables.m
 load(['C:\work\IFCB_products\MVCO\summary_v4\MVCO_carbon_class_group_summary'])
-
+%fudge for now due to bad bins on these dates
+tt = datetime({'08-jan-2008' '26-dec-2009' '27-dec-2009' '7-jul-2012' '27-feb-2014' '14-jul-2014' '15-jul-2014' '16-jul-2014' '9-Jun-2020' '10-Jun-2020' '11-Jun-2020' '29-Apr-2021' '30-Apr-2021' '1-May-2021' '2-May-2021' '3-May-2021' '4-May-2021' '14-oct-2021' '15-oct-2021' '16-oct-2021'})
+%ii = (Cday.Time==datetime('27-feb-2014'));
+[~,ii] = intersect(Cday.Time, tt);
+Cday(ii,:) = []; Cday_adhoc(ii,:) = []; Cday_opt(ii,:) = []; Cday_group_opt(ii,:) = [];
 Cday{:,2:end} = Cday{:,2:end}./Cday.ml/1000;
 Cday_opt{:,2:end} = Cday_opt{:,2:end}./Cday_opt.ml/1000;
 Cday_adhoc{:,2:end} = Cday_adhoc{:,2:end}./Cday_adhoc.ml/1000;

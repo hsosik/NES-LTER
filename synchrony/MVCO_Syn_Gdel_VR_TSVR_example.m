@@ -81,6 +81,12 @@ synchrony_path = 'C:\Users\heidi\Woods Hole Oceanographic Institution\Michael G 
 
 load([synchrony_path 'MVCO_carbon_class_group_summary'])
 clear Cday Cday_adhoc Cday_group_opt
+%fudge for now due to bad bins on this date
+%ii = (Cday_opt.Time==datetime('27-feb-2014'));
+tt = datetime({'08-jan-2008' '26-dec-2009' '27-dec-2009' '7-jul-2012' '27-feb-2014' '14-jul-2014' '15-jul-2014' '16-jul-2014' '9-Jun-2020' '10-Jun-2020' '11-Jun-2020' '29-Apr-2021' '30-Apr-2021' '1-May-2021' '2-May-2021' '3-May-2021' '4-May-2021' '14-oct-2021' '15-oct-2021' '16-oct-2021'})
+%ii = (Cday.Time==datetime('27-feb-2014'));
+[~,ii] = intersect(Cday_opt.Time, tt);
+Cday_opt(ii,:) = [];
 
 class2use1 = {'Guinardia_delicatula'};
 Tt_Cconc1 = timetable(Cday_opt.Time,Cday_opt.(class2use1{1})./Cday_opt.ml/1000, 'VariableNames',class2use1);
@@ -100,7 +106,6 @@ Tt.doy = day(Tt.Time,"dayofyear"); %predictor variable 1
 Tt.year = year(Tt.Time); %predictor variable 2
 Tt = timetable2table(Tt); %ftirgam does not take timetables as input
 
-%%
 %fill the gaps with a GAM fit
 yfit_nogaps = table; %this will be the whole GAM-predicted time series
 for ii = 1:length(class2use)
@@ -115,7 +120,7 @@ for ii = 1:length(class2use)
     iii = isnan(Tt.(class2use{ii}));
     Tt_nogaps.(class2use{ii})(iii) = yfit_nogaps.(class2use{ii})(iii);
 end
-%%
+
 %save the GAM-derived partial effects for day of year and year
 %these could be VR inputs for different scales
 pd_doy = table;
@@ -131,4 +136,5 @@ pd_doy.doy = x_doy;
 pd_year.year = x_year;
 
 save([synchrony_path 'Syn_Gdel_filled'], 'm', 'pd_doy', 'pd_year', 'yfit_nogaps', 'Tt', 'Tt_nogaps', 'class2use')
-
+disp('saved results:')
+disp([synchrony_path 'Syn_Gdel_filled'])

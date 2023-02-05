@@ -3,7 +3,10 @@ function vr = variance_ratio(input_data)
     % vr output is variance ratio from Schluter 19
     % following full calc from Schluter, Eq 2,3,5
     % Heidi M. Sosik, Woods Hole Oceanographic Institution, Jan 2023
-
+    
+    %eliminate any rows with NaNs
+    input_data(isnan(sum(input_data,2)),:) = [];
+    
     if size(input_data,1) > 1
             T = sum(input_data,2);
         t = mean(T);
