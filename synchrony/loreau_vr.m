@@ -8,6 +8,8 @@ function phi_x = loreau_vr(x)
 %
 %   Last edited: 2023-01-31 2:26pm by MGN
 
+    x(isnan(sum(x,2)),:) = []; %omit any rows with NaNs, Heidi
+    
     x_tau = sum(x,2);   % aggregate quantity 
                         %  (i.e. total abundance if x is population sizes).
     
