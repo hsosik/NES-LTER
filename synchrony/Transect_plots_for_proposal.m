@@ -1,5 +1,5 @@
 synchrony_path = 'C:\Users\heidi\Woods Hole Oceanographic Institution\Michael G Neubert - NES_Synchrony_Data\';
-load([synchrony_path 'Attune_pico_nano_micro_seasonal_transect_means'])
+load([synchrony_path 'Attune_IFCB_pico_nano_micro_seasonal_transect_means'])
 
 % VR of seasonal means
 figure
