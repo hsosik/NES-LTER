@@ -39,14 +39,12 @@ semilogy(mdate_mat(:), Synnum_mat(:)./ml_mat(:), 'b-','linewidth',1)
 set(gcf, 'position', [50 400 1200 220])
 datetick
 ylim([10 1e6])
-set(gca, 'ytick', [1e2 1e4 1e6], 'xgrid', 'on', 'fontsize', 12)
+set(gca, 'ytick', [1e2 1e4 1e6], 'xgrid', 'on', 'fontsize', 14)
 set(gca, 'position', [0.07    0.1335    0.9    0.8083])
 ylabel('Cells ml^{-1}')
 text(datenum(2003,9,1), 100, '\itSynechococcus', 'fontsize', 16, 'fontweight', 'bold')
 
 %%
-clear temp sind fname
-save([summarypath 'compiled_cellC_all_years'])
 
 return
 %semilogy(time_syn(:), daily_syn(:), 'b', 'linewidth', 1)
