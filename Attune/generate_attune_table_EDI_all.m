@@ -26,7 +26,6 @@ dirlist = {'20180131_EN608';
 '20220216_AT46'; }; 
 
 
-
 flaglist = [0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]; 
 
 Attune_EDI_Table_merged = table(); 
@@ -44,7 +43,7 @@ for c = 1:length(dirlist)
 end
 
 
-writetable(Attune_EDI_Table_merged, '\\sosiknas1\Lab_data\Attune\cruise_data\Attune_EDI_Table_merged.csv')
+writetable(Attune_EDI_Table_merged, '\\sosiknas1\Lab_data\Attune\cruise_data\attune-transect-underway-continuous.csv')
 
 
 
@@ -65,6 +64,10 @@ cruiseStr = test{2};
      depth = 2.1336; %7 ft
  elseif startsWith(cruiseStr, 'AT')
       depth = 5;
+ elseif startsWith(cruiseStr, 'RB')
+     depth = 5; 
+ elseif startsWith(cruiseStr, 'TN')
+     depth = 5; 
  else
      depth = NaN; 
  end
@@ -95,20 +98,20 @@ Attune2EDI.redeuk_leq_5um_cells_per_ml = AttuneTable.("Euk_without_PE_leq5um_cou
 Attune2EDI.redeuk_leq_10um_cells_per_ml = AttuneTable.("Euk_without_PE_leq10um_count")./AttuneTable.VolAnalyzed_ml;
 Attune2EDI.redeuk_leq_20um_cells_per_ml = AttuneTable.("Euk_without_PE_leq20um_count")./AttuneTable.VolAnalyzed_ml;
 
-Attune2EDI.syn_biovolume = AttuneTable.("Syn_biovolume")./AttuneTable.VolAnalyzed_ml; 
-Attune2EDI.redeuk_leq_2um_biovolume = AttuneTable.("Euk_without_PE_leq2um_biovolume")./AttuneTable.VolAnalyzed_ml; 
-Attune2EDI.redeuk_leq_3um_biovolume = AttuneTable.("Euk_without_PE_leq3um_biovolume")./AttuneTable.VolAnalyzed_ml;  
-Attune2EDI.redeuk_leq_5um_biovolume = AttuneTable.("Euk_without_PE_leq5um_biovolume")./AttuneTable.VolAnalyzed_ml;  
-Attune2EDI.redeuk_leq_10um_biovolume = AttuneTable.("Euk_without_PE_leq10um_biovolume")./AttuneTable.VolAnalyzed_ml; 
-Attune2EDI.redeuk_leq_20um_biovolume = AttuneTable.("Euk_without_PE_leq20um_biovolume")./AttuneTable.VolAnalyzed_ml; 
+Attune2EDI.syn_biovolume_concentration = AttuneTable.("Syn_biovolume")./AttuneTable.VolAnalyzed_ml; 
+Attune2EDI.redeuk_leq_2um_biovolume_concentration = AttuneTable.("Euk_without_PE_leq2um_biovolume")./AttuneTable.VolAnalyzed_ml; 
+Attune2EDI.redeuk_leq_3um_biovolume_concentration = AttuneTable.("Euk_without_PE_leq3um_biovolume")./AttuneTable.VolAnalyzed_ml;  
+Attune2EDI.redeuk_leq_5um_biovolume_concentration = AttuneTable.("Euk_without_PE_leq5um_biovolume")./AttuneTable.VolAnalyzed_ml;  
+Attune2EDI.redeuk_leq_10um_biovolume_concentration = AttuneTable.("Euk_without_PE_leq10um_biovolume")./AttuneTable.VolAnalyzed_ml; 
+Attune2EDI.redeuk_leq_20um_biovolume_concentration = AttuneTable.("Euk_without_PE_leq20um_biovolume")./AttuneTable.VolAnalyzed_ml; 
 
 
-Attune2EDI.syn_carbon = AttuneTable.("Syn_carbon")./AttuneTable.VolAnalyzed_ml./1000; %divide by 1000 to get micrograms per Liter
-Attune2EDI.redeuk_leq_2um_carbon = AttuneTable.("Euk_without_PE_leq2um_carbon")./AttuneTable.VolAnalyzed_ml./1000; %divide by 1000 to get micrograms per Liter
-Attune2EDI.redeuk_leq_3um_carbon = AttuneTable.("Euk_without_PE_leq3um_carbon")./AttuneTable.VolAnalyzed_ml./1000; 
-Attune2EDI.redeuk_leq_5um_carbon = AttuneTable.("Euk_without_PE_leq5um_carbon")./AttuneTable.VolAnalyzed_ml./1000;   
-Attune2EDI.redeuk_leq_10um_carbon = AttuneTable.("Euk_without_PE_leq10um_carbon")./AttuneTable.VolAnalyzed_ml./1000; 
-Attune2EDI.redeuk_leq_20um_carbon = AttuneTable.("Euk_without_PE_leq20um_carbon")./AttuneTable.VolAnalyzed_ml./1000;  
+Attune2EDI.syn_carbon_concentration = AttuneTable.("Syn_carbon")./AttuneTable.VolAnalyzed_ml./1000; %divide by 1000 to get micrograms per Liter
+Attune2EDI.redeuk_leq_2um_carbon_concentration = AttuneTable.("Euk_without_PE_leq2um_carbon")./AttuneTable.VolAnalyzed_ml./1000; %divide by 1000 to get micrograms per Liter
+Attune2EDI.redeuk_leq_3um_carbon_concentration = AttuneTable.("Euk_without_PE_leq3um_carbon")./AttuneTable.VolAnalyzed_ml./1000; 
+Attune2EDI.redeuk_leq_5um_carbon_concentration = AttuneTable.("Euk_without_PE_leq5um_carbon")./AttuneTable.VolAnalyzed_ml./1000;   
+Attune2EDI.redeuk_leq_10um_carbon_concentration = AttuneTable.("Euk_without_PE_leq10um_carbon")./AttuneTable.VolAnalyzed_ml./1000; 
+Attune2EDI.redeuk_leq_20um_carbon_concentration = AttuneTable.("Euk_without_PE_leq20um_carbon")./AttuneTable.VolAnalyzed_ml./1000;  
 
 
 Attune2EDI.volume_analyzed_ml = AttuneTable.VolAnalyzed_ml;
