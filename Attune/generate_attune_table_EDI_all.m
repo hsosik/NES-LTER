@@ -85,7 +85,7 @@ Attune2EDI.date_time_utc = datestr(AttuneTable.StartDate, 'yyyy-mm-dd HH:MM:SS')
 Attune2EDI.latitude = AttuneTable.lat;
 Attune2EDI.longitude = AttuneTable.lon;
 
-if AttuneTable.lon > 0; 
+if AttuneTable.lon > 180; 
     Attune2EDI.longitude = AttuneTable.lon - 360; 
 end
 
