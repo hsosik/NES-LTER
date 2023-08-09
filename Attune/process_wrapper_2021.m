@@ -35,32 +35,35 @@
 %basepath = '\\vdm\PublicData\EN668_Sosik\Sosik-provided_data\Attune\'; 
 
 %basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20180131_EN608\';
+%basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20220216_AT46\';
+%basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190512_RB1904\';
 
 function process_wrapper_2021(basepath)
 
 %% choose which steps to do (1 yes, 0 skip) and adjust inputs as necessary
+%it assigns these variables whether or not the step is running. 
 
 step1 = 0; %Generate FCSfileinfo
 
-step2 = 1; %make new class files
+step2 = 0; %make new class files
     dont_overwrite_volumes = 0; %change classes without changing volume estimates
-    assign_class_function = 'assign_class_EN688'; 
-    filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; 'test'; 'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Dilution"; "Filter config"; "Grazer"; "Cultures"; "cast"}; %needed for Step2
-    OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
+    assign_class_function = 'assign_class_AR29grazer'; 
+    filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead';  'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Filter config"; "Sample"; "Cultures"; "cast"; "test_27Apr2018_Group_day0_GF_F3"}; % "Dilution";'test'; needed for Step2
+    OD2setting = 'SSC'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
     
-    appendonly = 0; %set to 1 if we don't want to change any existing class files.
+    appendonly = 1; %set to 1 if we don't want to change any existing class files.
     
     makemovieasyougo = 0; %option to make things more efficient. 
     framemaker = 'make_movieframe_density';
     stepsize = 1; %controls resolution of movie
-    moviechannels = 'late'; %{'BL3-H', 'GL2-H', 'GL1-H', 'GL2-H'}; %parameter numbers for euk X euk Y synX and SynY polygons if framemaker is general
+    moviechannels = 'early'; %{'BL3-H', 'GL2-H', 'GL1-H', 'GL2-H'}; %parameter numbers for euk X euk Y synX and SynY polygons if framemaker is general
             %typically this is GL1-H for older cruises and GL2-H for new
     
 
-step3 = 1; %Assign beads to make beadstats table and bead plots
+step3 = 0; %Assign beads to make beadstats table and bead plots
     beadfiles2include = {'FCB_bead'};
-    beadtype = 'FCB';   
-    %check OD2setting above 
+    beadtype = 'FCB';   %'PT';%'PT';%
+    %check OD2setting above in step 2 settings
     
 step4 = 1; %set up calibration, only if OD2setting is 'GL1'
     SSCDIM = 'A'; %needed for Step 4 & 5, SSCDIM = 'A' or 'H'
@@ -68,7 +71,7 @@ step4 = 1; %set up calibration, only if OD2setting is 'GL1'
 step5 = 1; %apply calibration to add volume to class files 
     %Check SSCDIM above anpd OD2setting
     
-step6 = 1; %Generate attune table
+step6 = 1 ; %Generate attune table
 
 step7 = 0; %Make a movie out of class files after the fact. 
     %Check moviechannels, framemaker and stepsize above. 
@@ -122,7 +125,7 @@ if step3
     %First should be scattering channel, second chlorophyl 
 
    %process_beads_only(outpath, bead_ch_names, FCSfileinfo, beadfiles2include)
-   process_beads_PT_adjust_2(basepath, FCSfileinfo, beadfiles2include, beadtype, OD2setting)
+   process_beads_PT_adjust_2(basepath, FCSfileinfo, beadfiles2include, beadtype, OD2setting) %this line works for FCB bead
     
 end
 %% STEPS 4 - 5

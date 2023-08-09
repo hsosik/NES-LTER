@@ -29,7 +29,7 @@ Since our settings have been relatively steady for a while, it typically should 
 
 flags like "appendonly", "dont_overwrite_volumes", and "makemovieasyougo" can be adjusted based on whether you are redoing any of the steps for a cruise you have already processed or partially processed.
 
-filetype2exclude contains a list of strings that might be in filenames we don't want to include. You can always ad more to this list. 
+filetype2exclude contains a list of strings that might be in filenames we don't want to include. You can always add more to this list. 
 
 stepsize can be adjusted to make a movie that doesn't include every single file, but now that we have test_class_assignents.m, this isn't as necessary. 
 

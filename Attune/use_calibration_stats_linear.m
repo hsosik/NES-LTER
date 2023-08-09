@@ -177,6 +177,13 @@ for counti = 1:length(classlist)
         
     end
     
+    %special section for only AR29, used in step 5
+
+    if strmatch('\\sosiknas1\Lab_data\Attune\cruise_data\20180414_AR29\bead_calibrated\',outpath);
+        
+        %outpath == '\\sosiknas1\Lab_data\Attune\cruise_data\20180414_AR29\bead_calibrated\';
+        bead_value = 2.0904e3
+    end
     
     %now convert modified scatter_values to volumes & save results
     if DIM == 'A'

@@ -80,7 +80,7 @@ ax11 = subplot_tight(a1,a2,11,[ysp xsp]);
 mylim1 = [1e1 1.1e6 1e1 1.1e6];
 mylim2 = [1e1 1.1e5 1e1 1.1e6];
 
-%plot plot plot
+%plot plot plot EP: first subplot
 make_plot(ax1,npar_eukX,npar_eukY,mylim1)
 title(ax1, fcshdr.filename,'fontsize', 8, 'interpreter', 'none')
 if exist('bounds', 'var')
@@ -110,7 +110,8 @@ if QC_flag == 0
 end
 make_density_plot(ax6,npar_eukX,npar_eukY,mylim1)
 make_plot(ax7,11,15, mylim1)
-make_plot(ax8,17,18, mylim1)
+%make_plot(ax8,17,18, mylim1)
+make_plot(ax8, pe_chs(2)-1 , pe_chs(2), mylim1)
 if exist('bounds', 'var')
     line(ax8, xlim(ax8), xlim(ax8)*nonsynfactorA) %5
     line(ax8, xlim(ax8), xlim(ax8)*nonsynfactorB) %2.5e
@@ -151,7 +152,9 @@ make_legend
 
         %mycenters= {logspace(log10(mylim1(1)), log10(mylim1(2)), 40) logspace(log10(mylim1(3)), log10(mylim1(4)), 40)};        
         mycenters= {log10(mylim1(1)):.1:log10(mylim1(2)) log10(mylim1(3)):.1:log10(mylim1(4))};
+        if sum(class == 1)>10
         hist3(ax, [log10(fcsdat(class == 1,nparX)), log10(fcsdat(class == 1,nparY))], mycenters, 'CDataMode','auto', 'EdgeColor', 'none'); 
+        end;
         view(ax, 2)
         set(ax, 'ZScale', 'log')
         
