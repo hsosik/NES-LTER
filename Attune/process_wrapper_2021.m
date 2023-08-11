@@ -98,6 +98,31 @@ if ~exist(classpath, 'dir')
     mkdir(classpath)
 end
 
+%% Save variables for steps being used
+
+save([outpath '\Processing_variables.mat'], 'basepath')
+if step2
+    step2vars = {dont_overwrite_volumes, assign_class_function, filetype2exclude, OD2setting, appendonly, makemovieasyougo};
+    save([outpath '\Processing_variables.mat'], 'step2vars', '-append')
+end
+if step3
+    step3vars = {beadfiles2include, beadtpe, OD2setting};
+    save([outpath '\Processing_variables.mat'], 'step3vars', '-append')
+end
+if step4
+    step4vars = {SSCDIM}
+    save([outpath '\Processing_variables.mat'], 'step4vars', '-append')
+end
+if step5
+    step5vars = {SSCDIM, OD2setting}
+    save([outpath '\Processing_variables.mat'], 'step5vars', '-append')
+
+end
+if step7 | (step2 & makemovieasyougo) 
+    step7vars = {makemovieasyougo, framemeaker, moviechannels, stepsize};
+    save([outpath '\Processing_variables.mat'], 'step7vars', '-append')
+end
+
 %% STEP 1
 if step1
     [FCSfileinfo] = FCS_DateTimeList(fpath); 
