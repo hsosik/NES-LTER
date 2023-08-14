@@ -30,7 +30,6 @@
         %rate estimation. 
         % Also, this step standardizes environmental variable names so
         % tables can later be merged across cruises. 
-%10. Format table for EDI. 
 
 %Inputs: 
     %basepath is the full path to the cruise directory with FCS files
