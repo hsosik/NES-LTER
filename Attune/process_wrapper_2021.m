@@ -15,14 +15,22 @@
 %3. Assign beads to make beadstats and beadplots
         % generate beadplots amd beadstats.mat within bead_calibrated directory 
         % beadstats includes all relevant bead statistics and setup info
-%4. Apply calibration to add volume to class files 
+%4-5. Apply calibration to add volume to class files 
         % Get conversion for GL1 to SSC and then SSC to volume, save volume
         % values to Class files. 
-%5. Generate attune table
+%6. Generate attune table
         % Attune Table has final collection of filenames, volumes sampled, 
         % counts of different classes, and -- if volumes have been estimated- biovolumes. 
-%6. Make a movie
+%7. Make a movie
         % option to make a movie from an existing folder of class files 
+%8. Match attune table to underway data
+        % use rest api or a local spreadsheet to get environmnetal data 
+%9. Make standardized volume tables 
+        %discretize syn and euk data into volume bins useful for division
+        %rate estimation. 
+        % Also, this step standardizes environmental variable names so
+        % tables can later be merged across cruises. 
+%10. Format table for EDI. 
 
 %Inputs: 
     %basepath is the full path to the cruise directory with FCS files
@@ -47,16 +55,16 @@ step1 = 0; %Generate FCSfileinfo
 
 step2 = 0; %make new class files
     dont_overwrite_volumes = 0; %change classes without changing volume estimates
-    assign_class_function = 'assign_class_AR29grazer'; 
-    filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead';  'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Filter config"; "Sample"; "Cultures"; "cast"; "test_27Apr2018_Group_day0_GF_F3"}; % "Dilution";'test'; needed for Step2
-    OD2setting = 'SSC'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
+    assign_class_function = 'assign_class_HRS2303'; 
+    filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead';  'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Filter config"; "Cultures"; "cast"; "test"}; % "Dilution";'test'; needed for Step2
+    OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
     
-    appendonly = 1; %set to 1 if we don't want to change any existing class files.
+    appendonly = 0; %set to 1 if we don't want to change any existing class files.
     
-    makemovieasyougo = 0; %option to make things more efficient. 
+    makemovieasyougo = 1; %option to make things more efficient. 
     framemaker = 'make_movieframe_density';
     stepsize = 1; %controls resolution of movie
-    moviechannels = 'early'; %{'BL3-H', 'GL2-H', 'GL1-H', 'GL2-H'}; %parameter numbers for euk X euk Y synX and SynY polygons if framemaker is general
+    moviechannels = 'late'; %{'BL3-H', 'GL2-H', 'GL1-H', 'GL2-H'}; %parameter numbers for euk X euk Y synX and SynY polygons if framemaker is general
             %typically this is GL1-H for older cruises and GL2-H for new
     
 
@@ -65,18 +73,23 @@ step3 = 0; %Assign beads to make beadstats table and bead plots
     beadtype = 'FCB';   %'PT';%'PT';%
     %check OD2setting above in step 2 settings
     
-step4 = 1; %set up calibration, only if OD2setting is 'GL1'
+step4 = 0; %set up calibration, only if OD2setting is 'GL1'
     SSCDIM = 'A'; %needed for Step 4 & 5, SSCDIM = 'A' or 'H'
     
-step5 = 1; %apply calibration to add volume to class files 
+step5 = 0; %apply calibration to add volume to class files 
     %Check SSCDIM above anpd OD2setting
     
-step6 = 1 ; %Generate attune table
+step6 = 0 ; %Generate attune table
 
 step7 = 0; %Make a movie out of class files after the fact. 
     %Check moviechannels, framemaker and stepsize above. 
 
+step8 = 0; %match underway
+    uw_fullname = 'https://nes-lter-data.whoi.edu/api/underway/hrs2303.csv'; %path to find underway environmental data 
+
+step9 = 0; %make standardized volume table and make quality control plot
     
+
 %% Nothing below this section should change between cruises!
 % Everything should be adjustable by making a different assign class or
 % framemaker etc. 
@@ -106,7 +119,7 @@ if step2
     save([outpath '\Processing_variables.mat'], 'step2vars', '-append')
 end
 if step3
-    step3vars = {beadfiles2include, beadtpe, OD2setting};
+    step3vars = {beadfiles2include, beadtype, OD2setting};
     save([outpath '\Processing_variables.mat'], 'step3vars', '-append')
 end
 if step4
@@ -119,8 +132,12 @@ if step5
 
 end
 if step7 | (step2 & makemovieasyougo) 
-    step7vars = {makemovieasyougo, framemeaker, moviechannels, stepsize};
+    step7vars = {makemovieasyougo, framemaker, moviechannels, stepsize};
     save([outpath '\Processing_variables.mat'], 'step7vars', '-append')
+end
+if step8 
+    step8vars = {uw_fullname};
+    save([outpath '\Processing_variables.mat'], 'step8vars', '-append')
 end
 
 %% STEP 1
@@ -177,6 +194,21 @@ end
 % make a movie 
 if step7
     attune_lter_moviemaker(fpath, classpath, OD2setting, framemaker, moviechannels, stepsize)
+end
+
+%% STEP 8
+% match underway data 
+if step8
+    Attune_uw_match = match_Attune_underway_LTER([outpath 'AttuneTable.mat'],uw_fullname); 
+end
+
+
+%% STEP 9
+% make standardized volume tables for division rate estimates and quality
+% control 
+if step9
+    get_cruise_voldists_fromEDItable2(basepath)
+    Plot_Voldists_function(basepath, outpath)
 end
 
 end

@@ -1,8 +1,8 @@
 
 %test class assignments for a cruise WITHOUT overwriting class data 
 
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20220806_EN688\'; 
-assign_class_function = 'assign_class_EN688'; 
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20230429_HRS2303'; 
+assign_class_function = 'assign_class_HRS2303'; 
 
 filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; '(lab test)'; 'test';'Dockwater'; 'Daily'; 'Rinses'; 'discrete'; "Filter config"; "Grazer"; "SFD_AR29_Grazer"; "Cultures";}; %needed for Step2
 OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
@@ -50,7 +50,7 @@ end
 
     length(filelist)
     %now go through files of interest, assign classes, and save results
-    for count = 5500:stepsize:length(filelist)
+    for count = 1:stepsize:length(filelist)
         pause(.02)
          if ~rem(count,10)
             disp([num2str(count) ' of ' num2str(length(filelist))])
@@ -77,5 +77,4 @@ end
      
 
             set(gcf, 'position', [2.1483e+03 -187 905.3333 590.6667])
-pause
     end

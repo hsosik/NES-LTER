@@ -40,7 +40,7 @@ clear temp
 filelist = regexprep(classfilelist,'mat', 'fcs'); 
 
 % initialize movie output
-v = VideoWriter([classpath 'Attune_cyto_vid_new.avi']); 
+v = VideoWriter([classpath 'Attune_cyto_vid.avi']); 
 v.FrameRate = 10; 
 open(v)
 

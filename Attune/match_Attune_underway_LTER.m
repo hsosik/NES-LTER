@@ -15,12 +15,53 @@ function Attune_uw_match = match_Attune_underway_LTER(AttuneTable_fullname,uw_fu
 %   AttuneTable_fullname = '\\sosiknas1\Lab_data\Attune\cruise_data\20200201_EN649\Summary\AttuneTable';
 %   Attune_uw_match = match_Attune_underway_LTER(AttuneTable_fullname,uw_fullname);
 
+% uw_fullname = '\\sosiknas1\Lab_data\Attune\cruise_data\20220216_AT46\at46_underway.csv'; 
 load( AttuneTable_fullname )
 
-if strncmp ('http', uw_fullname, 4) %case for API 
+if contains (uw_fullname, 'underway/ar') %Armstrong cruises don't import correctly using normal strat
+    websave([AttuneTable_fullname(1:end-15) '\underway.csv'], uw_fullname)
+    opts = delimitedTextImportOptions("NumVariables", 38);
+    opts.DataLines = [1, Inf];
+    opts.Delimiter = [","];
+    opts.VariableNames = ["date", "dec_lat", "dec_lon", "spd", "hdt", "cog", "sog", "wxtp_ta", "wxts_ta", "wxtp_pa", "wxts_pa", "wxtp_ri", "wxts_ri", "wxtp_rc", "wxts_rc", "wxtp_dm", "wxts_dm", "wxtp_sm", "wxts_sm", "wxtp_ua", "wxts_ua", "wxtp_ts", "wxts_ts", "wxtp_td", "wxts_td", "barom_p", "barom_s", "rad_sw", "rad_lw", "par", "sbe45s", "sbe48t", "flr", "flow", "ssvdslog", "depth12", "depth35", "em122"];
+    opts.VariableTypes = ["string", "double", "double", "string", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "double", "string", "double", "double", "string", "string", "string"];
+    uw = readtable([AttuneTable_fullname(1:end-15) '\underway.csv'], opts);
+    dt = uw.date;
+    for i = 1:length(dt)
+        stupiddate = dt{i}; 
+        uw_mdate(i) = datetime(stupiddate(1:19), 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
+        %uw_mdate(i) = datetime(stupiddate, 'InputFormat', 'MM/dd/yyyy HH:mm');
+    end
+     uw_mdate = datenum(uw_mdate); 
+elseif contains (uw_fullname, 'underway/hrs') %neither does HRS cruise
+    websave([AttuneTable_fullname(1:end-15) '\underway.csv'], uw_fullname)
+    uw = readtable([AttuneTable_fullname(1:end-15) '\underway.csv'], 'Delimiter',',');
+    dt = uw.date;
+    for i = 1:length(dt)
+        stupiddate = dt{i}; 
+        uw_mdate(i) = datetime(stupiddate(1:19), 'InputFormat', 'yyyy-MM-dd HH:mm:ss');
+        %uw_mdate(i) = datetime(stupiddate, 'InputFormat', 'MM/dd/yyyy HH:mm');
+    end
+     uw_mdate = datenum(uw_mdate); 
+elseif contains (uw_fullname, 'at46')
+    %atlantis cruise
+    uw = readtable(uw_fullname,'Delimiter',',');
+    dt = datetime(uw.date, 'InputFormat', 'yyyy-MM-dd HH:mm:ss.SSSSSS+00:00');
+    uw_mdate = datenum(dt);
+elseif strncmp ('http', uw_fullname, 4) %case for API 
     uw = webread(uw_fullname);
     dt = datetime(uw.date, 'InputFormat', 'yyyy-MM-dd HH:mm:ss+00:00');
     uw_mdate = datenum(dt);
+elseif contains(uw_fullname, '.mat') 
+    uw = load(uw_fullname);
+    uw = uw.uw; 
+    uw_mdate = uw.matdate;
+    %hrs = string(uw.TIME_GMT); 
+    %for i = 1:length(hrs)
+    %    hr = hrs{i}; 
+    %    stupiddate = [uw.DATE_GMT{i} ' ' hr(1:8)]; 
+    %    uw_mdate(i) = datetime(stupiddate, 'InputFormat', 'yyyy/MM/dd HH:mm:ss');
+    %end
 else % works for R/V Endeavor cruise files
     fid = fopen(uw_fullname);
     t = fgetl(fid); fclose(fid);
@@ -40,15 +81,14 @@ end
 
 uw_match = uw(match_ind,:);
 Attune_uw_match = [AttuneTable uw_match];
-%good = find(AttuneTable.QC_flowrate_std<2 & AttuneTable.QC_flowrate_median<1.5);
+
 
 [AttuneTable_path, AttuneTable_file] = fileparts(AttuneTable_fullname); 
 
 outFullFileName = fullfile(AttuneTable_path,[AttuneTable_file '_uw_match']);
-save(outFullFileName, 'Attune_uw_match')%, 'good')
+save(outFullFileName, 'Attune_uw_match')
 disp('results saved: ') 
 disp(outFullFileName)
 disp(['Max time difference in minutes: ' num2str(max(tdiff)*24*60)])
 
 end
-
