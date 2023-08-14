@@ -38,16 +38,23 @@ SSCDIM refers to the side scattering measurement we want to use for size calibra
 Beadtype will always be "FCB". That variabile is a relic of me trying to use the Performance test beads when FCB beads weren't available. 
 
 
+*** 
+
+Once the wrapper has been run for steps 1-7 (or 1-6 with makemovieasyougo), all particles have been assigned a class and volume. 
+
+Step 8 is match attune samples to underway environmental meansurements.
+For new cruises, and new ships especially, you should check that underway data is being imported correctly into matlab before proceeding. 
+
+Usually the restapi address works well as the input: 
+e.g.  uw_fullname = 'https://nes-lter-data.whoi.edu/api/underway/en608.csv'
+But sometimes you need to specificy the path to a local csv 
+e.g.  uw_fullname = '\\sosiknas1\Lab_data\LTER\20200201_EN649\scs\proc\cruise\Data60Sec_Cruise_20200201-004500.csv';
 
 
+Step 9 creates AttuneVolTable.mat 
+This step discretizes the particles by volumes into the volume bins used for model fitting and division rate estiamtion. 
+This is also the function where we parse the underway data names to get single standaradized columns for measurements of latitude, longitude, salinity and other underway data of interest based on Stace's recommendations of which variabiles were best. 
 
-Once the wrapper has been run for steps 1-7 (or 1-6 with makemovieasyougo), 
-run match_Attune_underway_LTER.m  to combine Attune table with underway data from REST API 
-
-***************
-***Emily can probably skip this part for now... Bethany used it as described here
-Because I was interested in having size distributions for Syn and Euks, I then ran get_cruise_voldists_fromEDItable2.m to generate AttuneVolTable. 
-This script also includes parsing of the underway data names to get a single measurements of latitude, longitude, salinity and other underway data of interest based on Stace's recommendations of which variabiles were best. 
 Her recommendations are here: 
 
 SAMOS database has Armstrong intermediate (not research) products in netcdf with quality-assessment:
@@ -60,10 +67,18 @@ R2R post-navigation products available for EN and AR (expect about a year or so 
     https://www.rvdata.us/search/cruise/EN649
 
 Last is to check each cruise ship-provided data README for notes.
+
+
+When new ships are used for future cruises, we may need to add cases to these parsing steps. For example, HRS2303 has some weird variable names. 
+
+
 ***************
 
 
 Finally, I ran generate_attune_table_EDI.m to cut AttuneVolTable down to just the files and variables we share with EDI. 
+
+This script has the depth values chosen for each vessel, so we will need to add values if new ships are added 
+
 
 
 Questions from Emily 7 Dec 2022:
@@ -87,6 +102,4 @@ Basically put time with matlab dates at the top, and then phases around sections
 
 -Final steps after process wrapper? Should I do all of them. Need the EDI table!
 -Going to revisit this after current EDI submission
-
-
 
