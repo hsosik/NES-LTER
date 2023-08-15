@@ -14,9 +14,9 @@
 %adding mean fluorescence
 
 function get_cruise_voldists_fromEDItable2(basepath)
-
+%these are the bins that are made, and it saves them.
 euk_volbins = [0 2.^[-5:1/5:8]]; % for euks 
-syn_volbins = [0 2.^[-5:0.125:2]]; 
+syn_volbins = [0 2.^[-5:0.125:2]]; %
 
 fname = dir([basepath '\bead_calibrated\Attune*uw_match.mat']);
 
@@ -36,12 +36,12 @@ fname = fname.name;
     cruisename = cruisename{2}; 
 
     %First case where attune tables are old, set quality flag to 0 if bad, 1 if good 
-    Exist_Column = strcmp('QC_flowrate_median',T.Properties.VariableNames); 
-    if Exist_Column(Exist_Column==1) 
-       T.QC_flag = logical((T.QC_flowrate_median<2 & T.QC_flowrate_std<1.5)); 
-    else
-        T.QC_flag = logical(T.QC_flag); 
-    end
+%     Exist_Column = strcmp('QC_flowrate_median',T.Properties.VariableNames); 
+%     if Exist_Column(Exist_Column==1) 
+%        T.QC_flag = logical((T.QC_flowrate_median<2 & T.QC_flowrate_std<1.5)); 
+%     else
+%         T.QC_flag = logical(T.QC_flag); 
+%     end
     %now remove low quality files!
     T = T(T.QC_flag == 1, :);
     

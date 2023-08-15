@@ -204,7 +204,8 @@ end
 
 %% STEP 9
 % make standardized volume tables for division rate estimates and quality
-% control 
+% control %makes products that Bethany used for all of her Thesis work. 
+% Also standardizes the names of the environmental data from step 8. 
 if step9
     get_cruise_voldists_fromEDItable2(basepath)
     Plot_Voldists_function(basepath, outpath)

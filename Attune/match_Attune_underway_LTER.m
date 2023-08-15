@@ -48,7 +48,7 @@ elseif contains (uw_fullname, 'at46')
     uw = readtable(uw_fullname,'Delimiter',',');
     dt = datetime(uw.date, 'InputFormat', 'yyyy-MM-dd HH:mm:ss.SSSSSS+00:00');
     uw_mdate = datenum(dt);
-elseif strncmp ('http', uw_fullname, 4) %case for API 
+elseif strncmp ('http', uw_fullname, 4) %case for API this line is for standard case where all is working. 
     uw = webread(uw_fullname);
     dt = datetime(uw.date, 'InputFormat', 'yyyy-MM-dd HH:mm:ss+00:00');
     uw_mdate = datenum(dt);
