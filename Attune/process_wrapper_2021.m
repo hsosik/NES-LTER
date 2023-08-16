@@ -50,17 +50,17 @@ function process_wrapper_2021(basepath)
 %% choose which steps to do (1 yes, 0 skip) and adjust inputs as necessary
 %it assigns these variables whether or not the step is running. 
 
-step1 = 0; %Generate FCSfileinfo
+step1 = 1; %Generate FCSfileinfo
 
 step2 = 0; %make new class files
     dont_overwrite_volumes = 0; %change classes without changing volume estimates
-    assign_class_function = 'assign_class_HRS2303'; 
+    assign_class_function = 'assign_class_EN706'; 
     filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead';  'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Filter config"; "Cultures"; "cast"; "test"}; % "Dilution";'test'; needed for Step2
     OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
     
     appendonly = 0; %set to 1 if we don't want to change any existing class files.
     
-    makemovieasyougo = 1; %option to make things more efficient. 
+    makemovieasyougo = 0; %option to make things more efficient. 
     framemaker = 'make_movieframe_density';
     stepsize = 1; %controls resolution of movie
     moviechannels = 'late'; %{'BL3-H', 'GL2-H', 'GL1-H', 'GL2-H'}; %parameter numbers for euk X euk Y synX and SynY polygons if framemaker is general
