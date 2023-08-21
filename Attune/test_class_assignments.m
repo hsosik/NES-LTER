@@ -1,8 +1,8 @@
 
 %test class assignments for a cruise WITHOUT overwriting class data 
 
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20230429_HRS2303'; 
-assign_class_function = 'assign_class_HRS2303'; 
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20230807_EN706'; 
+assign_class_function = 'assign_class_EN706'; 
 
 filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; '(lab test)'; 'test';'Dockwater'; 'Daily'; 'Rinses'; 'discrete'; "Filter config"; "Grazer"; "SFD_AR29_Grazer"; "Cultures";}; %needed for Step2
 OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
