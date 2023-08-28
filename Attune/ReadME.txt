@@ -72,8 +72,7 @@ Last is to check each cruise ship-provided data README for notes.
 When new ships are used for future cruises, we may need to add cases to these parsing steps. For example, HRS2303 has some weird variable names. 
 
 
-***************
-
+************
 
 Finally, I ran generate_attune_table_EDI.m to cut AttuneVolTable down to just the files and variables we share with EDI. 
 
