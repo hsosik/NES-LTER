@@ -4,11 +4,11 @@
 basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20230807_EN706'; 
 assign_class_function = 'assign_class_EN706'; 
 
-filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; '(lab test)'; 'test';'Dockwater'; 'Daily'; 'Rinses'; 'discrete'; "Filter config"; "Grazer"; "SFD_AR29_Grazer"; "Cultures";}; %needed for Step2
+filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; '(lab test)'; 'test';'Dockwater'; 'Daily'; 'Rinses'; 'discrete'; "Filter config"; "Grazer"; "SFD_AR29_Grazer"; "Cultures"; "08Aug2023"}; %needed for Step2
 OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
 
 framemaker = 'make_movieframe_density';
-stepsize = 35; %controls resolution of movie
+stepsize = 25; %controls resolution of movie
 moviechannels = 'late'; 
     
 
