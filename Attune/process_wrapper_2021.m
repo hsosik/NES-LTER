@@ -50,12 +50,12 @@ function process_wrapper_2021(basepath)
 %% choose which steps to do (1 yes, 0 skip) and adjust inputs as necessary
 %it assigns these variables whether or not the step is running. 
 
-step1 = 1; %Generate FCSfileinfo
+step1 = 0; %Generate FCSfileinfo
 
-step2 = 0; %make new class files
+step2 = 1; %make new class files
     dont_overwrite_volumes = 0; %change classes without changing volume estimates
     assign_class_function = 'assign_class_EN706'; 
-    filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead';  'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Filter config"; "Cultures"; "cast"; "test"}; % "Dilution";'test'; needed for Step2
+    filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead';  'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Filter config"; "Cultures"; "cast"; "test"; "08Aug2023"}; % "Dilution";'test'; needed for Step2
     OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
     
     appendonly = 0; %set to 1 if we don't want to change any existing class files.
@@ -67,18 +67,18 @@ step2 = 0; %make new class files
             %typically this is GL1-H for older cruises and GL2-H for new
     
 
-step3 = 0; %Assign beads to make beadstats table and bead plots
+step3 = 1; %Assign beads to make beadstats table and bead plots
     beadfiles2include = {'FCB_bead'};
     beadtype = 'FCB';   %'PT';%'PT';%
     %check OD2setting above in step 2 settings
     
-step4 = 0; %set up calibration, only if OD2setting is 'GL1'
+step4 = 1; %set up calibration, only if OD2setting is 'GL1'
     SSCDIM = 'A'; %needed for Step 4 & 5, SSCDIM = 'A' or 'H'
     
-step5 = 0; %apply calibration to add volume to class files 
+step5 = 1; %apply calibration to add volume to class files 
     %Check SSCDIM above anpd OD2setting
     
-step6 = 0 ; %Generate attune table
+step6 = 1 ; %Generate attune table
 
 step7 = 0; %Make a movie out of class files after the fact. 
     %Check moviechannels, framemaker and stepsize above. 

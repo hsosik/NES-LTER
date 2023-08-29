@@ -72,12 +72,40 @@ Last is to check each cruise ship-provided data README for notes.
 When new ships are used for future cruises, we may need to add cases to these parsing steps. For example, HRS2303 has some weird variable names. 
 
 
-***************
-
+************
 
 Finally, I ran generate_attune_table_EDI.m to cut AttuneVolTable down to just the files and variables we share with EDI. 
 
 This script has the depth values chosen for each vessel, so we will need to add values if new ships are added 
+
+
+Emily's notes on steps 8-9 August 2023:
+
+Step 8 in the process wrapper 
+
+With a new cruise,
+load in the csv and see if you have all the right columns and whether they have names
+The two things that can happen are you have maybe 2 columns smooshed into one column, wrong delimiters
+Or, for some reason no headers, or headers ended up in first row of data.
+
+Once you figure out what commands you need in matlab to read the table correctly, you can put them in another else if in match_Attune_underway_LTER.m
+
+Some of them might be redundant, but just made a new case instead of exploring.
+
+Goal is to have any of the measurements int he table imported into matlab and to have the dates in a readable format. 
+
+Date function in matlab now seems pretty good and you can decide what format you want things in etc, 
+Our BEthany Attune script currently does both.
+
+For cruises that don't have a regular API read it saves an underway.mat in the Attune data area for that cruise.
+
+In Step 9, 
+get_cruise_voldists_fromEDItable2.m
+Starting at line 54 parsing names from tables.
+Stace gave input on which variables to use, for example furuno...
+
+
+-----------------------------------------
 
 
 
@@ -101,5 +129,34 @@ Basically put time with matlab dates at the top, and then phases around sections
 -Keeping track of what’s done
 
 -Final steps after process wrapper? Should I do all of them. Need the EDI table!
--Going to revisit this after current EDI submission
+-Going to revisit this after current EDI submission - this was resolved in steps 8-9 added by Bethany
+
+
+---------------------------------
+
+
+Notes from Summer 2023 on Grazer processing special case:
+
+Values that we use in calibration are in the individual class files
+
+line 180 ish in use calibration stats linear, we actually
+use the bead value and could adjust manually there. 
+
+use calibration looks at the hv setting in the datafile, and uses bead
+value from FCB bead runs with same hv setting. Looks like it
+is already working for Ron Brown.
+
+Skip process wrapper step three for AR29
+
+scatter_value comes from what SSC channel and dimension,
+
+Take home messages:
+use calibration stats linear already acounts for if there was
+a change in hv settings, AND we added a line around line 182
+for if you just want to set the bead value to a specific
+value. 
+
+Problem with RB1904 was that the settings in step 2 are 
+also read in the other steps and maybe I had not left
+OD2 setting as 'none'
 
