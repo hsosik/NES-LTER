@@ -72,7 +72,8 @@ Last is to check each cruise ship-provided data README for notes.
 When new ships are used for future cruises, we may need to add cases to these parsing steps. For example, HRS2303 has some weird variable names. 
 
 
-************
+***************
+
 
 Finally, I ran generate_attune_table_EDI.m to cut AttuneVolTable down to just the files and variables we share with EDI. 
 
@@ -204,7 +205,7 @@ Once you figure out what commands you need in matlab to read the table correctly
 
 Some of them might be redundant, but just made a new case instead of exploring.
 
-Goal is to have any of the measurements int he table imported into matlab and to have the dates in a readable format. 
+Goal is to have any of the measurements in the table imported into matlab and to have the dates in a readable format. 
 
 Date function in matlab now seems pretty good and you can decide what format you want things in etc, 
 Our BEthany Attune script currently does both.

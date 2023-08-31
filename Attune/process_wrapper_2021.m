@@ -52,7 +52,7 @@ function process_wrapper_2021(basepath)
 
 step1 = 0; %Generate FCSfileinfo
 
-step2 = 1; %make new class files
+step2 = 0; %make new class files
     dont_overwrite_volumes = 0; %change classes without changing volume estimates
     assign_class_function = 'assign_class_EN706'; 
     filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead';  'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Filter config"; "Cultures"; "cast"; "test"; "08Aug2023"}; % "Dilution";'test'; needed for Step2
@@ -67,24 +67,24 @@ step2 = 1; %make new class files
             %typically this is GL1-H for older cruises and GL2-H for new
     
 
-step3 = 1; %Assign beads to make beadstats table and bead plots
+step3 = 0; %Assign beads to make beadstats table and bead plots
     beadfiles2include = {'FCB_bead'};
     beadtype = 'FCB';   %'PT';%'PT';%
     %check OD2setting above in step 2 settings
     
-step4 = 1; %set up calibration, only if OD2setting is 'GL1'
+step4 = 0; %set up calibration, only if OD2setting is 'GL1'
     SSCDIM = 'A'; %needed for Step 4 & 5, SSCDIM = 'A' or 'H'
     
-step5 = 1; %apply calibration to add volume to class files 
+step5 = 0; %apply calibration to add volume to class files 
     %Check SSCDIM above anpd OD2setting
     
-step6 = 1 ; %Generate attune table
+step6 = 0 ; %Generate attune table
 
 step7 = 0; %Make a movie out of class files after the fact. 
     %Check moviechannels, framemaker and stepsize above. 
 
-step8 = 0; %match underway
-    uw_fullname = 'https://nes-lter-data.whoi.edu/api/underway/hrs2303.csv'; %path to find underway environmental data 
+step8 = 1; %match underway
+    uw_fullname = 'https://nes-lter-data.whoi.edu/api/underway/en706.csv'; %path to find underway environmental data 
 
 step9 = 0; %make standardized volume table and make quality control plot
     
