@@ -72,6 +72,8 @@ end
 
 Nt1=Nt1';
 Nt2=Nt2';
+Vt1=Nt1./sum(Nt1+Nt2);
+Vt2=Nt2./sum(Nt1+Nt2);
 
 if ~isnan(Nt2)
 simdist(:,1)=(Nt1+Nt2)./sum(Nt1+Nt2);  %Only if starting hour has no zeros!
@@ -84,7 +86,9 @@ for t=1:q
     Nt1(:,t+1)=B_day1(:,:,t)*Nt1(:,t);           %project forward with the numbers
     Nt2(:,t+1)=B_day2(:,:,t)*Nt2(:,t);
 
-    
+    Vt1(:,t+1)=Nt1(:,t+1)./sum(Nt1(:,t+1)+Nt2(:,t+1));
+    Vt2(:,t+1)=Nt2(:,t+1)./sum(Nt1(:,t+1)+Nt2(:,t+1));
+
     if ~isnan(Nt2)
     simdist(:,t+1)=(Nt1(:,t+1)+Nt2(:,t+1))./sum(Nt1(:,t+1)+Nt2(:,t+1)); %normalize to get distribution for likelihood
     else
