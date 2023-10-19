@@ -57,3 +57,5 @@ This script generates:
 
 
 3. quality control step: "compare_filenames_to_samplelog.m"  
+
+To adjust sample names, add them to the list \\sosiknas1\Lab_data\Attune\cruise_data\label_lookup_table_Attune_cruise.csv
