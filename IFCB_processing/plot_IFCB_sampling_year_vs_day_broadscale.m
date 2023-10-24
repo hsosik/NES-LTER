@@ -42,3 +42,5 @@ ylim([1 365])
 datetick('y', 'm', 'keeplimits')
 xlim([min(d(:,1))-.2 max(d(:,1))+.2])
 set(gcf, 'position', [645 180 800 180])
+
+unique(metaT.cruise(~ismissing(metaT.cruise)))
