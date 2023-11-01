@@ -12,26 +12,28 @@ clear all
 fclose('all')
 
 % % Manually choose cruise to process
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\';
-cruisename = 'TN368';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20210716_EN668\preserved\';
+cruisename = 'EN668';
 
-hierarchical_gates = 'True';  %set to 'True' or 'False'; 
+hierarchical_gates = 'False';  %set to 'True' or 'False'; 
 
 %%
-restpath = '\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
+%restpath = '\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
 %'\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv';
 %'\\sosiknas1\Lab_data\OTZ\20200311_AR43\ctd\ar43_ctd_bottles.csv';
 % '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\EXPORTS2021_SDG2105_BottleFile_R0_20210720T124833.csv';
 %
 %'\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
-% 'https://nes-lter-data.whoi.edu/api/ctd/en644/';
+restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en668/';
 
+%only relevat elog  path if discrete underway or bucket samples were taken,
+%their position is from the elog
 elogpath = '';%'\\sosiknas1\Lab_data\LTER\20201013_EN657\eLog\R2R_ELOG_EN657_FINAL_EVENTLOG_20201018_134037.csv'; %set to '' if there are no discrete underway samples 
-%
+% uw_fullname also only needed if discret UW or bucket samples were taken
 uw_fullname = ''; %'https://nes-lter-data.whoi.edu/api/underway/en657.csv';
 
 
-Step1 = 0; 
+Step1 = 1; %Set step1 ==1 and step5only =0 if starting from the beginning. 
 Step5only = 0; 
 
 %% Set up 
@@ -58,7 +60,7 @@ if ~Step5only
 
 if Step1
 
-filetype2exclude = {'Rinses', 'skip', 'xxx', 'Sample(', 'qwater';}; 
+filetype2exclude = {'Rinses', 'skip', 'xxx', 'qwater';}; % 'Sample(',
 beadfiles2include = {'FCB_bead'};
 
 %look at files in FCS folder

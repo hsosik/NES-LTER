@@ -51,7 +51,8 @@ ylabel('Cell Volume (\mum^{3})')
 set(gca, 'XLim', ax.XLim)
 
 subplot(4,2,5)
-plot(AttuneVolTable.StartDate, AttuneVolTable.rad_sw, '.k')
+%plot(AttuneVolTable.StartDate, AttuneVolTable.rad_sw, '.k')
+plot(AttuneVolTable.StartDate, AttuneVolTable.rad2_sw, '.k')
 ylabel('Rad SW')
 set(gca, 'XLim', ax.XLim)
 

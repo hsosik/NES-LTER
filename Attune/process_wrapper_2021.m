@@ -83,10 +83,10 @@ step6 = 0 ; %Generate attune table
 step7 = 0; %Make a movie out of class files after the fact. 
     %Check moviechannels, framemaker and stepsize above. 
 
-step8 = 1; %match underway
+step8 = 0; %match underway
     uw_fullname = 'https://nes-lter-data.whoi.edu/api/underway/en706.csv'; %path to find underway environmental data 
 
-step9 = 0; %make standardized volume table and make quality control plot
+step9 = 1; %make standardized volume table and make quality control plot
     
 
 %% Nothing below this section should change between cruises!
