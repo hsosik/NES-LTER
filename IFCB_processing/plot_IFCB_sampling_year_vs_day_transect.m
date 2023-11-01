@@ -9,12 +9,10 @@ myreadtable = @(filename)readtable(filename, opts);
 metaT = webread('https://ifcb-data.whoi.edu/api/export_metadata/NESLTER_transect', weboptions('Timeout', 60, 'ContentReader', myreadtable));
   
 mdate = datenum(metaT.sample_time, 'yyyy-mm-dd HH:MM:ss+00:00');
-ind = strmatch('underway', metaT.sample_type);
-%fix this later if want to include May 2017 cruise 
-%ind2 = strmatch(' ', char(metaT.sample_type));
-%ind = [ind; ind2]; clear ind2
+ind = find(strcmp(metaT.sample_type, 'underway') | ismissing(metaT.sample_type));
 mdate = mdate(ind);
-
+%FUDGE for AR77 until data uploaded
+mdate = [mdate; datenum(2023,10,11:16)'];
 %%
 %case to include SPIROPA north of 39.5 latitude
 opts = delimitedTextImportOptions("NumVariables", 20);
@@ -47,3 +45,4 @@ ylim([min(d(:,1))-.2 max(d(:,1))+.2])
 set(gca, 'ydir', 'rev', 'ytick', min(d(:,1)):max(d(:,1)))
 set(gcf, 'position', [550 200 300 340])
 
+unique(metaT.cruise(~ismissing(metaT.cruise)))
