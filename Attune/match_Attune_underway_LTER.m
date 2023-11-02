@@ -44,7 +44,7 @@ elseif strncmp ('http', uw_fullname, 4) %case for API this line is for standard 
         %uw_mdate(i) = datetime(stupiddate, 'InputFormat', 'MM/dd/yyyy HH:mm');
     end
      uw_mdate = datenum(uw_mdate); 
-elseif contains (uw_fullname, 'at46')
+elseif contains (uw_fullname, {'at46' 'ar43'})
     %atlantis cruise
     uw = readtable(uw_fullname,'Delimiter',',');
     dt = datetime(uw.date, 'InputFormat', 'yyyy-MM-dd HH:mm:ss.SSSSSS+00:00');
