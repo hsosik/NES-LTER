@@ -6,7 +6,7 @@ function [] = generate_attune_table_EDI_temp_EP(Attunetablepath)
 Attune = load([Attunetablepath filesep 'AttuneVolTable.mat']);
 AttuneT = load([Attunetablepath filesep 'AttuneTable.mat']);
 
-cruiseStr = Attunetablepath(50:end-16);
+cruiseStr = Attunetablepath(50:end-17);
  if startsWith(cruiseStr, 'EN') 
      depth = 5; %5 meters
  elseif startsWith(cruiseStr, 'AR')
