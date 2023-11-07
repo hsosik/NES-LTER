@@ -54,7 +54,7 @@ step1 = 0; %Generate FCSfileinfo
 
 step2 = 0; %make new class files
     dont_overwrite_volumes = 0; %change classes without changing volume estimates
-    assign_class_function = 'assign_class_EN706'; 
+    assign_class_function = 'assign_class_AR43'; 
     filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead';  'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Filter config"; "Cultures"; "cast"; "test"; "08Aug2023"}; % "Dilution";'test'; needed for Step2
     OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
     
@@ -84,7 +84,7 @@ step7 = 0; %Make a movie out of class files after the fact.
     %Check moviechannels, framemaker and stepsize above. 
 
 step8 = 0; %match underway
-    uw_fullname = 'https://nes-lter-data.whoi.edu/api/underway/en706.csv'; %path to find underway environmental data 
+    uw_fullname = 'https://nes-lter-data.whoi.edu/api/underway/en688.csv'; %path to find underway environmental data 
 
 step9 = 1; %make standardized volume table and make quality control plot
     

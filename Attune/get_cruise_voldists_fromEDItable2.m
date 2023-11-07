@@ -220,6 +220,8 @@ fname = fname.name;
         end
 
         T.rad_sw = rad_sw; 
+        end
+       
 
 
 %% Now go through all class files and get volume data 
