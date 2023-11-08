@@ -12,10 +12,10 @@ clear all
 fclose('all')
 
 % % Manually choose cruise to process
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20210716_EN668\preserved\';
-cruisename = 'EN668';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20220806_EN688\preserved\';
+cruisename = 'EN688';
 
-hierarchical_gates = 'False';  %set to 'True' or 'False'; 
+hierarchical_gates = 'True';  %set to 'True' or 'False'; 
 
 %%
 %restpath = '\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
@@ -24,7 +24,7 @@ hierarchical_gates = 'False';  %set to 'True' or 'False';
 % '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\EXPORTS2021_SDG2105_BottleFile_R0_20210720T124833.csv';
 %
 %'\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
-restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en668/';
+restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en688/';
 
 %only relevat elog  path if discrete underway or bucket samples were taken,
 %their position is from the elog
@@ -33,8 +33,15 @@ elogpath = '';%'\\sosiknas1\Lab_data\LTER\20201013_EN657\eLog\R2R_ELOG_EN657_FIN
 uw_fullname = ''; %'https://nes-lter-data.whoi.edu/api/underway/en657.csv';
 
 
-Step1 = 1; %Set step1 ==1 and step5only =0 if starting from the beginning. 
-Step5only = 0; 
+%Set all steps to 1 if starting from begiining 
+Step1 = 0; %make FCSList
+Step2 = 0; %go look at AWS files to find gate assignments 
+Step3 = 0; % add metadata to gated table
+Step4 = 0; % classify using gate_table
+Step5 = 0; %size calibrate and create class files 
+Step6 = 1; %convert gated table to Summary table 
+Step7 = 1; %Reformat Summary Table to have EDI headers
+
 
 %% Set up 
 
@@ -53,8 +60,6 @@ end
 
 
 save([outpath '\Processing_variables.mat'])
-%%
-if ~Step5only
 
 %% Step 1 - make FCSlist
 
@@ -166,12 +171,13 @@ FCSList.trigger_hv2 = trigger_hv2;
 
 save([outpath 'FCSList.mat'], 'FCSList')
 
-clearvars -except basepath restpath fpath outpath classpath awspath cruisename elogpath uw_fullname cruisename hierarchical_gates Step5only
+clearvars -except basepath restpath fpath outpath classpath awspath cruisename elogpath uw_fullname cruisename hierarchical_gates Step1 Step2 Step3 Step4 Step5 Step6 Step7
 
 end
 
 %% Step 2 - go look at AWS files to find gate assignments 
 
+if Step2
 T = load([outpath '\FCSlist.mat']); 
 T = T.FCSList; 
 gated_table = T; 
@@ -268,10 +274,13 @@ for i = 1:height(T)
 
     save([outpath 'Gated_Table.mat'], 'gated_table', 'no_aws_files', 'hierarchical_gates')
 
-clearvars -except basepath restpath fpath outpath classpath awspath cruisename elogpath uw_fullname cruisename hierarchical_gates Step5only
+clearvars -except basepath restpath fpath outpath classpath awspath cruisename elogpath uw_fullname cruisename hierarchical_gates Step1 Step2 Step3 Step4 Step5 Step6 Step7
 
+end
 
 %% Step 3 - add metadata to gated table
+
+if Step3
 
 T = load([outpath '\FCSlist.mat']);
 T = T.FCSList;
@@ -609,15 +618,19 @@ no_aws_files = G.no_aws_files;
 %overwrite saved gated table with metadata
 save([outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'hierarchical_gates'); 
 
-clearvars -except basepath restpath fpath outpath classpath awspath cruisename elogpath uw_fullname  hierarchical_gates Step5only
+clearvars -except basepath restpath fpath outpath classpath awspath cruisename elogpath uw_fullname  hierarchical_gates Step1 Step2 Step3 Step4 Step5 Step6 Step7
 
+end
 
 %% Step 4 - classify using gate_table
+
+if Step4
 
 G = load([outpath '\Gated_Table.mat']);
 gated_table = G.gated_table; 
 no_aws_files = G.no_aws_files; 
 
+cut_off_pro_pop = []; 
 
 % Here is where we decide which gates we are interested in and how we will find them
 
@@ -799,6 +812,7 @@ for i = 1:height(gated_table)
                  %if l == 'y'
                     concent_i(4) = NaN; 
                     title('cut off')
+                    cut_off_pro_pop = [cut_off_pro_pop; string(filename)];
                 end
                 
             end
@@ -837,15 +851,17 @@ gated_table.Syn_conc = syn_conc;
 gated_table.Bact_incl_pro_conc = bact_incl_pro_conc; 
 gated_table.Pro_conc = pro_conc; 
 
-save([outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'hierarchical_gates'); 
+save([outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'cut_off_pro_pop', 'hierarchical_gates'); 
 
 
-clearvars -except basepath restpath fpath outpath classpath awspath  cruisename hierarchical_gates Step5only
+clearvars -except basepath restpath fpath outpath classpath awspath  cruisename hierarchical_gates Step1 Step2 Step3 Step4 Step5 Step6 Step7
 
 
 end
 
 %% Step 5 - size calibrate and create class files 
+
+if Step5
 
 load('\\sosiknas1\Lab_data\Attune\cruise_data\beads\FCB_bead_mix_experiment_settings\between_cruises\outputs\beadstat.mat')
 
@@ -853,6 +869,7 @@ load('\\sosiknas1\Lab_data\Attune\cruise_data\beads\FCB_bead_mix_experiment_sett
 G = load([outpath '\Gated_Table.mat']);
 gated_table = G.gated_table; 
 no_aws_files = G.no_aws_files; 
+cut_off_pro_pop = G.cut_off_pro_pop; 
 
 median_volumes = nan(height(gated_table), 6); 
 
@@ -1038,13 +1055,14 @@ end
     save([outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'hierarchical_gates');
 
 
-clearvars -except basepath restpath fpath outpath classpath awspath cruisename hierarchical_gates Step5only
+clearvars -except basepath restpath fpath outpath classpath awspath cruisename hierarchical_gates Step1 Step2 Step3 Step4 Step5 Step6 Step7
+
+end
 
 %% Step 6 - convert gated table to Summary table 
 
-if ~Step5only 
+if Step6
  
-%%
 G = load([outpath '\Gated_Table.mat']);
 gated_table = G.gated_table; 
 
@@ -1245,11 +1263,14 @@ CNTable.high_pe_euk_per_ml = hp_eukcol;
 
 save([outpath 'SummaryTable.mat'], 'CNTable')
 
-clearvars -except basepath restpath fpath outpath classpath awspath cruisename hierarchical_gates Step5only
+clearvars -except basepath restpath fpath outpath classpath awspath cruisename hierarchical_gates Step1 Step2 Step3 Step4 Step5 Step6 Step7
 
+end
 
 
 %% Step 7 - Now we want to reformat the Summary table to be like EDI table with carbon counts etc 
+
+if Step7
 
 %Load data for this cruise
 
@@ -1475,9 +1496,6 @@ for i = 1:height(EDI_table);
 end
 save([outpath 'EDI_table.mat'], 'EDI_table')
 disp([outpath 'EDI_table.mat'])
-
-
-
 
 
 end
