@@ -12,19 +12,19 @@ clear all
 fclose('all')
 
 % % Manually choose cruise to process
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20220806_EN688\preserved\';
-cruisename = 'EN688';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved';
+cruisename = 'TN368';
 
 hierarchical_gates = 'True';  %set to 'True' or 'False'; 
 
 %%
-%restpath = '\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
+restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
 %'\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv';
 %'\\sosiknas1\Lab_data\OTZ\20200311_AR43\ctd\ar43_ctd_bottles.csv';
 % '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\EXPORTS2021_SDG2105_BottleFile_R0_20210720T124833.csv';
 %
 %'\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
-restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en688/';
+%restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en688/';
 
 %only relevat elog  path if discrete underway or bucket samples were taken,
 %their position is from the elog
@@ -287,7 +287,7 @@ T = T.FCSList;
 
 G = load([outpath '\Gated_Table.mat']);
 gated_table = G.gated_table;
-
+no_aws_files = G.no_aws_files; 
 
 if startsWith(restpath, 'https')
 bottledata = webread([restpath 'bottles.csv']); 
@@ -984,9 +984,15 @@ end
             %use OD2 measurements to project to NoOD2 values
 
             filetime = datetime([fcshdr.date, ' ', fcshdr.starttime]); 
-             [~,ind1] = min(abs(datenum(beadstat.time)-datenum(filetime))); 
+            beadstat = beadstat(beadstat.QC_flag ==0,:); 
+             [alert,ind1] = min(abs(datenum(beadstat.time)-datenum(filetime))); 
+            if alert > 30
+                disp('more than a month between bead run and file run. Update beadstat.')
+                keyboard
+            end
+
             bead_file = beadstat.filename(ind1); 
-            if beadstat.QC_flag(ind1) ~= 1 
+            if beadstat.QC_flag(ind1) == 1 
                 keyboard
             else
                 bead_value = [beadstat.NoOD2_hv(ind1) beadstat.NoOD2centers(ind1,2)]; %bead value on SSC 
@@ -1052,7 +1058,7 @@ end
     gated_table.median_volumes_high_pe_euk = median_volumes(:,6);
 
 
-    save([outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'hierarchical_gates');
+    save([outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'cut_off_pro_pop', 'hierarchical_gates');
 
 
 clearvars -except basepath restpath fpath outpath classpath awspath cruisename hierarchical_gates Step1 Step2 Step3 Step4 Step5 Step6 Step7
@@ -1068,7 +1074,7 @@ gated_table = G.gated_table;
 
 
 %gated_table(contains(gated_table.fcslist, 'lower_thresh'), :) = []; 
-%gated_table(gated_table.Cast == 0, :) = []; 
+gated_table(gated_table.Cast == 0, :) = []; 
 
 
 %first some counting of underway samples
