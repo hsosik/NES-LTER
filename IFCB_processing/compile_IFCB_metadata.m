@@ -3,7 +3,7 @@ function [] = compile_IFCB_metadata(ToTag_xlsFile)
 %   Detailed explanation goes here
 [~,f] = fileparts(ToTag_xlsFile);
 cruise = strsplit(f, '_');
-cruise = cruise{3};
+cruise = lower(cruise{3});
 apibase = 'https://nes-lter-data.whoi.edu/api/';
 myreadtable = @(filename)readtable(filename,'Delimiter','comma');
 options = weboptions('ContentReader',myreadtable, 'timeout', 30);
