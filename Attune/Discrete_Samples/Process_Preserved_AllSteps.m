@@ -12,18 +12,18 @@ clear all
 fclose('all')
 
 % % Manually choose cruise to process
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved';
-cruisename = 'TN368';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20180810_SR2018';
+cruisename = 'SR1812';
 
 hierarchical_gates = 'True';  %set to 'True' or 'False'; 
 
 %%
-restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
+restpath = '\\sosiknas1\Lab_data\EXPORTS\SallyRideSIOBottleFiles_v6.csv';
+% '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
 %'\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv';
 %'\\sosiknas1\Lab_data\OTZ\20200311_AR43\ctd\ar43_ctd_bottles.csv';
 % '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\EXPORTS2021_SDG2105_BottleFile_R0_20210720T124833.csv';
 %
-%'\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
 %restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en688/';
 
 %only relevat elog  path if discrete underway or bucket samples were taken,
@@ -35,10 +35,10 @@ uw_fullname = ''; %'https://nes-lter-data.whoi.edu/api/underway/en657.csv';
 
 %Set all steps to 1 if starting from begiining 
 Step1 = 0; %make FCSList
-Step2 = 0; %go look at AWS files to find gate assignments 
-Step3 = 0; % add metadata to gated table
-Step4 = 0; % classify using gate_table
-Step5 = 0; %size calibrate and create class files 
+Step2 = 1; %go look at AWS files to find gate assignments 
+Step3 = 1; % add metadata to gated table
+Step4 = 1; % classify using gate_table
+Step5 = 1; %size calibrate and create class files 
 Step6 = 1; %convert gated table to Summary table 
 Step7 = 1; %Reformat Summary Table to have EDI headers
 
@@ -196,35 +196,41 @@ runtypes = runtypes(~startsWith(runtypes, '.'));
 for i = 1:height(T) 
     filename = T.fcslist{i} 
     %step 1 find, aws file
-   
-    awsfile = []; 
-    awsfilename = []; 
+
+    awsfile = [];
+    awsfilename = [];
     for j = 1:length(runtypes)
         if contains(filename, runtypes(j))
-            k = j; 
-            awslist = dir(strcat(awspath, '', runtypes(j), '\*.aws')); 
-            awslist = struct2table(awslist); awslist = string(awslist.name); 
+            k = j;
+            awslist = dir(strcat(awspath, '', runtypes(j), '\*.aws'));
+            awslist = struct2table(awslist); awslist = string(awslist.name);
             %right now this only works if there are only two digit casts
-            %and niskins 
+            %and niskins
 
-            if T.Cast(i) == 0 & T.Niskin(i) == 0 %need case for UW data
-                uwname = split(filename, '_'); 
-                uwname = regexprep(uwname{end}, '.fcs', '.aws'); 
-                ind = find(awslist == uwname); 
+            if cruisename == 'SR1812';
+                temp = split(filename, '_');
+                ind = find(awslist == [temp{end-1} '.aws']);
+
+            elseif T.Cast(i) == 0 & T.Niskin(i) == 0 %need case for UW data
+                uwname = split(filename, '_');
+                uwname = regexprep(uwname{end}, '.fcs', '.aws');
+                ind = find(awslist == uwname);
             else
 
-            ind = find(awslist == strcat("C", num2str(T.Cast(i), '%02.f'), 'N', num2str(T.Niskin(i), '%02.f'), '.aws')); 
+                ind = find(awslist == strcat("C", num2str(T.Cast(i), '%02.f'), 'N', num2str(T.Niskin(i), '%02.f'), '.aws'));
             end
 
             awsfilename = awslist(ind) ;
             awsfile = strcat(awspath, '', runtypes(j), '\', awslist(ind));
-            
-            figpath = strcat(outpath , 'figs\', runtypes(j)) ; 
+
+            figpath = strcat(outpath , 'figs\', runtypes(j)) ;
             if ~exist(figpath, 'dir')
                 mkdir(figpath)
             end
 
         end
+
+
     end
 
         %track whether no aws file chosen 
@@ -1074,7 +1080,7 @@ gated_table = G.gated_table;
 
 
 %gated_table(contains(gated_table.fcslist, 'lower_thresh'), :) = []; 
-gated_table(gated_table.Cast == 0, :) = []; 
+%gated_table(gated_table.Cast == 0, :) = []; 
 
 
 %first some counting of underway samples
