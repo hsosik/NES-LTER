@@ -12,13 +12,14 @@ clear all
 fclose('all')
 
 % % Manually choose cruise to process
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20180810_SR2018';
-cruisename = 'SR1812';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved';
+cruisename = 'TN368';
 
 hierarchical_gates = 'True';  %set to 'True' or 'False'; 
 
 %%
-restpath = '\\sosiknas1\Lab_data\EXPORTS\SallyRideSIOBottleFiles_v6.csv';
+restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
+%'\\sosiknas1\Lab_data\EXPORTS\SallyRideSIOBottleFiles_v6.csv';
 % '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
 %'\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv';
 %'\\sosiknas1\Lab_data\OTZ\20200311_AR43\ctd\ar43_ctd_bottles.csv';
@@ -35,9 +36,9 @@ uw_fullname = ''; %'https://nes-lter-data.whoi.edu/api/underway/en657.csv';
 
 %Set all steps to 1 if starting from begiining 
 Step1 = 0; %make FCSList
-Step2 = 1; %go look at AWS files to find gate assignments 
-Step3 = 1; % add metadata to gated table
-Step4 = 1; % classify using gate_table
+Step2 = 0; %go look at AWS files to find gate assignments 
+Step3 = 0; % add metadata to gated table
+Step4 = 0; % classify using gate_table
 Step5 = 1; %size calibrate and create class files 
 Step6 = 1; %convert gated table to Summary table 
 Step7 = 1; %Reformat Summary Table to have EDI headers
@@ -875,7 +876,12 @@ load('\\sosiknas1\Lab_data\Attune\cruise_data\beads\FCB_bead_mix_experiment_sett
 G = load([outpath '\Gated_Table.mat']);
 gated_table = G.gated_table; 
 no_aws_files = G.no_aws_files; 
-cut_off_pro_pop = G.cut_off_pro_pop; 
+
+if isfield(G, 'cut_off_pro_pop')
+    cut_off_pro_pop = G.cut_off_pro_pop; 
+else 
+    cut_off_pro_pop = NaN; 
+end
 
 median_volumes = nan(height(gated_table), 6); 
 
@@ -1193,9 +1199,11 @@ for g = 1:max(G)
     ind = find(contains(temp.fcslist, 'pro', 'IgnoreCase', true) & ~cellfun(@isempty, temp.awsfilename));
     noprofile = 1; 
     if isempty(ind)
+        if strcmp('Eukfile',CNTable.Properties.VariableNames)
         CNTable.ProFile{g} = CNTable.Eukfile{g}; %if no pro run, check to see if there is a pro gate in euk run
         if ~isnan(temp.Pro_conc(ind))
             procol(g) = temp.Pro_conc(ind); 
+        end
         end
         noprofile = 1; 
     elseif length(ind) == 1 %if only one fcs file of this type, use that. 
@@ -1293,13 +1301,17 @@ gated_table = G.gated_table;
 C = load([outpath 'SummaryTable.mat']); 
 CNTable = C.CNTable; 
 
+if cruisename == 'TN368'
+    CNTable(CNTable.Cast == 0, :) = []; %two bad entries, not matched to casts
+end
+
 
 EDI_table = table(CNTable.cruise, CNTable.Cast, CNTable.Niskin, CNTable.latitude, CNTable.longitude, CNTable.depth_m, CNTable.salinity, CNTable.potemp090c); 
 EDI_table.Properties.VariableNames = {'cruise'; 'cast'; 'niskin'; 'latitude'; 'longitude'; 'depth_m'; 'salinity'; 'potential_temperature_c';}; 
 
 EDI_table.cruise = string(EDI_table.cruise); %helpful for merging tables when cruisenames are different lengtths 
 
-%reformat dates so they don't suck 
+%reformat dates so they aren't terrible 
 if iscell(CNTable.date_sampled)
 dates1 = cell2mat(CNTable.date_sampled); 
 EDI_table.date_sampled = datetime(dates1(:, 1:19), 'Format', 'yyyy-MM-dd HH:mm:ss'); 
