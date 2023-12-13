@@ -60,6 +60,7 @@ else  %initialize
             FCSfileinfo.trigger2_threshhold = FCSfileinfo.matdate_start;
             FCSfileinfo.QC_flag = FCSfileinfo.matdate_start;
             FCSfileinfo.QC_flowrates = NaN(length(fcslist), 2);
+            FCSfileinfo.QC_dataintegrity = FCSfileinfo.matdate_start;
             a = 0;
             b = length(fcslist);
 end
@@ -85,11 +86,13 @@ if b > 0 %now add to existing table
             QC_flowrate(1) = (median(fcsdat(t,3)./fcsdat(t,12)));
             QC_flowrate(2) = (std(fcsdat(t,3)./fcsdat(t,12)));
             QC_flag = 0; %default bad
-            if (QC_flowrate(2)<2 && QC_flowrate(1)<1.5)
+            FCSfileinfo.QC_dataintegrity(ii) = min(diff(fcsdat(:,1)));
+            if (QC_flowrate(2)<2 && QC_flowrate(1)<1.5) && FCSfileinfo.QC_dataintegrity(ii)>=0
                 QC_flag = 1; %set to good
             end
             FCSfileinfo.QC_flag(ii) = QC_flag; 
             FCSfileinfo.QC_flowrates(ii,:) = QC_flowrate;
+            
             clear QC_flag QC_flowrate t
                         
         end
