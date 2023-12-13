@@ -162,7 +162,7 @@ ADT.potential_temperature_c(ADT.potential_temperature_c == 0 & isnan(ADT.salinit
 ADT.hetprok_carbon_concentration(isnan(ADT.hetprok_cells_per_ml)) = NaN; %sometimes this carbon is still 0 
 
 
-ADT = sortrows(ADT, [1 2 3]);
+ADT = sortrows(ADT, [9]);
 
 writetable(ADT, '\\sosiknas1\Lab_data\Attune\cruise_data\Attune_Discrete_Table_postmanualQC.csv');
 
