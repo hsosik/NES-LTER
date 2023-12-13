@@ -77,6 +77,8 @@ for c = 1:length(cruiselist)
         restpath = 'https://nes-lter-data.whoi.edu/api/ctd/ar61b/'; 
     elseif cruiselist(c) == 'EN668'
         restpath = 'https://nes-lter-data.whoi.edu/api/ctd/en668/'; 
+    elseif cruiselist(c) == 'TN368'
+        restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
     else
         disp('need new case for cruise restpath')
         keyboard
@@ -103,7 +105,47 @@ for c = 1:length(cruiselist)
                 end
         end
 
-    end %maybe will need a case here for SPIROPA cruises if it comes up
+    else 
+        load(restpath)
+        temp = importdata('\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_niskin_pressure_depth.txt');    
+        bottle_depth = temp.data;
+        clear temp
+        temp = table;
+        temp.Cast = bottle_depth(:,1);
+        temp.Niskin = bottle_depth(:,2);
+        temp.depsm = bottle_depth(:,5);
+
+        for i = 1:height(temp)
+            temptemp = BTL(find(BTL.Cast == temp.Cast(i)), :);
+            [~,ind] = min(abs(temptemp.TargetDepth_m - bottle_depth(i,3)));
+            temp.sal00(i) = temptemp.Sal00(ind);
+            temp.potemp090c(i) = temptemp.Potemp090C(ind);
+            temp.Latitude_decimalDeg(i) = temptemp.Latitude_decimalDeg(ind);
+            temp.Longitude_decimalDeg(i) = temptemp.Longitude_decimalDeg(ind);
+            temp.datetime(i) = temptemp.datetime(ind);
+
+        end
+
+        BTL = temp;
+
+
+        cruiseind = find(shortstack.cruise == cruiselist(c)); %row indeces that correspond to this cruise
+        for i = cruiseind'
+                %add cast data
+                tempmeta = BTL(BTL.Cast == shortstack.cast(i), :); 
+                shortstack.latitude(i) = tempmeta.Latitude_decimalDeg(1); 
+                shortstack.longitude(i) = tempmeta.Longitude_decimalDeg(1); 
+                shortstack.date_sampled(i) = tempmeta.datetime(1); 
+
+                %now add info for this specific niskin 
+                if sum(BTL.Cast == shortstack.cast(i) & BTL.Niskin == shortstack.niskin(i)) > 0
+                    shortstack.depth_m(i) = BTL.depsm(BTL.Cast == shortstack.cast(i) & BTL.Niskin == shortstack.niskin(i));
+                    shortstack.salinity(i) = BTL.sal00(BTL.Cast == shortstack.cast(i) & BTL.Niskin == shortstack.niskin(i)); 
+                    shortstack.potential_temperature_c(i) = BTL.potemp090c(BTL.Cast == shortstack.cast(i) & BTL.Niskin == shortstack.niskin(i));
+                end
+        end
+
+    end 
 
 end
 
@@ -111,8 +153,16 @@ end
 %now replace bad ADT rows with shortstack rows 
 ADT(isnan(ADT.depth_m), :) = shortstack; 
 
-j = find(ADT.salinity == 0); 
-ADT(j,:) = []; 
+ADT.salinity(ADT.salinity == 0) = NaN; 
+ADT.depth_m(ADT.depth_m == 0) = NaN; 
+ADT.potential_temperature_c(ADT.potential_temperature_c == 0 & isnan(ADT.salinity)) = NaN; 
+
+
+
+ADT.hetprok_carbon_concentration(isnan(ADT.hetprok_cells_per_ml)) = NaN; %sometimes this carbon is still 0 
+
+
+ADT = sortrows(ADT, [1 2 3]);
 
 writetable(ADT, '\\sosiknas1\Lab_data\Attune\cruise_data\Attune_Discrete_Table_postmanualQC.csv');
 
