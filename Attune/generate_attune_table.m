@@ -118,6 +118,7 @@ AttuneTable = [AttuneTable array2table(Carbon, 'VariableNames', regexprep(classn
 AttuneTable.Num_particles = Num_particles; 
 AttuneTable.QC_flag = Attune.FCSfileinfo.QC_flag;
 AttuneTable.QC_flowrates = Attune.FCSfileinfo.QC_flowrates; 
+AttuneTable.QC_dataintegrity = Attune.FCSfileinfo.QC_dataintegrity; 
 
 AttuneTable.Scatter_hv = Scatter_hv; 
 
