@@ -55,8 +55,12 @@ EDI_table.date_processed = datetime(dates2, 'Format', 'yyyy-MM-dd');
 
 %% Go back to class files using Gated_table
 
+for i = 1:height(EDI_table)-1
+    load([outpath filesep 'EDI_table.mat'], 'EDI_table')
 
-for i = 1:height(EDI_table); 
+end
+
+for i = height(EDI_table); 
     %first check syn file
     if ~isempty(CNTable.Synfile{i})
     filename = CNTable.Synfile{i}; 
