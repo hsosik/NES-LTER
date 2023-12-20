@@ -1,4 +1,4 @@
-%Generates the attune table from Class files and FCSfileinfo.mat only
+ %Generates the attune table from Class files and FCSfileinfo.mat only
 %slightly different from EDI table
 %namely, we have counts of all particles, and piceouks_with_PE < 3
 
@@ -20,12 +20,14 @@ PE_euk_celltypes = [3 4];%input('which class numbers are PE containing Euks for 
 %classlist = dir([classpath, '*.mat']); 
 filelist = regexprep(Attune.FCSfileinfo.fcslist,'fcs', 'mat'); 
 AttuneTable = table(Attune.FCSfileinfo.fcslist, datetime(Attune.FCSfileinfo.matdate_start, 'ConvertFrom', 'datenum'), datetime(Attune.FCSfileinfo.matdate_stop, 'ConvertFrom', 'datenum'), Attune.FCSfileinfo.vol_analyzed/1e6, 'VariableNames', {'Filename' 'StartDate' 'StopDate' 'VolAnalyzed_ml'});
-if isfield(Attune.FCSfileinfo, 'trigger1_parameter')
-    AttuneTable.trigger1_parameter = Attune.FCSfileinfo.trigger1_parameter;
-    AttuneTable.trigger1_threshhold = Attune.FCSfileinfo.trigger1_threshhold;
-    AttuneTable.trigger2_parameter = Attune.FCSfileinfo.trigger2_parameter;
-    AttuneTable.trigger2_threshhold = Attune.FCSfileinfo.trigger2_treshhold;
-end
+
+%go ahead and add these to AttuneTable for all cruises. Their purpose is
+%information for masking alternating settings. So after that only run
+%masking on cruises that sampled with alternating settings.
+AttuneTable.trigger1_parameter = Attune.FCSfileinfo.trigger1_parameter;
+AttuneTable.trigger1_threshhold = Attune.FCSfileinfo.trigger1_threshhold;
+AttuneTable.trigger2_parameter = Attune.FCSfileinfo.trigger2_parameter;
+AttuneTable.trigger2_threshhold = Attune.FCSfileinfo.trigger2_treshhold;
 
 % Creating the variables
 %we want Syn, Euk<=2, Euk<=3, Euk<=5, Euk<=10, Euk<=20, PEeuk<=2, PEeuk<=3,
