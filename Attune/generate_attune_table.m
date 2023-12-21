@@ -27,7 +27,7 @@ AttuneTable = table(Attune.FCSfileinfo.fcslist, datetime(Attune.FCSfileinfo.matd
 AttuneTable.trigger1_parameter = Attune.FCSfileinfo.trigger1_parameter;
 AttuneTable.trigger1_threshhold = Attune.FCSfileinfo.trigger1_threshhold;
 AttuneTable.trigger2_parameter = Attune.FCSfileinfo.trigger2_parameter;
-AttuneTable.trigger2_threshhold = Attune.FCSfileinfo.trigger2_treshhold;
+AttuneTable.trigger2_threshhold = Attune.FCSfileinfo.trigger2_threshhold;
 
 % Creating the variables
 %we want Syn, Euk<=2, Euk<=3, Euk<=5, Euk<=10, Euk<=20, PEeuk<=2, PEeuk<=3,
