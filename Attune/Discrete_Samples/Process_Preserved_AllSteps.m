@@ -12,13 +12,13 @@ clear all
 fclose('all')
 
 % % Manually choose cruise to process
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved';
-cruisename = 'TN368';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\';
+cruisename = 'HB1907';
 
 hierarchical_gates = 'True';  %set to 'True' or 'False'; 
 
 %%
-restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
+restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv'; 
 %'\\sosiknas1\Lab_data\EXPORTS\SallyRideSIOBottleFiles_v6.csv';
 % '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
 %'\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv';
@@ -36,12 +36,12 @@ uw_fullname = ''; %'https://nes-lter-data.whoi.edu/api/underway/en657.csv';
 
 %Set all steps to 1 if starting from begiining 
 Step1 = 0; %make FCSList
-Step2 = 0; %go look at AWS files to find gate assignments 
+Step2 = 1; %go look at AWS files to find gate assignments 
 Step3 = 0; % add metadata to gated table
 Step4 = 0; % classify using gate_table
-Step5 = 1; %size calibrate and create class files 
-Step6 = 1; %convert gated table to Summary table 
-Step7 = 1; %Reformat Summary Table to have EDI headers
+Step5 = 0; %size calibrate and create class files 
+Step6 = 0; %convert gated table to Summary table 
+Step7 = 0; %Reformat Summary Table to have EDI headers
 
 
 %% Set up 
@@ -194,15 +194,20 @@ no_aws_files = [];
 runtypes = dir(awspath); runtypes = struct2table(runtypes); runtypes = string(runtypes.name); 
 runtypes = runtypes(~startsWith(runtypes, '.')); 
 
-for i = 1:height(T) 
+for i = 71:height(T) 
     filename = T.fcslist{i} 
     %step 1 find, aws file
 
     awsfile = [];
     awsfilename = [];
+    filetypevec = ""; 
+
     for j = 1:length(runtypes)
         if contains(filename, runtypes(j))
-            k = j;
+            if length(runtypes{j}) > length(filetypevec) %check for things like CHLS_SSC_pro_hi and pick the longest match
+                filetypevec = runtypes{j}; 
+                k = j; 
+
             awslist = dir(strcat(awspath, '', runtypes(j), '\*.aws'));
             awslist = struct2table(awslist); awslist = string(awslist.name);
             %right now this only works if there are only two digit casts
@@ -229,10 +234,10 @@ for i = 1:height(T)
                 mkdir(figpath)
             end
 
+            end
         end
-
-
     end
+
 
         %track whether no aws file chosen 
         if isempty(awsfilename)
@@ -264,7 +269,7 @@ for i = 1:height(T)
                 [gate_assignments, polygon_names, polygon_vars, polygon_vals, gate_names, gate_logic_legible] = ApplyAWSgates2(awsfile, fcsdat, fcshdr); 
             end
 
-            gated_table.awsfilename{i} = awsfilename; 
+            gated_table.awsfilename{i} = strcat(filetypevec, '/', awsfilename); 
             gated_table.gate_names{i} = gate_names; 
             gated_table.gate_assignments{i} = gate_assignments; 
             gated_table.gate_logic{i} = gate_logic_legible; 
