@@ -12,19 +12,20 @@ clear all
 fclose('all')
 
 % % Manually choose cruise to process
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20220806_EN688\preserved\';
-cruisename = 'EN688';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\';
+cruisename = 'HB1907';
 
 hierarchical_gates = 'True';  %set to 'True' or 'False'; 
 
 %%
-%restpath = '\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
+restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv'; 
+%'\\sosiknas1\Lab_data\EXPORTS\SallyRideSIOBottleFiles_v6.csv';
+% '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
 %'\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv';
 %'\\sosiknas1\Lab_data\OTZ\20200311_AR43\ctd\ar43_ctd_bottles.csv';
 % '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\EXPORTS2021_SDG2105_BottleFile_R0_20210720T124833.csv';
 %
-%'\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\fromOlga\tn368_bottle_data_Jul_2022_table.mat'; 
-restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en688/';
+%restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en688/';
 
 %only relevat elog  path if discrete underway or bucket samples were taken,
 %their position is from the elog
@@ -35,12 +36,12 @@ uw_fullname = ''; %'https://nes-lter-data.whoi.edu/api/underway/en657.csv';
 
 %Set all steps to 1 if starting from begiining 
 Step1 = 0; %make FCSList
-Step2 = 0; %go look at AWS files to find gate assignments 
+Step2 = 1; %go look at AWS files to find gate assignments 
 Step3 = 0; % add metadata to gated table
 Step4 = 0; % classify using gate_table
 Step5 = 0; %size calibrate and create class files 
-Step6 = 1; %convert gated table to Summary table 
-Step7 = 1; %Reformat Summary Table to have EDI headers
+Step6 = 0; %convert gated table to Summary table 
+Step7 = 0; %Reformat Summary Table to have EDI headers
 
 
 %% Set up 
@@ -193,39 +194,50 @@ no_aws_files = [];
 runtypes = dir(awspath); runtypes = struct2table(runtypes); runtypes = string(runtypes.name); 
 runtypes = runtypes(~startsWith(runtypes, '.')); 
 
-for i = 1:height(T) 
+for i = 71:height(T) 
     filename = T.fcslist{i} 
     %step 1 find, aws file
-   
-    awsfile = []; 
-    awsfilename = []; 
+
+    awsfile = [];
+    awsfilename = [];
+    filetypevec = ""; 
+
     for j = 1:length(runtypes)
         if contains(filename, runtypes(j))
-            k = j; 
-            awslist = dir(strcat(awspath, '', runtypes(j), '\*.aws')); 
-            awslist = struct2table(awslist); awslist = string(awslist.name); 
-            %right now this only works if there are only two digit casts
-            %and niskins 
+            if length(runtypes{j}) > length(filetypevec) %check for things like CHLS_SSC_pro_hi and pick the longest match
+                filetypevec = runtypes{j}; 
+                k = j; 
 
-            if T.Cast(i) == 0 & T.Niskin(i) == 0 %need case for UW data
-                uwname = split(filename, '_'); 
-                uwname = regexprep(uwname{end}, '.fcs', '.aws'); 
-                ind = find(awslist == uwname); 
+            awslist = dir(strcat(awspath, '', runtypes(j), '\*.aws'));
+            awslist = struct2table(awslist); awslist = string(awslist.name);
+            %right now this only works if there are only two digit casts
+            %and niskins
+
+            if cruisename == 'SR1812';
+                temp = split(filename, '_');
+                ind = find(awslist == [temp{end-1} '.aws']);
+
+            elseif T.Cast(i) == 0 & T.Niskin(i) == 0 %need case for UW data
+                uwname = split(filename, '_');
+                uwname = regexprep(uwname{end}, '.fcs', '.aws');
+                ind = find(awslist == uwname);
             else
 
-            ind = find(awslist == strcat("C", num2str(T.Cast(i), '%02.f'), 'N', num2str(T.Niskin(i), '%02.f'), '.aws')); 
+                ind = find(awslist == strcat("C", num2str(T.Cast(i), '%02.f'), 'N', num2str(T.Niskin(i), '%02.f'), '.aws'));
             end
 
             awsfilename = awslist(ind) ;
             awsfile = strcat(awspath, '', runtypes(j), '\', awslist(ind));
-            
-            figpath = strcat(outpath , 'figs\', runtypes(j)) ; 
+
+            figpath = strcat(outpath , 'figs\', runtypes(j)) ;
             if ~exist(figpath, 'dir')
                 mkdir(figpath)
             end
 
+            end
         end
     end
+
 
         %track whether no aws file chosen 
         if isempty(awsfilename)
@@ -257,7 +269,7 @@ for i = 1:height(T)
                 [gate_assignments, polygon_names, polygon_vars, polygon_vals, gate_names, gate_logic_legible] = ApplyAWSgates2(awsfile, fcsdat, fcshdr); 
             end
 
-            gated_table.awsfilename{i} = awsfilename; 
+            gated_table.awsfilename{i} = strcat(filetypevec, '/', awsfilename); 
             gated_table.gate_names{i} = gate_names; 
             gated_table.gate_assignments{i} = gate_assignments; 
             gated_table.gate_logic{i} = gate_logic_legible; 
@@ -287,7 +299,7 @@ T = T.FCSList;
 
 G = load([outpath '\Gated_Table.mat']);
 gated_table = G.gated_table;
-
+no_aws_files = G.no_aws_files; 
 
 if startsWith(restpath, 'https')
 bottledata = webread([restpath 'bottles.csv']); 
@@ -869,7 +881,12 @@ load('\\sosiknas1\Lab_data\Attune\cruise_data\beads\FCB_bead_mix_experiment_sett
 G = load([outpath '\Gated_Table.mat']);
 gated_table = G.gated_table; 
 no_aws_files = G.no_aws_files; 
-cut_off_pro_pop = G.cut_off_pro_pop; 
+
+if isfield(G, 'cut_off_pro_pop')
+    cut_off_pro_pop = G.cut_off_pro_pop; 
+else 
+    cut_off_pro_pop = NaN; 
+end
 
 median_volumes = nan(height(gated_table), 6); 
 
@@ -984,9 +1001,15 @@ end
             %use OD2 measurements to project to NoOD2 values
 
             filetime = datetime([fcshdr.date, ' ', fcshdr.starttime]); 
-             [~,ind1] = min(abs(datenum(beadstat.time)-datenum(filetime))); 
+            beadstat = beadstat(beadstat.QC_flag ==0,:); 
+             [alert,ind1] = min(abs(datenum(beadstat.time)-datenum(filetime))); 
+            if alert > 30
+                disp('more than a month between bead run and file run. Update beadstat.')
+                keyboard
+            end
+
             bead_file = beadstat.filename(ind1); 
-            if beadstat.QC_flag(ind1) ~= 1 
+            if beadstat.QC_flag(ind1) == 1 
                 keyboard
             else
                 bead_value = [beadstat.NoOD2_hv(ind1) beadstat.NoOD2centers(ind1,2)]; %bead value on SSC 
@@ -1052,7 +1075,7 @@ end
     gated_table.median_volumes_high_pe_euk = median_volumes(:,6);
 
 
-    save([outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'hierarchical_gates');
+    save([outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'cut_off_pro_pop', 'hierarchical_gates');
 
 
 clearvars -except basepath restpath fpath outpath classpath awspath cruisename hierarchical_gates Step1 Step2 Step3 Step4 Step5 Step6 Step7
@@ -1181,9 +1204,11 @@ for g = 1:max(G)
     ind = find(contains(temp.fcslist, 'pro', 'IgnoreCase', true) & ~cellfun(@isempty, temp.awsfilename));
     noprofile = 1; 
     if isempty(ind)
+        if strcmp('Eukfile',CNTable.Properties.VariableNames)
         CNTable.ProFile{g} = CNTable.Eukfile{g}; %if no pro run, check to see if there is a pro gate in euk run
         if ~isnan(temp.Pro_conc(ind))
             procol(g) = temp.Pro_conc(ind); 
+        end
         end
         noprofile = 1; 
     elseif length(ind) == 1 %if only one fcs file of this type, use that. 
@@ -1281,13 +1306,17 @@ gated_table = G.gated_table;
 C = load([outpath 'SummaryTable.mat']); 
 CNTable = C.CNTable; 
 
+if cruisename == 'TN368'
+    CNTable(CNTable.Cast == 0, :) = []; %two bad entries, not matched to casts
+end
+
 
 EDI_table = table(CNTable.cruise, CNTable.Cast, CNTable.Niskin, CNTable.latitude, CNTable.longitude, CNTable.depth_m, CNTable.salinity, CNTable.potemp090c); 
 EDI_table.Properties.VariableNames = {'cruise'; 'cast'; 'niskin'; 'latitude'; 'longitude'; 'depth_m'; 'salinity'; 'potential_temperature_c';}; 
 
 EDI_table.cruise = string(EDI_table.cruise); %helpful for merging tables when cruisenames are different lengtths 
 
-%reformat dates so they don't suck 
+%reformat dates so they aren't terrible 
 if iscell(CNTable.date_sampled)
 dates1 = cell2mat(CNTable.date_sampled); 
 EDI_table.date_sampled = datetime(dates1(:, 1:19), 'Format', 'yyyy-MM-dd HH:mm:ss'); 
