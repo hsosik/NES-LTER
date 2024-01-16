@@ -40,7 +40,7 @@ Step2 = 0; %go look at AWS files to find gate assignments
 Step3 = 0; % add metadata to gated table
 Step4 = 0; % classify using gate_table
 Step5 = 0; %size calibrate and create class files 
-Step6 = 0; %convert gated table to Summary table 
+Step6 = 1; %convert gated table to Summary table 
 Step7 = 1; %Reformat Summary Table to have EDI headers
 
 
@@ -414,9 +414,10 @@ for f = 1:height(gated_table)
     gated_table.Longitude(f) = temp.Longitude_decimalDeg(1);
     gated_table.date_sampled(f) = temp.datetime(1);
 
-if cruisename == 'SG2105';
-        gated_table.r2r_event(f) = temp.r2r_event(1);
-end
+%if cruisename == 'SG2105';
+ if strcmp(cruisename, 'SG2105')
+         gated_table.r2r_event(f) = temp.r2r_event(1);
+ end
    
     %no station names for SPIROPA cruises
     gated_table.nearest_station{f} = '';
@@ -1138,9 +1139,11 @@ for g = 1:max(G)
     CNTable.potemp090c(g) = temp.potemp090c(1);
     CNTable.depth_m(g) = temp.depth_m(1);
     CNTable.date_sampled(g) = temp.date_sampled(1); 
-    CNTable.date_processed(g) = temp.Date_processed(1); 
+    CNTable.date_processed(g) = temp.Date_processed(1);
+    if ismember('r2r_event', temp.Properties.VariableNames)
+        CNTable.r2r_event(g) = temp.r2r_event(1);
+    end
 
- 
     %pick file to count Syn
     ind = find(contains(temp.fcslist, 'phyto_PE') & ~cellfun(@isempty, temp.awsfilename));
     use_euk_for_syn = 0; 
