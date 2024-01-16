@@ -12,18 +12,18 @@ clear all
 fclose('all')
 
 % % Manually choose cruise to process
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\';
-cruisename = 'HB1907';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\preserved\';
+cruisename = 'SG2105';
 
 hierarchical_gates = 'True';  %set to 'True' or 'False'; 
 
 %%
-restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv'; 
+%restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv'; 
 %'\\sosiknas1\Lab_data\EXPORTS\SallyRideSIOBottleFiles_v6.csv';
 % '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
 %'\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv';
 %'\\sosiknas1\Lab_data\OTZ\20200311_AR43\ctd\ar43_ctd_bottles.csv';
-% '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\EXPORTS2021_SDG2105_BottleFile_R0_20210720T124833.csv';
+restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\preserved\EXPORTS2021_SDG2105_BottleFile_R0_20210720T124833.csv';
 %
 %restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en688/';
 
@@ -36,12 +36,12 @@ uw_fullname = ''; %'https://nes-lter-data.whoi.edu/api/underway/en657.csv';
 
 %Set all steps to 1 if starting from begiining 
 Step1 = 0; %make FCSList
-Step2 = 1; %go look at AWS files to find gate assignments 
+Step2 = 0; %go look at AWS files to find gate assignments 
 Step3 = 0; % add metadata to gated table
 Step4 = 0; % classify using gate_table
 Step5 = 0; %size calibrate and create class files 
 Step6 = 0; %convert gated table to Summary table 
-Step7 = 0; %Reformat Summary Table to have EDI headers
+Step7 = 1; %Reformat Summary Table to have EDI headers
 
 
 %% Set up 
@@ -392,7 +392,8 @@ temp.depsm = bottle_depth(:,5);
             BTL.Niskin = BTL.BottleNo; 
             BTL.depsm = BTL.depth; 
             BTL.potemp090c = BTL.potTemp1; 
-            BTL.sal00 = BTL.sal1; 
+            BTL.sal00 = BTL.sal1;
+            
        end
 
     end
@@ -413,6 +414,9 @@ for f = 1:height(gated_table)
     gated_table.Longitude(f) = temp.Longitude_decimalDeg(1);
     gated_table.date_sampled(f) = temp.datetime(1);
 
+if cruisename == 'SG2105';
+        gated_table.r2r_event(f) = temp.r2r_event(1);
+end
    
     %no station names for SPIROPA cruises
     gated_table.nearest_station{f} = '';
@@ -1306,13 +1310,14 @@ gated_table = G.gated_table;
 C = load([outpath 'SummaryTable.mat']); 
 CNTable = C.CNTable; 
 
-if cruisename == 'TN368'
+if strcmp(cruisename, 'TN368')
+%if cruisename == 'TN368'
     CNTable(CNTable.Cast == 0, :) = []; %two bad entries, not matched to casts
 end
 
 
-EDI_table = table(CNTable.cruise, CNTable.Cast, CNTable.Niskin, CNTable.latitude, CNTable.longitude, CNTable.depth_m, CNTable.salinity, CNTable.potemp090c); 
-EDI_table.Properties.VariableNames = {'cruise'; 'cast'; 'niskin'; 'latitude'; 'longitude'; 'depth_m'; 'salinity'; 'potential_temperature_c';}; 
+EDI_table = table(CNTable.cruise, CNTable.Cast, CNTable.Niskin, CNTable.latitude, CNTable.longitude, CNTable.depth_m, CNTable.salinity, CNTable.potemp090c, CNTable.r2r_event); 
+EDI_table.Properties.VariableNames = {'cruise'; 'cast'; 'niskin'; 'latitude'; 'longitude'; 'depth_m'; 'salinity'; 'potential_temperature_c'; 'r2r_event'}; 
 
 EDI_table.cruise = string(EDI_table.cruise); %helpful for merging tables when cruisenames are different lengtths 
 
