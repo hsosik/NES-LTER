@@ -35,7 +35,10 @@ AttuneTable(AttuneTable.QC_flag == 0, :) = [];
 
 Attune2EDI = table;
 Attune2EDI.cruise = string(repmat(cruiseStr,length(AttuneTable{:,1}),1));
-Attune2EDI.date_time_utc = datestr(AttuneTable.StartDate, 'Format', 'uuuu-MM-dd HH:mm:ss');
+ %Attune2EDI.date_time_utc = datestr(AttuneTable.StartDate, 'Format',
+ %'uuuu-MM-dd HH:mm:ss'); 1-17-24 this was crashing, EP replace with
+ %datetime below. 
+Attune2EDI.date_time_utc = datetime(AttuneTable.StartDate, 'Format', 'uuuu-MM-dd HH:mm:ss');
 Attune2EDI.latitude = AttuneTable.lat;
 Attune2EDI.longitude = AttuneTable.lon;
 Attune2EDI.salinity = AttuneTable.salinity;
@@ -86,6 +89,6 @@ save([a filesep 'AttuneTable_EDI.mat'],'AttuneTableEDI', 'table_metadata')
 disp(['Result file saved:'])
 disp([a '\AttuneTable_EDI'])
 
-%writetable(AttuneTableEDI, [a filesep cruiseStr '_EDI.csv'])
+writetable(AttuneTableEDI, [a filesep cruiseStr '_EDI.csv'])
 
 end
