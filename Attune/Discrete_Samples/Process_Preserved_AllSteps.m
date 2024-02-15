@@ -9,11 +9,13 @@
 
 %% INPUTS 
 clear all 
-fclose('all')
+fclose('all');
 
 % % Manually choose cruise to process
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\preserved\';
-cruisename = 'SG2105';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20180810_SR2018\';
+cruisename = 'SR1812';
+%basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20220806_EN688\preserved\';
+%cruisename = 'EN688';
 
 hierarchical_gates = 'True';  %set to 'True' or 'False'; 
 
@@ -23,25 +25,28 @@ hierarchical_gates = 'True';  %set to 'True' or 'False';
 % '\\sosiknas1\Lab_data\Attune\cruise_data\20190705_TN368\preserved\tn368_bottle_data_Apr_2020_table.mat'; 
 %'\\sosiknas1\Lab_data\Attune\cruise_data\20190725_HB1907\preserved\bottle_environmental_data_partial.csv';
 %'\\sosiknas1\Lab_data\OTZ\20200311_AR43\ctd\ar43_ctd_bottles.csv';
-restpath = '\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\preserved\EXPORTS2021_SDG2105_BottleFile_R0_20210720T124833.csv';
+%'\\sosiknas1\Lab_data\Attune\cruise_data\20210512_SG2105\preserved\EXPORTS2021_SDG2105_BottleFile_R0_20210720T124833.csv';
+ restpath = '\\sosiknas1\Lab_data\EXPORTS\SallyRideSIOBottleFiles_v6.csv';
 %
 %restpath =  'https://nes-lter-data.whoi.edu/api/ctd/en688/';
 
 %only relevat elog  path if discrete underway or bucket samples were taken,
 %their position is from the elog
 elogpath = '';%'\\sosiknas1\Lab_data\LTER\20201013_EN657\eLog\R2R_ELOG_EN657_FINAL_EVENTLOG_20201018_134037.csv'; %set to '' if there are no discrete underway samples 
+elogpath = '\\sosiknas1\Lab_data\EXPORTS\SR1812\share\R2R_ELOG_SR1812_FINAL_EVENTLOG_20180913_022931_edited_Sosik_postcruise.csv';
+
 % uw_fullname also only needed if discret UW or bucket samples were taken
 uw_fullname = ''; %'https://nes-lter-data.whoi.edu/api/underway/en657.csv';
 
 
-%Set all steps to 1 if starting from begiining 
+%Set all steps to 1 if starting from beginning 
 Step1 = 0; %make FCSList
 Step2 = 0; %go look at AWS files to find gate assignments 
 Step3 = 0; % add metadata to gated table
 Step4 = 0; % classify using gate_table
-Step5 = 0; %size calibrate and create class files 
-Step6 = 1; %convert gated table to Summary table 
-Step7 = 1; %Reformat Summary Table to have EDI headers
+Step5 = 1; %size calibrate and create class files 
+Step6 = 0; %convert gated table to Summary table 
+Step7 = 0; %Reformat Summary Table to have EDI headers
 
 
 %% Set up 
@@ -194,7 +199,7 @@ no_aws_files = [];
 runtypes = dir(awspath); runtypes = struct2table(runtypes); runtypes = string(runtypes.name); 
 runtypes = runtypes(~startsWith(runtypes, '.')); 
 
-for i = 71:height(T) 
+for i = 1:height(T) 
     filename = T.fcslist{i} 
     %step 1 find, aws file
 
@@ -213,7 +218,7 @@ for i = 71:height(T)
             %right now this only works if there are only two digit casts
             %and niskins
 
-            if cruisename == 'SR1812';
+            if strcmp(cruisename,'SR1812')
                 temp = split(filename, '_');
                 ind = find(awslist == [temp{end-1} '.aws']);
 
@@ -388,6 +393,7 @@ temp.depsm = bottle_depth(:,5);
        else %SG cruise
             BTL.Latitude_decimalDeg = BTL.Lat; 
             BTL.Longitude_decimalDeg = BTL.Lon; 
+            BTL.sdate(isnat(BTL.sdate)) = datetime(BTL.daten(isnat(BTL.sdate)), 'ConvertFrom', 'datenum'); %weird case for SR1812 
             BTL.datetime = BTL.sdate; 
             BTL.Niskin = BTL.BottleNo; 
             BTL.depsm = BTL.depth; 
@@ -402,7 +408,7 @@ castlist = unique(gated_table.Cast);
 
 for f = 1:height(gated_table)
 
-    if gated_table.Cast(f) == 0 
+    if gated_table.Cast(f) == 0 || gated_table.Cast(f) == -9999
         continue
     end
 
@@ -413,6 +419,7 @@ for f = 1:height(gated_table)
     gated_table.Latitude(f) = temp.Latitude_decimalDeg(1);
     gated_table.Longitude(f) = temp.Longitude_decimalDeg(1);
     gated_table.date_sampled(f) = temp.datetime(1);
+    gated_table.r2r_event(f) = temp.r2r_event(1);
 
 %if cruisename == 'SG2105';
  if strcmp(cruisename, 'SG2105')
@@ -446,7 +453,6 @@ end
     gated_table.Latitude(gated_table.Latitude == 0) = NaN;
 
 
-
 end
 
 save([outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'hierarchical_gates'); 
@@ -458,24 +464,41 @@ if ~isempty(elogpath)
 
 A = readtable(elogpath); 
 temp = A((contains(A.Comment, 'FCM')), :) ;
+datenums = [];
+
+if ismember( 'RoeslerEvent', A.Properties.VariableNames) %special case for SR1812
+    ind = find(gated_table.Cast ==0); %these should be UW
+    for tt = 1:length(ind)
+        nn = gated_table.fcslist{ind(tt)}(end-11:end-7); %this is brittle, assumes all end in _UW.fcs
+        ttt = find(strcmp(['EX' nn], A.RoeslerEvent));
+        gated_table.date_sampled(ind(tt)) = datetime(A.dateTime8601(ttt), 'Format','uuuu-MM-dd''T''HH:mm:ss+0000');
+        gated_table.Latitude(ind(tt)) = A.Latitude(ttt);
+        gated_table.Longitude(ind(tt)) = A.Longitude(ttt);
+        gated_table.r2r_event(ind(tt)) = A.R2R_Event(ttt);
+        gated_table.depth_m(ind(tt)) = 6; %UW for SR
+        gated_table.Cast(ind(tt)) = -9999; 
+        gated_table.Niskin(ind(tt)) = -9999; 
+    end
+end
 
 %first pick times that match 
 ind = find(gated_table.Cast ==0); 
-temp_g = gated_table(ind, :) ; 
+temp_g = gated_table(ind, :) ;
+
 for s = 1:height(temp_g)
     disp(temp)
     pause
     UWnum = input([temp_g.fcslist{s} '-Which elog row should we use for this fcs file?']);
     stupiddate = temp.dateTime8601(UWnum); 
     stupiddate = replace(stupiddate, 'T', ' ');
-        stupiddate = replace(stupiddate, '0000', '00:00');
+    stupiddate = replace(stupiddate, '0000', '00:00');
     gated_table.date_sampled(ind(s)) = stupiddate;
     datenums(s) = datenum(temp.GPS_Time(UWnum)); 
 end
 
 
 %then go get underway data 
-
+if ~isempty(uw_fullname)
 udatenums = unique(datenums); %only need one underway match per UW sample
 
 if strncmp ('http', uw_fullname, 4) %case for API 
@@ -625,9 +648,8 @@ for ii = 1:length(tdiff)
     gated_table.potemp090c(ind(datenums == udatenums(ii))) = temperature(match_ind(ii)); 
 
     gated_table.depth_m(ind(datenums == udatenums(ii))) = 5; 
-
 end
-
+end
 end
 
 no_aws_files = G.no_aws_files; 
@@ -965,6 +987,7 @@ end
     
 
     calibrate_info = table; 
+    calibrate_info.filename = string(filename);
     calibrate_info.ssc_ch_num = ssc_ch_num; 
     calibrate_info.qc = qc_warning; 
     calibrate_info.intercept = intercept; 
@@ -1100,13 +1123,12 @@ gated_table = G.gated_table;
 
 
 %first some counting of underway samples
-    temp = gated_table(gated_table.Cast == 0, :);
+    temp = gated_table(gated_table.Cast==0 | gated_table.Cast==-9999, :);
     uw_list = unique(string(temp.date_sampled)) ;
     uw_num = zeros(height(gated_table), 1); 
     for i = 1:length(uw_list)
-        uw_num(gated_table.Cast == 0 & strcmp(string(gated_table.date_sampled), uw_list(i))) = i; 
+        uw_num((gated_table.Cast==0 | gated_table.Cast==-9999) & strcmp(string(gated_table.date_sampled), uw_list(i))) = i; 
     end
-
 
 [G, C, N, uw] = findgroups(gated_table.Cast, gated_table.Niskin, uw_num);
 ia = 1:max(G); 
