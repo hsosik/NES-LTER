@@ -419,10 +419,9 @@ for f = 1:height(gated_table)
     gated_table.Latitude(f) = temp.Latitude_decimalDeg(1);
     gated_table.Longitude(f) = temp.Longitude_decimalDeg(1);
     gated_table.date_sampled(f) = temp.datetime(1);
-    gated_table.r2r_event(f) = temp.r2r_event(1);
+    %gated_table.r2r_event(f) = temp.r2r_event(1);
 
-%if cruisename == 'SG2105';
- if strcmp(cruisename, 'SG2105')
+ if strcmp(cruisename, 'SG2105') || strcmp(cruisename, 'SR1812') || strcmp(cruisename, 'DY131')
          gated_table.r2r_event(f) = temp.r2r_event(1);
  end
    
@@ -1340,8 +1339,7 @@ if strcmp(cruisename, 'TN368')
     CNTable(CNTable.Cast == 0, :) = []; %two bad entries, not matched to casts
 end
 
-
-EDI_table = table(CNTable.cruise, CNTable.Cast, CNTable.Niskin, CNTable.latitude, CNTable.longitude, CNTable.depth_m, CNTable.salinity, CNTable.potemp090c, CNTable.r2r_event); 
+EDI_table = table(CNTable.cruise, CNTable.Cast, CNTable.Niskin, CNTable.latitude, CNTable.longitude, CNTable.depth_m, CNTable.salinity, CNTable.potemp090c); %, CNTable.r2r_event); 
 EDI_table.Properties.VariableNames = {'cruise'; 'cast'; 'niskin'; 'latitude'; 'longitude'; 'depth_m'; 'salinity'; 'potential_temperature_c'; 'r2r_event'}; 
 
 EDI_table.cruise = string(EDI_table.cruise); %helpful for merging tables when cruisenames are different lengtths 
