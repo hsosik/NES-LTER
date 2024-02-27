@@ -117,7 +117,7 @@ else
     moviechannels = 'late'; 
 end
 
-if ismember(cruise, {'EN617' 'AR31A' 'EN627'}
+if ismember(cruise, {'EN617' 'AR31A' 'EN627'})
     beadtype = 'PT';
 else
     beadtype = 'FCB';
@@ -132,7 +132,7 @@ switch cruise
         uw_fullname = '\\sosiknas1\Lab_data\SPIROPA\20190705_TN368\compiled_underway\tn368_uw_compiled.mat';
     case 'AR43' 
         uw_fullname = '\\sosiknas1\Lab_data\OTZ\20200311_AR43\underway\proc\ar43_underway.csv';  
-    else %DEFAULT, NES LTER api
+    otherwise %DEFAULT, NES LTER api
         uw_fullname = ['https://nes-lter-data.whoi.edu/api/underway/' lower(cruise) '.csv'];
 end
 
