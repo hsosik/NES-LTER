@@ -194,6 +194,11 @@ else
     load([outpath filesep 'FCSfileinfo.mat'])
 end
 
+%% STEP 2
+if step(2)
+    test_class_assignments(p)
+end
+
 %% STEP 3
 if step(3)
     %assign class, save class files, with option to make movies

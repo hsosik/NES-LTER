@@ -1,25 +1,25 @@
-
+function [] = test_class_assignments(p)
 %test class assignments for a cruise WITHOUT overwriting class data 
 
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20230807_EN706'; 
-assign_class_function = 'assign_class_EN706'; 
-
-filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; '(lab test)'; 'test';'Dockwater'; 'Daily'; 'Rinses'; 'discrete'; "Filter config"; "Grazer"; "SFD_AR29_Grazer"; "Cultures"; "08Aug2023"}; %needed for Step2
-OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
-
-framemaker = 'make_movieframe_density';
-stepsize = 25; %controls resolution of movie
-moviechannels = 'late'; 
+% basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20230807_EN706'; 
+% assign_class_function = 'assign_class_EN706'; 
+% 
+% filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead'; '(lab test)'; 'test';'Dockwater'; 'Daily'; 'Rinses'; 'discrete'; "Filter config"; "Grazer"; "SFD_AR29_Grazer"; "Cultures"; "08Aug2023"}; %needed for Step2
+% OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
+% 
+% framemaker = 'make_movieframe_density';
+% stepsize = 25; %controls resolution of movie
+% moviechannels = 'late'; 
     
 
 %assign useful paths
-fpath = [basepath filesep 'FCS' filesep];
-outpath = [basepath filesep 'bead_calibrated' filesep];
+fpath = [p.basepath filesep 'FCS' filesep];
+outpath = [p.basepath filesep 'bead_calibrated' filesep];
 beadfigpath = [outpath filesep 'bead_plots'];
 classpath = [outpath 'class' filesep];
 load([outpath filesep 'FCSfileinfo.mat'])
 
-if strcmp(OD2setting, 'GL1')
+if strcmp(p.OD2setting, 'GL1')
     ssc_name = 'GL1';  
 else
     ssc_name = 'SSC'; 
@@ -27,8 +27,8 @@ end
 
  %remove filetype2exclude from FCSfileinfo and generate filelist
         %this part has been updated  for Table structure FCS filinfo 
-    for iii = 1:length(filetype2exclude)    
-         t = contains(FCSfileinfo.fcslist, filetype2exclude{iii});
+    for iii = 1:length(p.filetype2exclude)    
+         t = contains(FCSfileinfo.fcslist, p.filetype2exclude{iii});
          if ~isempty(t)
               FCSfileinfo(t, :) = []; 
          end
@@ -50,7 +50,7 @@ end
 
     length(filelist)
     %now go through files of interest, assign classes, and save results
-    for count = 1:stepsize:length(filelist)
+    for count = 1:p.stepsize:length(filelist)
         pause(.02)
          if ~rem(count,10)
             disp([num2str(count) ' of ' num2str(length(filelist))])
@@ -73,8 +73,9 @@ end
             fcsdat(fcsdat(:,ssc_ch)<0, ssc_ch) = cf*fcsdat(fcsdat(:,ssc_ch)<0, ssch);
             
             % call the function to make the plots and getframe
-            eval(['Frame = ', framemaker, '(fcsdat, fcshdr, class, moviechannels, QC_flags(count), bounds)']);
+            eval(['Frame = ', p.framemaker, '(fcsdat, fcshdr, class, moviechannels, QC_flags(count), bounds)']);
      
 
             set(gcf, 'position', [2.1483e+03 -187 905.3333 590.6667])
     end
+end
