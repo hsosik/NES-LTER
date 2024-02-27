@@ -1,22 +1,23 @@
 function process_wrapper_2024(cruise, steps2do)
 % function process_wrapper_2024(cruise, steps2do)
 % e.g., 
-%   process_wrapper_2024('EN661', [2 4]) %for just steps 2 and 4
+%   process_wrapper_2024('EN661', [1 3]) %for just steps 1 and 3
 % or 
-%   process_wrapper_2024('EN661', [1:9]) %for just all steps at once
+%   process_wrapper_2024('EN661', [1, 3:10]) %for all steps at once
 %
 % February 2024 (Heidi M. Sosik, WHOI)
 % update from process_wrapper_2021 (from Bethany); 
 % handle defaults for all steps, with special cases coded for
 % early non-standard cruises; change step to a vector for ease of input
-%1. Generate FCSfileinfo 
-%2. make new class files
-%3. Assign beads to make beadstats and beadplots
-%4-5. Apply calibration to add volume to class files 
-%6. Generate attune table
-%7. Make a movie
-%8. Match attune table to underway data
-%9. Make standardized volume tables 
+%1. Generate FCSfileinfo
+%2. Test class assignments
+%3. make new class files
+%4. Assign beads to make beadstats and beadplots
+%5-6. Apply calibration to add volume to class files 
+%7. Generate attune table
+%8. Make a movie
+%9. Match attune table to underway data
+%10. Make standardized volume tables 
 
 %This function is designed to be able to process a cruise of attune data 
 %from start to finish or with each step optional. 
@@ -27,25 +28,26 @@ function process_wrapper_2024(cruise, steps2do)
 %1. Generate FCSfileinfo 
         % this is a table of file names and dates, with volume and a
         % quality flag. For this table, QC_flag = 1 is good. 
-%2. make new class files
+%2. Test class assignments....
+%3. make new class files
         % this creates a new folder of files named after the .fcs files 
         % but filled with .mat files of class assingments for each particle. 
         % There is an option of making the class cytogram movies at this
         % step. 
-%3. Assign beads to make beadstats and beadplots
+%4. Assign beads to make beadstats and beadplots
         % generate beadplots amd beadstats.mat within bead_calibrated directory 
         % beadstats includes all relevant bead statistics and setup info
-%4-5. Apply calibration to add volume to class files 
+%5-6. Apply calibration to add volume to class files 
         % Get conversion for GL1 to SSC and then SSC to volume, save volume
         % values to Class files. 
-%6. Generate attune table
+%7. Generate attune table
         % Attune Table has final collection of filenames, volumes sampled, 
         % counts of different classes, and -- if volumes have been estimated- biovolumes. 
-%7. Make a movie
+%8. Make a movie
         % option to make a movie from an existing folder of class files 
-%8. Match attune table to underway data
+%9. Match attune table to underway data
         % use rest api or a local spreadsheet to get environmnetal data 
-%9. Make standardized volume tables 
+%10. Make standardized volume tables 
         %discretize syn and euk data into volume bins useful for division
         %rate estimation. 
         % Also, this step standardizes environmental variable names so
@@ -53,7 +55,7 @@ function process_wrapper_2024(cruise, steps2do)
 
 
 %make step vector
-step = zeros(1,9);
+step = zeros(1,10);
 step(steps2do) = 1;
 basepath_temp =  '\\sosiknas1\Lab_data\Attune\cruise_data\';
 temp = dir([basepath_temp '*' cruise]);
@@ -158,28 +160,28 @@ end
 %% Save variables for steps being used
 
 save([outpath '\Processing_variables.mat'], 'basepath')
-if step(2)
+if step(3)
     step2vars = {dont_overwrite_volumes, assign_class_function, filetype2exclude, OD2setting, appendonly, makemovieasyougo};
     save([outpath '\Processing_variables.mat'], 'step2vars', '-append')
 end
-if step(3)
+if step(4)
     step3vars = {beadfiles2include, beadtype, OD2setting};
     save([outpath '\Processing_variables.mat'], 'step3vars', '-append')
 end
-if step(4)
+if step(5)
     step4vars = {SSCDIM}
     save([outpath '\Processing_variables.mat'], 'step4vars', '-append')
 end
-if step(5)
+if step(6)
     step5vars = {SSCDIM, OD2setting}
     save([outpath '\Processing_variables.mat'], 'step5vars', '-append')
 
 end
-if step(7) | (step(2) & makemovieasyougo) 
+if step(8) | (step(3) & makemovieasyougo) 
     step7vars = {makemovieasyougo, framemaker, moviechannels, stepsize};
     save([outpath '\Processing_variables.mat'], 'step7vars', '-append')
 end
-if step(8) 
+if step(9) 
     step8vars = {uw_fullname};
     save([outpath '\Processing_variables.mat'], 'step8vars', '-append')
 end
@@ -192,14 +194,14 @@ else
     load([outpath filesep 'FCSfileinfo.mat'])
 end
 
-%% STEP 2
-if step(2)
+%% STEP 3
+if step(3)
     %assign class, save class files, with option to make movies
     step2function(basepath, assign_class_function, filetype2exclude, FCSfileinfo, makemovieasyougo, framemaker, OD2setting, appendonly, moviechannels, dont_overwrite_volumes)
 end
 
-%% STEP 3
-if step(3)
+%% STEP 4
+if step(4)
    clear FCSfileinfo %need to get back to version that hasn't been cut down for class files in case step 2 was run
    load([outpath filesep 'FCSfileinfo.mat'])
 
@@ -214,44 +216,44 @@ if step(3)
    process_beads_PT_adjust_2(basepath, FCSfileinfo, beadfiles2include, beadtype, OD2setting) %this line works for FCB bead
     
 end
-%% STEPS 4 - 5
+%% STEPS 5 - 6
 %size calibration, can be redone without reassigning classes if bead processing is adjusted
-if step(4)
+if step(5)
     if strcmp(OD2setting, 'GL1')
         get_calibration_stats_linear_2021(outpath, classpath, 50, SSCDIM) %A means ssch_ch_num is ssc-a
     end
 end
-if step(5) 
+if step(6) 
     use_calibration_stats_linear(outpath, classpath, SSCDIM, OD2setting)  
 end
 
 
 
-%% STEP 6
-if step(6)
+%% STEP 7
+if step(7)
     generate_attune_table(classpath, [outpath 'FCSfileinfo.mat'])
     %this function will generate attune table for files with class files
     %only, generally beads are removed
 end
 
-%% STEP 7 
+%% STEP 8 
 % make a movie 
-if step(7)
+if step(8)
     attune_lter_moviemaker(fpath, classpath, OD2setting, framemaker, moviechannels, stepsize)
 end
 
-%% STEP 8
+%% STEP 9
 % match underway data 
-if step(8)
+if step(9)
     Attune_uw_match = match_Attune_underway_LTER([outpath 'AttuneTable.mat'],uw_fullname); 
 end
 
 
-%% STEP 9
+%% STEP 10
 % make standardized volume tables for division rate estimates and quality
 % control %makes products that Bethany used for all of her Thesis work. 
 % Also standardizes the names of the environmental data from step 8. 
-if step(9)
+if step(10)
     get_cruise_voldists_fromEDItable2(basepath)
     Plot_Voldists_function(basepath, outpath)
 end
