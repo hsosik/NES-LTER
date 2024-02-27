@@ -19,16 +19,43 @@ if 1 %1 to read from the APIs, 0 to load the stored (multi-cruise) file
     nut = table;
     for count1 = 1:length(cruises)
         disp(cruises{count1})
-        opt = weboptions('Timeout', 30);
+        opt = weboptions('Timeout', 120);
         try
+            %opt = detectImportOptions(['https://nes-lter-data.whoi.edu/api/nut/' cruises{count1} '.csv']);
+            %opt.VariableTypes(strcmp(opt.VariableNames, 'alternate_sample_id')) = {'char'};
+            %opt.Timeout = 120;
             n = webread(['https://nes-lter-data.whoi.edu/api/nut/' cruises{count1} '.csv'], opt);
             n.alternate_sample_id = []; %move this column since the type doesn't match between all cruises
             %n.nearest_station = [];
             %n.distance_km = [];
+            v = n.Properties.VariableNames;
+    %        if ~ismember('alternate_sample_id',v)
+    %            n.alternate_sample_id(:) = {''};
+    %        end
+            if ~ismember('nearest_station',v)
+                n.nearest_station(:) = {''};
+            end
+            if ~ismember('distance_km',v)
+                n.distance_km(:) = NaN;
+            end
+            if iscell(n.distance_km)
+                n.distance_km_temp = n.distance_km;
+                n = removevars(n,"distance_km");
+                n.distance_km(strcmp(n.distance_km_temp,'NA')) = NaN;
+                if sum(~strcmp(n.distance_km_temp,'NA'))
+                    n.distance_km(~strcmp(n.distance_km_temp,'NA')) = str2num(char(n.distance_km_temp(~strcmp(n.distance_km_temp,'NA'))));
+                end
+                n = removevars(n,"distance_km_temp");
+            end
             nut = [nut; n];
+        catch
+            disp(cruises{count1})
+            disp('no data found')
         end
     end
-    nut.mdate = datenum(nut.date, 'yyyy-mm-dd hh:MM:ss+00:00');
+    %nut.mdate = datenum(nut.date, 'yyyy-mm-dd hh:MM:ss+00:00');
+    nut.datetime(~strcmp(nut.date,'NA')) = datetime(nut.date(~strcmp(nut.date,'NA')),'InputFormat', 'yyyy-MM-dd HH:mm:ss+00:00');
+
     save('c:\work\LTER\nut_all', 'nut', 'cruises')
 else
     load('c:\work\LTER\nut_all')

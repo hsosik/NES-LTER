@@ -7,7 +7,7 @@ function [] = summarize_oneclass_by_dataset(dataset_name, classname, thresh)
 
 base_path = ['\\sosiknas1\IFCB_products\' dataset_name '\summary\'];
 %base_path = ['c:\work\IFCB_products\' dataset_name '\summary\'];
-if isequal(dataset_name, 'mvco')
+if isequal(lower(dataset_name), 'mvco')
     base_path = ['\\sosiknas1\IFCB_products\' dataset_name '\summary_v4\'];
 end
 
@@ -40,11 +40,17 @@ for ii = 1:length(flist)
         %tempFea = L.classFeaList{typeind(ibin),cc};
         %temp = array2table(cat(1, tempFea{:}), 'VariableNames', L.classFeaList_variables);
         %tempFea = L.classFeaList.(classname);
-        temp = array2table(L.classFeaList.(classname){iii}, 'VariableNames', L.classFeaList_variables);
-        %ind = (temp.ESD>=ESDmin & temp.score_sec>=thresh);
-        ind = (temp.score > thresh);
-        T2.C(iii) = sum(temp.cellC(ind)); %./T.ml_analyzed(iii)/1000; %micrograms per liter;
-        T2.count(iii) = length(ind);
+        try 
+            temp = array2table(L.classFeaList.(classname){iii}, 'VariableNames', L.classFeaList_variables);
+            %ind = (temp.ESD>=ESDmin & temp.score_sec>=thresh);
+            ind = (temp.score > thresh);
+            T2.C(iii) = sum(temp.cellC(ind)); %./T.ml_analyzed(iii)/1000; %micrograms per liter;
+            T2.count(iii) = length(ind);
+        catch
+            T2.C(iii) = NaN; %./T.ml_analyzed(iii)/1000; %micrograms per liter;
+            T2.count(iii) = NaN;
+            disp(['missing data for ' L.filelist{iii}])
+        end
     end
     class_summary = [class_summary; T2];
     meta_data = [meta_data; T.meta_data];

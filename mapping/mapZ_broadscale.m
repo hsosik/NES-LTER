@@ -1,4 +1,4 @@
-function [] = mapZ_broadscale(input2plot)
+function [cbh] = mapZ_broadscale(input2plot)
 %UNTITLED2 Summary of this function goes here
 %   Detailed explanation goes here
 persistent broad_bathy_Z broad_bathy_lat broad_bathy_lon

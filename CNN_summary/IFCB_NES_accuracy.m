@@ -7,6 +7,8 @@
 %load("C:\work\CNN_models\202106_Dec2020_NES_1.6\results.mat")
 %load('\\sosiknas1\training_sets\IFCB\training-output\20220416_Delmar_NES_1\results')
 load('\\sosiknas1\training_sets\IFCB\training-output\20220209_Jan2022_NES_2.4\results')
+%ad('\\vast\proj\omics\sosik\training-output\20231215_NBP2022_NES_1.0\results')
+%load('\\vast\proj\omics\sosik\training-output\20231218_NBP2022_NES_1.0\results')
 
 figure
 subplot(1,2,2)
@@ -70,6 +72,19 @@ set(gcf, 'position', [325 425 700 200])
 xlabel('Class number', 'fontsize', 16)
 set(gca,'position', [.088 .24 .9 .7], 'fontweight', 'bold', 'xtick', 0:20:140)
 grid on
+%%
+figure
+[~,ind] = sort(f1_perclass, 'descend');
+bar(1:numel(ind),f1_perclass(ind), 'edgecolor', 'none')
+%set(gca, 'xtick', 1:1:numel(ind), 'xticklabel', regexprep(class_labels(ind), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 8)
+set(gca, 'xtick', 1:1:numel(ind), 'xticklabel', regexprep(class_labels(ind), '_', ' '), 'XTickLabelRotation', 80, 'fontsize', 6, 'XTickLabelRotationMode', 'auto')
+ylabel({'ML classifier performance';'(F1-score)'}, 'fontsize', 12, 'fontweight', 'bold')
+set(gcf, 'position', [325 425 700 200])
+%xlabel('Class number', 'fontsize', 16)
+set(gca,'position', [.065 .4 .93 .5])
+set(gcf, 'position', [125 125 900 300])
+
+
 %%
 
 return

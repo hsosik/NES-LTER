@@ -264,7 +264,8 @@ ylabel(tl, 'Depth (m)')
 set(gcf,'WindowState','fullscreen')
 print([base outfile], '-dpng', '-r300')
 %%
-cruise = 'EN687'; TT = load(['C:\work\IFCB_products\NESLTER_transect\summary\' cruise '_underway_Hemiaulus.mat']);
+cruise = 'EN644'; TT = load(['C:\work\IFCB_products\NESLTER_transect\summary\' cruise '_underway_Hemiaulus.mat']);
+%cruise = 'EN687'; TT = load(['C:\work\IFCB_products\NESLTER_transect\summary\' cruise '_underway_Hemiaulus.mat']);
 %cruise = 'HB1907'; TT = load(['C:\work\IFCB_products\OTZ\summary\' cruise '_underway_Hemiaulus.mat']);
 %cruise = 'GU1902'; TT = load(['C:\work\IFCB_products\NESLTER_broadscale\summary\' cruise '_underway_Hemiaulus.mat']); %'GU1905' 'GU1902' 'HB1902'
 %cruise = 'TN368'; TT = load(['C:\work\IFCB_products\SPIROPA\summary\' cruise '_underway_Hemiaulus.mat']);
@@ -288,6 +289,8 @@ return
 
 %%
 %Hemiaulus boxplot
+cruise = 'EN644'; TT = load(['C:\work\IFCB_products\NESLTER_transect\summary\' cruise '_underway_Hemiaulus.mat']);
+T = TT.IFCB_carbon_concentration;
 figure('Position',[350 300 550 300])
 wl = 0.1;
 ilat = (39.8:wl:41.5)';
@@ -304,7 +307,8 @@ set(gca, 'xdir', 'rev')
 xlabel('Latitude')
 ylim([0 75])
 ylabel('\itHemiaulus\rm carbon (\mug l^{-1})')
-print([base 'EN644_HemiaulusC_boxplot'], '-dpng', '-r300')
+%print([base 'EN644_HemiaulusC_boxplot'], '-dpng', '-r300')
+print([base 'EN644_HemiaulusC_boxplot'], '-depsc', '-r600')
 
 %%
 ilat = 39.5:.05:41.5;
@@ -334,4 +338,5 @@ ylim([0 150])
 title('')
 disp('delete the default colorbar from sectionZ_transect; then hit enter to save png')
 pause
-print([base 'EN644_HemiaulusC_section'], '-dpng', '-r300')
+%print([base 'EN644_HemiaulusC_section'], '-dpng', '-r300')
+print([base 'EN644_HemiaulusC_section'], '-depsc', '-r600')
