@@ -159,7 +159,7 @@ end
 
 %% Save variables for steps being used
 
-save([outpath '\Processing_variables.mat'], p)
+save([outpath '\Processing_variables.mat'], 'p')
 % if step(3)
 %     step2vars = {dont_overwrite_volumes, assign_class_function, filetype2exclude, OD2setting, appendonly, makemovieasyougo};
 %     save([outpath '\Processing_variables.mat'], 'step2vars', '-append')
