@@ -11,15 +11,15 @@ function [] = test_class_assignments(p)
 % stepsize = 25; %controls resolution of files viewed
 % moviechannels = 'late'; 
 file2start = '';
-while ~isinteger(file2start)
-    file2start = input(1,'What file number to view first? (enter for default = 1)');
+while ~isnumeric(file2start)
+    file2start = input('What file number to view first? (enter for default = 1)');
     if isempty(file2start)
         file2start = 1;
     end
 end
 stepsize = '';
-while ~isinteger(file2start)
-    stepsize = input(1,'What step size for file viewing? (enter for default = 25)');
+while ~isnumeric(stepsize)
+    stepsize = input('What step size for file viewing? (enter for default = 25)');
     if isempty(stepsize)
         stepsize = 25;
     end
