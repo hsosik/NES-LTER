@@ -8,9 +8,22 @@ function [] = test_class_assignments(p)
 % OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None' 
 % 
 % framemaker = 'make_movieframe_density';
-% stepsize = 25; %controls resolution of movie
+% stepsize = 25; %controls resolution of files viewed
 % moviechannels = 'late'; 
-    
+file2start = '';
+while ~isinteger(file2start)
+    file2start = input(1,'What file number to view first? (enter for default = 1)');
+    if isempty(file2start)
+        file2start = 1;
+    end
+end
+stepsize = '';
+while ~isinteger(file2start)
+    stepsize = input(1,'What step size for file viewing? (enter for default = 25)');
+    if isempty(stepsize)
+        stepsize = 25;
+    end
+end
 
 %assign useful paths
 fpath = [p.basepath filesep 'FCS' filesep];
@@ -50,7 +63,7 @@ end
 
     length(filelist)
     %now go through files of interest, assign classes, and save results
-    for count = 1:p.stepsize:length(filelist)
+    for count = file2start:stepsize:length(filelist)
         pause(.02)
          if ~rem(count,10)
             disp([num2str(count) ' of ' num2str(length(filelist))])
