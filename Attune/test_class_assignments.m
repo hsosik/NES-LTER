@@ -86,7 +86,7 @@ end
             fcsdat(fcsdat(:,ssc_ch)<0, ssc_ch) = cf*fcsdat(fcsdat(:,ssc_ch)<0, ssch);
             
             % call the function to make the plots and getframe
-            eval(['Frame = ', p.framemaker, '(fcsdat, fcshdr, class, moviechannels, QC_flags(count), bounds)']);
+            eval(['Frame = ', p.framemaker, '(fcsdat, fcshdr, class, p.moviechannels, QC_flags(count), bounds)']);
      
 
             set(gcf, 'position', [2.1483e+03 -187 905.3333 590.6667])
