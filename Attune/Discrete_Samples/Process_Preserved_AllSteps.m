@@ -45,11 +45,11 @@ uw_fullname = ''; %'https://nes-lter-data.whoi.edu/api/underway/en657.csv';
 
 %Set all steps to 1 if starting from beginning 
 Step1 = 0; %make FCSList
-Step2 = 1; %go look at AWS files to find gate assignments 
+Step2 = 0; %go look at AWS files to find gate assignments 
 Step3 = 0; % add metadata to gated table
 Step4 = 0; % classify using gate_table
 Step5 = 0; %size calibrate and create class files 
-Step6 = 0; %convert gated table to Summary table 
+Step6 = 1; %convert gated table to Summary table 
 Step7 = 0; %Reformat Summary Table to have EDI headers
 
 
@@ -473,9 +473,11 @@ datenums = [];
 if ismember( 'RoeslerEvent', A.Properties.VariableNames) %special case for SR1812
     ind = find(gated_table.Cast ==0); %these should be UW
     for tt = 1:length(ind)
-        nn = gated_table.fcslist{ind(tt)}(end-11:end-7); %this is brittle, assumes all end in _UW.fcs
+        %nn = gated_table.fcslist{ind(tt)}(end-11:end-7); %this is brittle, assumes all end in _UW.fcs
+        nn = gated_table.fcslist{ind(tt)}(48:52);
         ttt = find(strcmp(['EX' nn], A.RoeslerEvent));
-        gated_table.date_sampled(ind(tt)) = datetime(A.dateTime8601(ttt), 'Format','uuuu-MM-dd''T''HH:mm:ss+0000');
+        %ttt = find(strcmp(['Ex' nn], A.RoeslerEvent));
+        gated_table.date_sampled(ind(tt)) = datetime(A.dateTime8601(ttt), 'Format','uuuu-MM-dd''T''HH:mm:ss+00:00');
         gated_table.Latitude(ind(tt)) = A.Latitude(ttt);
         gated_table.Longitude(ind(tt)) = A.Longitude(ttt);
         gated_table.r2r_event(ind(tt)) = A.R2R_Event(ttt);
@@ -1128,7 +1130,8 @@ gated_table = G.gated_table;
 
 %first some counting of underway samples
     temp = gated_table(gated_table.Cast==0 | gated_table.Cast==-9999, :);
-    uw_list = unique(string(temp.date_sampled)) ;
+    uw_list = unique(string(temp.date_sampled)); %WHERE Emily thinks a problem is 
+    %uw_list = string(temp.date_sampled); 
     uw_num = zeros(height(gated_table), 1); 
     for i = 1:length(uw_list)
         uw_num((gated_table.Cast==0 | gated_table.Cast==-9999) & strcmp(string(gated_table.date_sampled), uw_list(i))) = i; 
