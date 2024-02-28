@@ -202,7 +202,7 @@ end
 %% STEP 3
 if step(3)
     %assign class, save class files, with option to make movies
-    makeClassFiles(p.basepath, p.assign_class_function, p.filetype2exclude, FCSfileinfo, p.makemovieasyougo, p.framemaker, p.OD2setting, p.appendonly, p.moviechannels, p.dont_overwrite_volumes)
+    makeClassFiles(p, FCSfileinfo)
 end
 
 %% STEP 4
@@ -266,7 +266,7 @@ end
 end
 
 
-function makeClassFiles(p.basepath, p.assign_class_function, p.filetype2exclude, FCSfileinfo, p.makemovieasyougo, p.framemaker, p.OD2setting, p.appendonly, p.moviechannels, p.dont_overwrite_volumes) 
+function makeClassFiles(p, FCSfileinfo) 
 
 fpath = [p.basepath filesep 'FCS' filesep];
 outpath = [p.basepath filesep 'bead_calibrated' filesep];
