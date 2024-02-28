@@ -72,7 +72,7 @@ end
         disp(filename)
         [fcsdat,fcshdr] = fca_readfcs(filename);
         [~,fname] = fileparts(filename);
-        [class, bounds] = eval([assign_class_function '( fcsdat, fcshdr, 0, fname, FCSfileinfo.QC_flag(count), FCSfileinfo.matdate_start(count) );']); 
+        [class, bounds] = eval([p.assign_class_function '( fcsdat, fcshdr, 0, fname, FCSfileinfo.QC_flag(count), FCSfileinfo.matdate_start(count) );']); 
         clear fname
    
         
