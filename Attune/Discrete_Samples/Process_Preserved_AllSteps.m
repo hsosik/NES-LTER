@@ -796,7 +796,7 @@ for i = 1:height(gated_table)
     %onto calculating concentrations
     concent_i = nan(1, 6);
 
-    g = gated_table.gate_logic{i}; 
+    sizefrac = gated_table.gate_logic{i}; 
 
     % this is deleted since now all gates have post hoc 80% time window
     % added. 
@@ -1129,12 +1129,25 @@ gated_table = G.gated_table;
 
 
 %first some counting of underway samples
-    temp = gated_table(gated_table.Cast==0 | gated_table.Cast==-9999, :);
-    uw_list = unique(string(temp.date_sampled)); %WHERE Emily thinks a problem is 
+    gind = (gated_table.Cast==0 | gated_table.Cast==-9999);
+    temp = gated_table(gind, :);
+    uw_list = unique(string(temp.date_sampled)); 
     %uw_list = string(temp.date_sampled); 
     uw_num = zeros(height(gated_table), 1); 
     for i = 1:length(uw_list)
         uw_num((gated_table.Cast==0 | gated_table.Cast==-9999) & strcmp(string(gated_table.date_sampled), uw_list(i))) = i; 
+    end
+
+    if strcmp(cruisename, 'DY131')
+        uw_num = zeros(height(gated_table), 1); 
+        t = split(temp.fcslist, 'Ex');
+        exnum = extractBefore(t(:,2),'_');
+        sizefrac = cell(size(exnum));
+        sizefrac(contains(t(:,2), 'total')) = {'total'};
+        sizefrac(contains(t(:,2), 'less5')) = {'less5'};
+        sizefrac(contains(t(:,2), 'less20')) = {'less20'};
+        [uw_num(gind), g1,g2] = findgroups(exnum, sizefrac);
+%        gated_table.sizefrac(gind) = g2;
     end
 
 [G, C, N, uw] = findgroups(gated_table.Cast, gated_table.Niskin, uw_num);
