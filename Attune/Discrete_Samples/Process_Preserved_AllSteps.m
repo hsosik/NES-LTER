@@ -16,7 +16,7 @@ fclose('all');
 %cruisename = 'SR1812';
 %basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20220806_EN688\preserved\';
 %cruisename = 'EN688';
-basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20210501_DY131\';
+basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20210501_DY131\thawed\';
 cruisename = 'DY131';
 
 hierarchical_gates = 'True';  %set to 'True' or 'False'; 
@@ -1138,7 +1138,7 @@ gated_table = G.gated_table;
         uw_num((gated_table.Cast==0 | gated_table.Cast==-9999) & strcmp(string(gated_table.date_sampled), uw_list(i))) = i; 
     end
 
-    if strcmp(cruisename, 'DY131')
+    if strcmp(cruisename, 'DY131') && ~contains(basepath, 'thawed')
         uw_num = zeros(height(gated_table), 1); 
         t = split(temp.fcslist, 'Ex');
         exnum = extractBefore(t(:,2),'_');
@@ -1147,7 +1147,6 @@ gated_table = G.gated_table;
         sizefrac(contains(t(:,2), 'less5')) = {'less5'};
         sizefrac(contains(t(:,2), 'less20')) = {'less20'};
         [uw_num(gind), g1,g2] = findgroups(exnum, sizefrac);
-%        gated_table.sizefrac(gind) = g2;
     end
 
 [G, C, N, uw] = findgroups(gated_table.Cast, gated_table.Niskin, uw_num);
