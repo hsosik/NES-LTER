@@ -322,7 +322,7 @@ end
         [~,fname] = fileparts(filename);
         class = eval([p.assign_class_function '( fcsdat, fcshdr, 0, fname, FCSfileinfo.QC_flag(count), FCSfileinfo.matdate_start(count) );']); 
         clear fname
-        notes = ['Class 1= Euk, Class 2 = Syn, Class 3 = lowPEeuks, Class 4 = hiPEeuks, Class 5 = Syn_euk_coincident1, Class 0 = junk; Cell volume in cubic microns;',  assign_class_function, string(datetime)];
+        notes = ['Class 1= Euk, Class 2 = Syn, Class 3 = lowPEeuks, Class 4 = hiPEeuks, Class 5 = Syn_euk_coincident1, Class 0 = junk; Cell volume in cubic microns;',  p.assign_class_function, string(datetime)];
         
         if p.dont_overwrite_volumes 
             save([classpath regexprep(filelist{count}, '.fcs', '')], 'class', 'notes', '-append') %I think class files wont have volume yet if we don't have bead statistics to calibrate 
