@@ -1,15 +1,20 @@
-function [ class , bounds] = assign_class_AR61( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
+ function [ class , bounds] = assign_class_AR78( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 
 plot_flag = 0; 
 
-%if startdate > 7.384712500000000e+05 & startdate <7.384722500000000e+05
- %   phase = 2
-%else
-    phase =1;
-%end
+%sampled alternating from start of cruise until 
+%sampled pro from Nov 1 1714? BL = 390 or 370 until 11:15 Nov 2 (local), experiment 01Nov(19) BL hv
+%= 340; If BL3 voltage is >340, it is a Pro sample and needs pro gate.
+%Other gates will need to move as well on CHl channel.
 
-%set whether or not to gate pro
-pro = 1;
+%for files that have pro on AR78
+if startdate > 7.391916616898148e+05 & startdate <7.391924697685185e+05
+    phase = 2;
+else
+%regular shelf settings
+phase =1;
+end
+
 %Initialze class vector
     class = zeros(size(fcsdat,1),1);
     
@@ -26,14 +31,12 @@ pro = 1;
     synminX = 10 ; 
     synXcorners = [7000 30000]; 
 
-    eukminX =  2000;%5000;%5e3; 
-    eukcorner = [10000 600]; %[20000 1200]; 
+    eukminX = 5e3; 
+    eukcorner = [20000 1200]; 
     eukmaxY = 4e4; 
-    eukmaxYlower = 600;%300; 
-
-    gl2_noise_thresh = 3000;%10000; %basically synminY 
-  
-
+    eukmaxYlower = 300; 
+    gl2_noise_thresh = 10000; %basically synminY
+    
     synGL1A2GL1Hmax = 4; %PE area to height
     synGL1H2BL3Hslope = 1.1; %PE to CHL, ?1.2 with .8 offset?
     synGL1H2BL3Hoffset = .4; %PE to CHL .4 on RB, .3 on TN, .8?
@@ -41,6 +44,29 @@ pro = 1;
     syneukBL3H2SSCHoffset = -2.5; %-.6; %PE to CHL -.8 on TN
     nonsynfactorA = 25; %6
     nonsynfactorB = 6; %2.5
+
+
+    if phase == 2
+    eukminX =  10000;%2000;%5000;%5e3; 
+    eukcorner = [10000 900]; %[20000 1200]; 
+    eukmaxY = 4e4; 
+    eukmaxYlower = 400;%300; 
+    gl2_noise_thresh = 3000;%10000; %basically synminY 
+    synGL1H2BL3Hoffset = -.2; %PE to CHL .4 on RB, .3 on TN, .8?
+    end
+  
+    
+    
+    % next 4 lines added for case with Pro.
+    prominX = 300;  
+    promaxX = 3000;
+    prominY = 20;
+    promaxY = 400;
+
+%     prominX =  2000;%5000;%5e3; 
+%     procorner = [10000 600]; %[20000 1200]; 
+%     promaxY = 4e4; 
+%     promaxYlower = 600;%300; 
     
 %     if phase == 2
 %         eukminX = 1300; 
@@ -52,9 +78,13 @@ pro = 1;
     %euk gate 
     geuk_main_gate = [eukminX eukmaxYlower;  eukcorner(1) eukcorner(2); 1100000 eukmaxY; 1100000 1; eukminX 1];
     
-    %if pro =1;
-     %   pro_main_gate = 
-    %pro main gate
+
+    %pro main gates
+    if phase == 2
+    pro_main_gate = [prominX promaxY;  prominX prominY; promaxX prominY; promaxX promaxY]; %gates Pro on GL2/BL3 plot
+    pro_2nd_gate = [400 0; 400 800; 8000 8000; 8000 0]; %gates Pro on GL2/SSC plot
+    end
+    
     
         
     %find indices of cells within the gates
@@ -67,7 +97,7 @@ pro = 1;
     minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
  
     %eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
-    eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.2;
+    eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
     eukminX = max([eukminX 500]); %Pretty sure its always eukminX
     minY = max([minY 100]); %not below trigger level for this cruise
 
@@ -82,11 +112,20 @@ pro = 1;
 
     if phase == 1
         geuk_main_gate = [geuk_main_gate(1,1) 100; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)]; 
+    else
+        geuk_main_gate = [geuk_main_gate(1,1) 100; 10000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)];
     end
 
-    % assingments for euk and syn 
+
+    % assingments for euk, syn and pro 
     in_euk = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
+   if exist("pro_main_gate", "var")
+    in_pro = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(pro_main_gate(:,1)),log10(pro_main_gate(:,2)))...
+        & (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(pro_2nd_gate(:,1)),log10(pro_2nd_gate(:,2))));
+   else 
+       in_pro = ~logical(fcsdatlog(:,npar_synX));
+   end
 
     %% Part 2
     %it would be really nice if we could adjust the diagonal line in the
@@ -119,6 +158,9 @@ pro = 1;
 
     %rule out eukaryotes classed with smaller ssc than syn minimum
     class(fcsdat(:, npar_synX)<minX) = 0; 
+    
+    %classify pro
+    class(in_pro) = 7;
    
     %use size to chl ratio to rule out noise between syn and euks
     class(class ~= 2 & fcsdatlog(:,npar_eukX)<fcsdatlog(:,npar_synX)*syneukBL3H2SSCHslope+syneukBL3H2SSCHoffset) = 0; %more noise
