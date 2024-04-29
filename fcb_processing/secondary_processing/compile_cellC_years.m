@@ -24,6 +24,16 @@ sumC = sumC(sind,:);
 sumnum = sumnum(sind,:);
 sumvol = sumvol(sind,:);
 sumtitles = temp.sumtitles;
+dt = datetime(matdate, 'ConvertFrom', 'datenum');
+TTsumC = table2timetable(array2table(sumC,'VariableNames',sumtitles), 'RowTimes', dt);
+TTsumC.ml = ml_analyzed;
+TTsumnum = table2timetable(array2table(sumnum,'VariableNames',sumtitles), 'RowTimes', dt);
+TTsumnum.ml = ml_analyzed;
+TTsumC(isnat(TTsumC.Time),:) = [];
+TTsumnum(isnat(TTsumnum.Time),:) = [];
+
+notes = {'Carbon units, picograms'; 'Created with compile_cellC_years.m after cellC_save3.m'; 'Heidi M. Sosik, Woods Hole Oceanographic Institution'; datestr(now)}
+save([summarypath 'FCB_compiledC_tables'], 'TTsumC', 'TTsumnum', 'notes')
 
 ind = find(~isnan(ml_analyzed));
 [ mdate_mat, SynC_mat, yearlist, yd ] = timeseries2ydmat( matdate(ind), sumC(ind,1));

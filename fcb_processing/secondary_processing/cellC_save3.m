@@ -43,7 +43,7 @@ for count = 1:length(filelist)
         eval(['load ' mergedpath filename(1:11) 'merged' filename(12:end-4)])
     end
     cellresults_all = [cellresults_all; cellresults];
-    sumvol = NaN(length(mergedwithclass),6);
+    sumvol = NaN(length(mergedwithclass),8);
     sumC = sumvol;
     sumnum = sumvol;
     beadmatchSSCsmooth = NaN(size(beadmatch,1),1);
@@ -76,10 +76,19 @@ for count = 1:length(filelist)
                     sumvol(count2,5) = sum(cellvol(ind2));
                     sumC(count2,5) = sum(cellC(ind2));
                     sumnum(count2,5) = length(ind2);
-                    ind2 = find(celldiam > 2 & celldiam <= 10);
+                    ind2 = find(celldiam <=3);
                     sumvol(count2,6) = sum(cellvol(ind2));
                     sumC(count2,6) = sum(cellC(ind2));
                     sumnum(count2,6) = length(ind2);
+                    ind2 = find(celldiam <=5);
+                    sumvol(count2,7) = sum(cellvol(ind2));
+                    sumC(count2,7) = sum(cellC(ind2));
+                    sumnum(count2,7) = length(ind2);
+                    ind2 = find(celldiam <= 10);
+                    %ind2 = find(celldiam > 2 & celldiam <= 10);
+                    sumvol(count2,8) = sum(cellvol(ind2));
+                    sumC(count2,8) = sum(cellC(ind2));
+                    sumnum(count2,8) = length(ind2);
                 end
                 %else  %empty
                 %    sumvol(count2,class) = NaN;
@@ -89,13 +98,14 @@ for count = 1:length(filelist)
         end
         clear cellvol cellC celldiam
     end %for class = 1:2
-    sumvol_all = [sumvol_all; sumvol(:,[1:2,5:6,3:4])];
-    sumC_all = [sumC_all; sumC(:,[1:2,5:6,3:4])];
-    sumnum_all = [sumnum_all; sumnum(:,[1:2,5:6,3:4])];
+    sumvol_all = [sumvol_all; sumvol(:,[1:2,5:8,3:4])];
+    sumC_all = [sumC_all; sumC(:,[1:2,5:8,3:4])];
+    sumnum_all = [sumnum_all; sumnum(:,[1:2,5:8,3:4])];
     clear sumvol sumC sumnum
     clear mergedwithclass beadmatch cellresults
 end  %for count = 1:length(filelist)
 
-sumtitles = {'Syn', 'Euk total', 'Euk < 2 microns', 'Euk 2-10 microns' 'Dim cryptos', 'Bright cryptos'};
+%sumtitles = {'Syn', 'Euk total', 'Euk < 2 microns', 'Euk 2-10 microns' 'Dim cryptos', 'Bright cryptos'};
+sumtitles = {'Syn', 'Euk_total', 'Eukleq2microns', 'Eukleq3microns', 'Eukleq5microns', 'Eukleq10microns', 'Dim_cryptos', 'Bright_cryptos'};
 clear beadmatch* cellCHL* cellSSC* cellFLS* cellNUM* cellPE* merged* class* count* grouped* ind* file* temp
 save([base_path1 '\summary\cellC_summary_' num2str(year2do)])
