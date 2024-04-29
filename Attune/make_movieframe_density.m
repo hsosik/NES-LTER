@@ -53,6 +53,7 @@ if exist('bounds', 'var')
         syneukBL3H2SSCHoffset = bounds{7} ;
         nonsynfactorA = bounds{8} ; 
         nonsynfactorB = bounds{9}; 
+       %pro_main_gate = bounds{10};
 end
 
 
@@ -61,7 +62,7 @@ Fig = figure(1);
 clf
 %set(Fig, 'Position', [115 57 1e+03 482], 'Visible', 'off')
 set(0,'CurrentFigure',Fig)
-a1 = 3; a2 = 5;
+a1 = 3; a2 = 4;
 
 ax1 = subplot_tight(a1,a2,1,[ysp xsp]);
 
@@ -88,12 +89,13 @@ if exist('bounds', 'var')
     f = @(x) 10.^(log10(x).*synGL1H2BL3Hslope+synGL1H2BL3Hoffset);
     fplot(ax1, f, xlim(ax1))
 end
+
 make_plot(ax2,npar_synX,npar_synY,mylim1)
 if exist('bounds', 'var')
     plot(ax2,gsyn_main_gate(:,1)+1e-5,gsyn_main_gate(:,2), 'r.-')
 end
-make_plot(ax3,pe_chs(2),pe_chs(1),mylim1)
 
+make_plot(ax3,pe_chs(2),pe_chs(1),mylim1)
 if exist('bounds', 'var')
     line(ax3,xlim(ax3),xlim(ax3)*synPEA2PEHmax)
 end
@@ -108,7 +110,9 @@ end
 if QC_flag == 0
     title(ax5, 'POOR QUALITY flag tripped', 'color', 'r', 'fontweight', 'bold')
 end
+
 make_density_plot(ax6,npar_eukX,npar_eukY,mylim1)
+
 make_plot(ax7,11,15, mylim1)
 %make_plot(ax8,17,18, mylim1)
 make_plot(ax8, pe_chs(2)-1 , pe_chs(2), mylim1)
@@ -119,7 +123,7 @@ end
 make_plot(ax9,20, 11, mylim2) %fsc-W vs H 
 make_plot(ax10,11,12, mylim1)
 make_plot(ax11,12,14, mylim1)
-make_legend
+%make_legend
 
         Fig = getframe(Fig); 
         
@@ -136,7 +140,7 @@ make_legend
         loglog(ax,fcsdat(class==4,nparX), fcsdat(class==4,nparY), 'k.', 'markersize', 1)
         loglog(ax,fcsdat(class==5,nparX), fcsdat(class==5,nparY), 'c.', 'markersize', 2)
         loglog(ax,fcsdat(class==6,nparX), fcsdat(class==6,nparY), '.y', 'markersize', 1.5)
-        loglog(ax,fcsdat(class==7,nparX), fcsdat(class==7,nparY), '.', 'color', [.4 .4 .4], 'markersize', 1)
+        loglog(ax,fcsdat(class==7,nparX), fcsdat(class==7,nparY), '.', 'color', [0.4940 0.1840 0.5560], 'markersize', 1)
        
         if ~isempty(mylim)
         axis(ax,mylim)
@@ -171,6 +175,9 @@ make_legend
         if sum(class == 5)>10
         hist3(ax, [log10(fcsdat(class == 5,nparX)), log10(fcsdat(class == 5,nparY))], mycenters, 'CDataMode','auto', 'EdgeColor', 'none'); 
         end
+         if sum(class == 7)>10
+        hist3(ax, [log10(fcsdat(class == 7,nparX)), log10(fcsdat(class == 7,nparY))], mycenters, 'CDataMode','auto', 'EdgeColor', 'none'); 
+        end
 
         %[values, centers] = hist3([log10(fcsdat(:,nparX)), log10(fcsdat(:,nparY))], mycenters, 'CDataMode','auto')
         % imagesc(centers{:}, values')
@@ -187,17 +194,17 @@ make_legend
 
 
 
-    function make_legend
-            leglabels = {'Noise'; 'Euks'; 'Syn'; 'LowP Euk'; 'HiP Euk'; 'SynEuk Coincident'; 'SynEuk Coincident2'; 'Noise'}; 
-            ind = [0 (sum(class==[1:6])==0)]; %find classes with no counts to remove from legend
-            leglabels(find(ind)) = []; 
-            [hleg, icns] =legend(leglabels, 'Orientation', 'Horizontal'); 
-            set(hleg,'Position',[0.35    .2    0.5526    0.0268])
-            p = find(isgraphics(icns, "Line")); 
-        for pp = 1:length(p)
-            icns(p(pp)).MarkerSize = 18; 
-        end
-     end
+%     function make_legend
+%             leglabels = {'Noise'; 'Euks'; 'Syn'; 'LowP Euk'; 'HiP Euk'; 'SynEuk Coincident'; 'SynEuk Coincident2'; 'Pro'; 'Noise'}; 
+%             ind = [0 (sum(class==[1:6])==0)]; %find classes with no counts to remove from legend
+%             leglabels(find(ind)) = []; 
+%             [hleg, icns] =legend(leglabels, 'Orientation', 'horizontal'); 
+%             set(hleg,'Position',[0.35    .02    0.5526    0.0268]);          
+%             p = find(isgraphics(icns, "Line")); 
+%          for pp = 1:length(p)
+%              icns(p(pp)).MarkerSize = 18; 
+%          end
+%      end
         
 
 end

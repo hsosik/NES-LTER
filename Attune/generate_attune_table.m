@@ -35,7 +35,8 @@ AttuneTable.trigger2_threshhold = Attune.FCSfileinfo.trigger2_threshhold;
 
 
 EukSizes = [0 2 3 5 10 20];
-numBins = 1+2*(length(EukSizes)-1);
+%numBins = 1+2*(length(EukSizes)-1);
+numBins = 1+2*(length(EukSizes))-1; %this is brittle, added a column for Pro
 Count = NaN(length(filelist),numBins-1);
 Biovol = Count;
 Carbon = Count;
@@ -74,6 +75,8 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
         Biovol(count,1) = nansum(volume(rename_class==2));
         Carbon(count,1) = nansum(carbon(rename_class==2));
 
+    
+
     %now Euks
     celltype = 1; 
     diam = (volume*3/4/pi).^(1/3)*2; %equivalent spherical diam, micrometers
@@ -93,6 +96,10 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
         Carbon(count,ii+length(EukSizes)-1) = nansum(carbon(ind));
     end
 
+    %Pro next (added April 2024)
+        Count(count,11) = sum(rename_class==7);
+        Biovol(count,11) = nansum(volume(rename_class==7));
+        Carbon(count,11) = nansum(carbon(rename_class==7));
     
     else
         rem_ind = [rem_ind count]; %indeces to remove from final table
@@ -112,6 +119,8 @@ end
 for ii = 3:length(EukSizes)
     classnames = [classnames; ['Euk_w_PE_leq' num2str(EukSizes(ii)) 'umX']] ;
 end
+
+classnames = [classnames; {'ProX'}];
 
 AttuneTable = [AttuneTable array2table(Count, 'VariableNames', regexprep(classnames, 'X', '_count'))];
 AttuneTable = [AttuneTable array2table(Biovol, 'VariableNames', regexprep(classnames, 'X', '_biovolume'))];
