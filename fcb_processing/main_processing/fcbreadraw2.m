@@ -12,13 +12,14 @@ fclose(fid);
 setbytes = 1213; %12*100 (2-byte) + 13 (11x2-byte and 4x1-byte) % after adding 2 bytes to header for comparator value for solenoids (4 V = operating, i.e., open to ocean)
 headerlength = 15;  %number of data values in header, 1 and 2 byte counted separately
 
-if length(datraw) < 1000*setbytes; 
+%if length(datraw) < 1000*setbytes; 
     setnum = floor(length(datraw)/setbytes);
     dat = reshape(datraw(1:setnum*setbytes),setbytes,setnum);
-else
+%else
     %dat = reshape(datraw,length(datraw)/500,500);  %split into 500 records (500*200 = 100000 events per file)
-    dat = reshape(datraw,setbytes,1000);  %split into 500 records (500*200 = 100000 events per file)
-end;
+%    dat = reshape(datraw,setbytes,1000);  %split into 500 records (500*200 = 100000 events per file)
+%end;
+
 %this section parses out the 1-byte values into separate columns, assumes
 %their location in header
 % temp = [floor(dat(9,:)/256); rem(dat(9,:),256); floor(dat(10,:)/256); rem(dat(10,:),256)];
