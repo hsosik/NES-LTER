@@ -274,8 +274,14 @@ for typenum = 1:size(filetypelist,1)
                     ii = find(binc<1e4);
                     vtrough(ii) = PElow1./binc(ii);
                 end
-                fitobject = fit([log10(binc(t(n)))'; 8], [log10(vtrough(t(n)))'; log10(last)], 'smoothingspline', 'smoothingparam',.99);
-                
+                %fitobject = fit([log10(binc(t(n)))'; 8], [log10(vtrough(t(n)))'; log10(last)], 'smoothingspline', 'smoothingparam',.99);
+                if sum(n) %added Jan 2023 to handle case where no 1s in n in Sept 2022
+                    fitobject = fit([log10(binc(t(n)))'; 8], [log10(vtrough(t(n)))'; log10(last)], 'smoothingspline', 'smoothingparam',.99);
+                else
+                    fitobject = fit([log10(binc)'], [log10(PElow1./binc)'], 'smoothingspline', 'smoothingparam',.99);
+                end
+
+
                 detail_figs = true;
                 if detail_figs && classplotflag
                     figure(99), clf
