@@ -27,11 +27,11 @@ end
 
 timeinterval = 1/24;
 
-if year2do <= 2007,
+if year2do <= 2007
     mergedtitles = {'rec number' 'PE' 'FLS' 'CHL' 'SSC' 'CHLpk' 'Class'};
 else
     mergedtitles = {'rec number' 'PE' 'FLS' 'CHL' 'SSC' 'CHLpk1' 'CHLpk2' 'Class'};
-end;
+end
 
 %beadmatchtitles = {'start time (matlab days)' 'beadPE' 'beadFLS' 'beadCHL' 'beadSSC' 'beadnumber' 'bead acq time (min)' 'bead pump rate (ml/min)'};
 beadmatchtitles = {'start time (matlab days)' 'beadPE' 'beadFLS' 'beadCHL' 'beadSSC' 'beadnumber' 'bead acq time (min)' 'analyzed volume (ml)'};  %april 2007
@@ -53,13 +53,13 @@ for typenum = 1:size(filetypelist,1)
     if year2do <= 2005
         [~,fileorder] = sort(str2num(char(regexprep(regexprep({filelist.name}, '.mat', ''), filetypelist(typenum,:), ''))));
         filelistmain = filelist(fileorder); %consecutive order
-    end;
+    end
     if year2do == 2008 %special case dealing with day of mixed local and UTC time stamps (22 Oct 2008)
         ii1 = strmatch('FCB1_2008_296_092206', {filelistmain.name});
         ii2 = strmatch('FCB1_2008_296_130826',{filelistmain.name});
         ii3 = strmatch('FCB1_2008_296_114008',{filelistmain.name});
         filelistmain(sort([ii1,ii2,ii3])) = filelistmain([ii1,ii2,ii3])
-    end;
+    end
     clear temp date fileorder
     filesections = ceil(length(filelistmain)/setsize);
     for sectcount = 1:filesections %3
@@ -93,7 +93,8 @@ for typenum = 1:size(filetypelist,1)
         cellresults = NaN(length(timesectionendbin),3);
         beadmatch = NaN(length(timesectionendbin),13);
         %for sectionnum = 1:min([5 length(timesectionendbin)]) %:length(timesectionendbin) %7
-        for sectionnum = 1:length(timesectionendbin) %198 in 2015 double baseline %567
+        %%
+        for sectionnum = 1:length(timesectionendbin) %198 in 2015 double baseline %567 %493 for 2021 prob
             %disp(['sectionnum ' num2str(sectionnum)])
             timeendind = timesectionendbin(sectionnum);
             %following for case where start at sectionnum > 1, otherwise could reinit timestartind at end of loop with partialdatmerged
@@ -161,26 +162,39 @@ for typenum = 1:size(filetypelist,1)
                     PElow1 = 2;
                 else
                     PElow1 = 10.^b(p+t(1)-1)*2; %*2
-                end;
+                end
                 t = find(partialdatmerged(datbins2,5)>PElow1 & partialdatmerged(datbins2,2)>1);
                 ssc_limit = prctile(partialdatmerged(datbins2(t),5),10)/5;
                 %t = find(partialdatmerged(datbins2,5)>ssc_limit & partialdatmerged(datbins2,5)<1e4 & partialdatmerged(datbins2,2)>1);
                 t = find(partialdatmerged(datbins2,5)>ssc_limit & partialdatmerged(datbins2,5)<1e4 & partialdatmerged(datbins2,2)>PElow1);
                 pe_limit = prctile(partialdatmerged(datbins2(t),2),25)/10; %50
+                %%Jul2024 seems like for 2021 pe_limit is too low with/10, at least for FCB1 with PE-SSC noise in Feb
+                %pe_limit = prctile(partialdatmerged(datbins2(t),2),25)/2;
                 ii4 = find(partialdatmerged(datbins2,2) > 1 & partialdatmerged(datbins2,2) < pe_limit & partialdatmerged(datbins2,5) < ssc_limit); %200
                 ii5 = find(partialdatmerged(datbins2,2) == 1 & partialdatmerged(datbins2,5) < ssc_limit); %200
                 if length(ii4) > 5 & length(ii5) < length(ii4)*2
-                    PElow1 = prctile(partialdatmerged(datbins2(ii4),2),75);
+                    PElow1 = prctile(partialdatmerged(datbins2(ii4),2),95);
                 end
-                ii4 = find(partialdatmerged(datbins2,2) > 1 & partialdatmerged(datbins2,2) < pe_limit & partialdatmerged(datbins2,5) < 1e4); %200
-                ii5 = find(partialdatmerged(datbins2,2) == 1 & partialdatmerged(datbins2,5) < 1e4); %200
-                if PElow1 == 2 & length(ii5) < length(ii4)*5
-                    %PElow1 = mode(partialdatmerged(datbins2(ii4),2));
-                    PElow1 = prctile(partialdatmerged(datbins2(ii4),2),75);
+                if (ismember(year2do, [2017 2018]) && isequal(filename(1:4), 'FCB1')) || year2do > 2020
+                   if length(ii4) > 5 %& length(ii5) < length(ii4)*2
+                    PElow1 = prctile(partialdatmerged(datbins2(ii4),2),98);
+                    %disp(PElow1)
+                   end
+                else
+                    ii4 = find(partialdatmerged(datbins2,2) > 1 & partialdatmerged(datbins2,2) < pe_limit & partialdatmerged(datbins2,5) < 1e4); %200
+                    ii5 = find(partialdatmerged(datbins2,2) == 1 & partialdatmerged(datbins2,5) < 1e4); %200
+                    if PElow1 == 2 & length(ii5) < length(ii4)*5
+                        %PElow1 = mode(partialdatmerged(datbins2(ii4),2));
+                        PElow1 = prctile(partialdatmerged(datbins2(ii4),2),75);
+                    end
                 end
-                if ismember(year2do, [2017, 2018]) & isequal(filename(1:4), 'FCB1')
-                    PElow1 = 200;
-                end 
+ %              if (ismember(year2do, [2017, 2018, 2021]) && isequal(filename(1:4), 'FCB1')) || year2do > 2020
+ %                   PElow1 = 100;
+ %               end 
+                %try this to make sure trough is above PE = 100 for FCB1 in later years, even in summer with low syn on PE
+                if year2do>2017 && isequal(filename(1:4), 'FCB1') 
+                    PElow1 = max([100 PElow1]);
+                end
                 for cc = 1:lbins
                     if cc < lbins % in the SSC bin
                         ii = find(partialdatmerged(datbins2,5)>=bins(cc) & partialdatmerged(datbins2,5)<bins(cc+1) & partialdatmerged(datbins2,2)>1);
@@ -201,13 +215,13 @@ for typenum = 1:size(filetypelist,1)
                             %    vtrough(cc) = PElow1./binc(cc);
                             %end 
                             ptrough(cc) = 0; %place holder value for bottom
-                        end;
+                        end
                       
                         if length(ii2) >= 5
                             lowercut = find(bins_rat<prctile(partialdatmerged(datbins2(ii(ii2)),2)./partialdatmerged(datbins2(ii(ii2)),5),99));
                         else
                             lowercut = [];
-                        end;
+                        end
                         if ~isempty(lowercut)
                             lowercut = [lowercut lowercut(end)+1];
                             h = histc(partialdatmerged(datbins2(ii),2)./partialdatmerged(datbins2(ii),5),bins_rat);
@@ -269,10 +283,11 @@ for typenum = 1:size(filetypelist,1)
                 %n = (min(d1) <= 2 & sum(d1)<5);
                 n = (min(d1) <= 4 | sum(d1)<12);
                 last = mean(vtrough(t(end-min([2, length(t)-1]):end)));
-                if ismember(year2do, [2017, 2018]) & isequal(filename(1:4), 'FCB1')
+              %  if ismember(year2do, [2017, 2018]) & isequal(filename(1:4), 'FCB1')
+                if (ismember(year2do, [2017, 2018, 2021]) && isequal(filename(1:4), 'FCB1')) || year2do > 2020
                     vtrough = max(vtrough, PElow1./binc);
-                    ii = find(binc<1e4);
-                    vtrough(ii) = PElow1./binc(ii);
+                    %ii = find(binc<1e3); %this was 1e4 in earlier version, Jul2024 seems like should be 1e3 for 2021, CHECK other years
+                    %vtrough(ii) = PElow1./binc(ii);
                 end
                 %fitobject = fit([log10(binc(t(n)))'; 8], [log10(vtrough(t(n)))'; log10(last)], 'smoothingspline', 'smoothingparam',.99);
                 if sum(n) %added Jan 2023 to handle case where no 1s in n in Sept 2022
@@ -304,7 +319,7 @@ for typenum = 1:size(filetypelist,1)
                 
                 yest = 10.^(feval(fitobject, log10(partialdatmerged(datbins2,5))'));
                 ii = find(partialdatmerged(datbins2,2)./partialdatmerged(datbins2,5) > yest);
-                
+
                 datbins2pe = datbins2(ii);
                 datbins2nope = setdiff(datbins2, datbins2pe);
                 ii = find(partialdatmerged(datbins2nope,5)<2e3 & partialdatmerged(datbins2nope,5)>100);
@@ -315,7 +330,8 @@ for typenum = 1:size(filetypelist,1)
                 end
                 
                 
-                a = find(partialdatmerged(datbins2pe,2) > PEmin);
+               a = find(partialdatmerged(datbins2pe,2) > PEmin);
+%                a = find(partialdatmerged(datbins2pe,2) > max([PEmin PElow1])); %Jul2024: Is this change okay for early years?
                 datbins2pe = datbins2pe(a);
                 datbins2nope = setdiff(datbins2, datbins2pe);
                 
@@ -347,7 +363,8 @@ for typenum = 1:size(filetypelist,1)
                     end
                     if length(tempind) > 1 %~isempty(tempind) %chl vs ssc
                         pedist = mahal(log10(temp),log10(temp(tempind,:)));  %distance of each point from cluster
-                        threshhold = pedist_thre; %changed from 8 to 5 for 2006 and 2007, April 2007
+%                        threshhold = pedist_thre; %changed from 8 to 5 for 2006 and 2007, April 2007
+                        threshhold = pedist_thre-4; %Jul2024: try less first pass
                         junkind = find(pedist > threshhold);  %don't take all really small stuff *** -8?
                         classpe(junkind) = 3; %reassign class to PE junk
                         clear temp
@@ -386,6 +403,9 @@ for typenum = 1:size(filetypelist,1)
                         classpe(junkind(tind)) = 2; %reassign class to "bright" cryptos
                         clear tind tempmean junkind tempmedian pedist threshhold chlcutoff tempind
                         
+                     %isequal(filename(1:4), 'FCB1')
+                     %   if ~(startsWith(filename,'FCB1_2021_0')) %skip this for FCB1 in early 2021 since PE seems odd for syn
+                        
                         %now consider cluster of syn points on PE vs. SSC and add back any within threshold
                         temp = partialdatmerged(datbins2pe,[2,5]);  %pe and ssc
                         %classpe(temp(:,2) < synSSCmin) = 3; %reassign class to PE junk
@@ -409,6 +429,9 @@ for typenum = 1:size(filetypelist,1)
                                 tt = -2;
                                 %synind = find(pedist < pedist_thre - 2); %12
                             end
+                           if startsWith(filename,'FCB1_2021_0') %
+                                    tt = 2-pedist_thre;
+                            end
                             %disp(tt)
                             synind = find(pedist < pedist_thre + tt); %12
                             classpe(synind) = 1;
@@ -419,19 +442,26 @@ for typenum = 1:size(filetypelist,1)
                             classpe(junkind) = 3;
                             %ssc_synlow = min(temp(classpe==1,2)); %IS this choice needed for earlier years, Dec 2018
                             ssc_synlow = prctile(temp(classpe==1,2),2); %Dec 2018, try for avoiding SSC noise problems in 2017
-                            ssc_synhigh = prctile(temp(classpe==1,2),95); %98
+                            ssc_synhigh = prctile(temp(classpe==1,2),98); %98
                             pe_synhigh =  prctile(temp(classpe==1,1),95); %98
                             pe_synlow = prctile(temp(classpe==1,1),2);
                             synind = find(temp(:,1) > pe_synlow/4 & temp(:,1) <= pe_synhigh & temp(:,2) >= max([ssc_synlow/10 200]) & temp(:,2) < ssc_synlow);
                             junkind = find(temp(:,1) > pe_synhigh & temp(:,2) > ssc_synlow/10 & temp(:,2) < ssc_synlow/2); %/2
-                            if length(junkind) < length(synind)/10 % /10 | length(junkind)<40
-                                classpe(synind) = 1;
-                            end; %otherwise too much noise to extend syn into very low ssc (for same pe)
-                            synind = find(temp(:,2) >= ssc_synlow & temp(:,2) < ssc_synhigh*1 & temp(:,1) < pe_synhigh *10);
+                            if year2do < 2016
+                                if length(junkind) < length(synind)/10 % /10 | length(junkind)<40
+                                    %if ~startsWith(filename,'FCB1_2021_0')
+                                       classpe(synind) = 1;
+                                    %end
+                                end %otherwise too much noise to extend syn into very low ssc (for same pe)
+                            end
+                            %synind = find(temp(:,2) >= ssc_synlow & temp(:,2) < ssc_synhigh*1 & temp(:,1) < pe_synhigh *10);
+                            %jul2024: change to ssc_synlow/2 for case of >2016 skipping bove addition of low SSC to Syn
+                            %go back to not /2 then back to /2 
+                            synind = find(temp(:,2) >= ssc_synlow/2 & temp(:,2) < ssc_synhigh*1 & temp(:,1) < pe_synhigh *10);
                             classpe(synind) = 1;
                         end
                         clear pedist threshhold temp tempmode
-                        
+                    %end
                         %now do cryptos one more time, after final syn
                         tind = find(classpe == 1);  %SYN
                         junkind = find(classpe == 3);
@@ -445,14 +475,14 @@ for typenum = 1:size(filetypelist,1)
                         classpe(junkind(tind)) = 2; %reassign class to "bright" cryptos
                         clear tind tempmean junkind tempmedian pedist threshhold chlcutoff tempind
                         
-                    end;
+                    end
                     
                     temp = partialdatmerged(datbins2pe,[4,5]);  %chl and ssc
                     synSSCpop_min = min(temp(classpe == 1,2)); %prctile(temp(classpe == 1,2),.5); %
                     synCHLpop_min = prctile(temp(classpe == 1,1),5); %min(temp(classpe == 1,1)); %
                     synSSCpop_upper = prctile(temp(classpe == 1,2),75);
                     clear temp
-                end;
+            end
                 %now do junk elimination for euks
                 %one special case set in late 2005 with oddly stretched out SSC signals
                 if ismember(filename(1:7), {'oc2105a' 'oc2405a' 'oc2905a' 'no1505a'})
@@ -465,6 +495,8 @@ for typenum = 1:size(filetypelist,1)
                 temp = partialdatmerged(datbins2nope,[4:5]);  %chl and ssc
                 if ~isempty(temp)
                     tempind = find(temp(:,1) >  coeff.*temp(:,2).^power & temp(:,1) > min([1000 synCHLpop_min]) & temp(:,1) < 4e3 & temp(:,2) < 2e4 & temp(:,2) > synSSCpop_upper);
+                    %for 2021 cases where few syn and high ssc max (clipping some of low PE crypto and/or coincidence) so add min([1e4 synSSCpop_upper]) instead of just synSSCpop_upper for last criterion
+                    %tempind = find(temp(:,1) >  coeff.*temp(:,2).^power & temp(:,1) > min([1000 synCHLpop_min]) & temp(:,1) < 4e3 & temp(:,2) < 2e4 & temp(:,2) > min([1e4 synSSCpop_upper]));
                     maxvalue = 1e6;  %is this too high?
                     bins = 10.^(0:log10(maxvalue)/31:log10(maxvalue));  %make 1024 log spaced bins
                     [nmergedhist,x,nbins] = histmulti5(temp(tempind,:),[bins' bins']);
@@ -473,24 +505,26 @@ for typenum = 1:size(filetypelist,1)
                     tempmode = [i,j];
                     tempmode = bins(tempmode);
                     tempind = find(temp(:,2) <= tempmode(2)*3 & temp(:,2) >= tempmode(2)/3 & temp(:,1) < tempmode(1)*3 & temp(:,1) > tempmode(1)/3); %change to tighten up euk cluster (handling too much debris taken in Nov 2013, etc.)
-                    if ismember(year2do, [2017, 2018]) & isequal(filename(1:4), 'FCB1')
+                    %if ismember(year2do, [2017, 2018]) & isequal(filename(1:4), 'FCB1')
+                    if year2do>2017 && isequal(filename(1:4), 'FCB1')
                         tempind = find(temp(:,2) <= tempmode(2)*3 & temp(:,2) >= tempmode(2)/3 & temp(:,1) < tempmode(1)*3 & temp(:,1) > max([200 tempmode(1)/3])); 
                     end
-                    if length(tempind) > 1, %~isempty(tempind),
+                    if length(tempind) > 1 %~isempty(tempind),
                         coeff = 10.^(log10(tempmode(1))-power*log10(tempmode(2))-0.9); %disp(coeff)%Oct 2015, -0.9 (from -0.5)
                         nopedist = mahal(log10(temp),log10(temp(tempind,:)));  %distance of each point from cluster
                         threshhold = 12; %change from 6 to 5, Jan 2015 trying to address too much debris in euk cluster at some times in late 2013
                        junkind = find((nopedist > threshhold  &  ((temp(:,2) < synSSCpop_min)  |  (temp(:,1) < tempmode(1)/2 & temp(:,2) > tempmode(2)) | (temp(:,1) < tempmode(1) & temp(:,2) < tempmode(2)) | temp(:,1) <  coeff.*temp(:,2).^power))); % | temp(:,1) < synCHLpop_min/2);  %don't take all really small stuff
                     else
                         junkind = find(temp(:,1) <  coeff.*temp(:,2).^power);
-                    end;
+                    end
                     classnope(junkind) = 5; %reassign class to euk junk
-                    if ismember(year2do, [2017, 2018]) & isequal(filename(1:4), 'FCB1') %high chl baseline--Are we missing some picoeuks in the noise??
+                  %  if ismember(year2do, [2017, 2018]) & isequal(filename(1:4), 'FCB1') %high chl baseline--Are we missing some picoeuks in the noise??
+                    if year2do>2017 && isequal(filename(1:4), 'FCB1')
                         junkind = find(temp(:,1) <= 200);
                     end
                     classnope(junkind) = 5; %reassign class to euk junk
 
-               end;
+                end
                 
                 bd2cell_time = cellresults(sectionnum,1) - beadmatch(sectionnum,1);
                 modeflag = 0;
@@ -509,7 +543,7 @@ for typenum = 1:size(filetypelist,1)
                     tdata = partialdatmerged(datbins2pe,2:5); tbd = beadmatch(sectionnum,10:13);
                     temp = find(tdata(:,1)>tbd(1)*.7 & tdata(:,1)<tbd(1)*1.3 & tdata(:,3)>tbd(3)*.7 & tdata(:,3)<tbd(3)*1.3 & tdata(:,4)>tbd(4)*.7 & tdata(:,4)<tbd(4)*1.3);
                     classpe(temp) = 5; %disp(length(temp))
-                end;
+                end
                 clear temp %power coeff
                 if plotflag %& ~mod(sectionnum,10)%, %mod(sectionnum,6) == 1,   %make surf plots
                     maxvalue = 1e6;  %is this too high?
@@ -559,7 +593,7 @@ for typenum = 1:size(filetypelist,1)
                     axis([1 1e6 1 1e6])
                     %        title('PE containing cells only')
                     clear maxvalue bins
-                end;
+                end
                 
                 colorstr = ['r', 'b', 'k', 'g', 'y', 'c', 'm'];
                       
@@ -600,10 +634,10 @@ for typenum = 1:size(filetypelist,1)
                     subplot(223)
                     hold on
                     ylabel('CHL'), xlabel('SSC')
-                    for c = 1:numcluster,
+                    for c = 1:numcluster
                         ind = find(mergedwithclass(:,end) == c);
                         eval(['loglog(mergedwithclass(ind,5),mergedwithclass(ind,4), ''' colorstr(c) 'o'', ''markersize'', 1)'])
-                    end;
+                    end
                     c = 1;%overlay syn again on top
                     ind = find(mergedwithclass(:,end) == c);
                     eval(['loglog(mergedwithclass(ind,5),mergedwithclass(ind,4), ''' colorstr(c) 'o'', ''markersize'', 1)'])
@@ -616,16 +650,17 @@ for typenum = 1:size(filetypelist,1)
                     subplot(224)
                     hold on
                     ylabel('PE'), xlabel('CHL')
-                    for c = 1:numcluster,
+                    for c = 1:numcluster
+                   
                         ind = find(mergedwithclass(:,end) == c);
                         eval(['loglog(mergedwithclass(ind,4),mergedwithclass(ind,2), ''' colorstr(c) 'o'', ''markersize'', 1)'])
-                    end;
+                    end
                     loglog([1:10:1e5], 10.^(log10([1:10:1e5])*fit1(1) + fit1(2)), 'r')
                     set(gca, 'xscale', 'log', 'yscale', 'log')
                     %                   fplot([num2str(tempcoeff) '*x.^' num2str(temppower)], [10 1e6], 'linestyle', '--')
                     axis([1 1e6 1 1e6])
                     disp('pause for graphs...')
-                    pause % (0.1)
+                    pause %(0.1)
                     disp('reading next...')
                 end;  %if 1, (to plot)
                 
@@ -633,10 +668,10 @@ for typenum = 1:size(filetypelist,1)
                 bins = 10.^(0:log10(maxvalue)/255:log10(maxvalue));  %make 256 log spaced bins
                 maxvalueSSC = 1e7;  %is this too high?
                 binsSSC = 10.^(0:log10(maxvalueSSC)/255:log10(maxvalueSSC));  %make 256 log spaced bins
-                for c = 1:numcluster,
+                for c = 1:numcluster
                     ind = find(mergedwithclass(:,end) == c);
                     cellNUM(sectionnum,c) = length(ind);
-                    if length(ind) > 1,
+                    if length(ind) > 1
                         n = hist(mergedwithclass(ind,2:4), bins);
                         [junk, maxind] = max(n);
                         n2 = hist(mergedwithclass(ind,5), binsSSC);
@@ -659,8 +694,8 @@ for typenum = 1:size(filetypelist,1)
                         cellFLSmode(sectionnum,c) = NaN;
                         cellCHLmode(sectionnum,c) = NaN;
                         cellSSCmode(sectionnum,c) = NaN;
-                    end;  %if ~isempty(ind)
-                end; %for c = 1:numcluster
+                    end  %if ~isempty(ind)
+                end %for c = 1:numcluster
                 clear c ind maxvalue bins
                 
                 allmergedwithclass{sectionnum} = mergedwithclass;
@@ -681,14 +716,15 @@ for typenum = 1:size(filetypelist,1)
             %get ready for next loop
             partialdatmerged = datmerged;  %reset partialdat with file partly completed
         end; %sectionnum = 1:length(timesectionendbin)
+        %%
         mergedwithclass = allmergedwithclass;
 
         eval(['save ' groupedpath filetypelist(typenum,:) '_' num2str(sectcount) ' beadmatch* cell* classnotes'])
         eval(['save ' mergedpath filetypelist(typenum,:) 'merged_' num2str(sectcount) ' merged*'])
         clear beadmatch cellresults mergedwithclass link* allmergedwithclass cellNUM cellPE cellFLS cellCHL cellSSC cell*mode
         clear datbins datbins2* goodtimebins fit1 fittitles sectionnum
-    end; %for sectcount
-end; %for typenum = 1:length(filetypelist)
+    end %for sectcount
+end %for typenum = 1:length(filetypelist)
 
 %end; %for count = 1:2
 
