@@ -1,4 +1,5 @@
-year2do = 2021;
+function bead_smooth(year2do)
+%year2do = 2021;
 monstr = 'Jan';
 switch year2do
     case {2003, 2006}
