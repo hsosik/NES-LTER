@@ -7,21 +7,21 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = 2012:2018 %[2010 2011 2013 2014] %2003:2004 %2011, 2005
+for year2do = 2023 %2016:2022%[2010 2011 2013 2014] %2003:2004 %2011, 2005
     
 dotime = 0; %0 = NO, 1 = YES
 domerge = 0;
 doclassify = 1;
-doplotgroup = 0;
-docells = 0;
+doplotgroup = 1;
+docells = 1;
 
-dobeads = 1; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
+dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
 timeplotflag = 0; %for time: 0 = no plots, 1 = plots
 mergeplotflag = 0; %for merge: 0 = no plots, 1 = plots
 classplotflag = 0; %for classify: 0 = no plots, 1 = plots
 movieflag = 0;
 beadmovieflag=0; %makes beadmovie as beads are being processed in beadbatch6M
-beadmovieflag2=1; %if need to make bead movies after the fact :) Note that doclassify, and do beads must also be checked!
+beadmovieflag2=0; %if need to make bead movies after the fact :) Note that doclassify, and do beads must also be checked!
 syrplotflag=0;
 %%USER CHANGE - above here
 
@@ -40,9 +40,9 @@ SSC2PE_cutoff = 50;  %50
 cellfiletypelist = ['FCB1_XXXX_0'; 'FCB2_XXXX_0'; 'FCB1_XXXX_1'; 'FCB2_XXXX_1'; 'FCB1_XXXX_2'; 'FCB2_XXXX_2';'FCB1_XXXX_3'; 'FCB2_XXXX_3'];
 cellfiletypelist = char(regexprep(cellstr(cellfiletypelist), 'XXXX', num2str(year2do)));
 
-datapath = regexprep('\\sosiknas1\Lab_data\MVCO\FCB\MVCO_JanXXXX\data\', 'XXXX', num2str(year2do));
+%datapath = regexprep('\\sosiknas1\Lab_data\MVCO\FCB\MVCO_JanXXXX\data\', 'XXXX', num2str(year2do));
+datapath = regexprep('C:\work\mvco\FCB\MVCO_janXXXX\data\', 'XXXX', num2str(year2do));
 %datapath = '\\sosiknas1\Lab_data\MVCO\FCB\FCB_tests\docktest25Aug2016\';
-%datapath = regexprep('C:\work\MVCO_janXXXX\data\', 'XXXX', num2str(year2do));
 %datapath = 'C:\temp\FCBtest\';
 
 switch year2do
@@ -121,13 +121,20 @@ switch year2do
     case 2018
         SSC2PE_cutoff = 200;
         mergeprocstr = 'fcbmergeproc3';
-    end;
+    case {2019, 2020, 2021, 2022, 2023, 2024, 2025}
+        SSC2PE_cutoff = 200;
+        mergeprocstr = 'fcbmergeproc3';
+        %pedist_thre = 9; %10; %8;  
+    %case 2021
+    %    SSC2PE_cutoff = 200;
+    %    mergeprocstr = 'fcbmergeproc3';
+end
 
     %datapath = regexprep(datapath, '\\\\queenrose\\mvco', 'c:\\work'); %temp for olive
 beadfiletypelist = cellfiletypelist;
 if ~exist('plotgroupfiletypelist', 'var')
     plotgroupfiletypelist = ['FCB*_' num2str(year2do)];   %will be used with *
-end;
+end
 
 temp = [datapath 'processed\']; if ~exist(temp, 'dir'), mkdir(temp), end;
 temp = [datapath 'processed\time\']; if ~exist(temp, 'dir'), mkdir(temp), end;
@@ -137,28 +144,28 @@ temp = [datapath 'processed\grouped\merged\']; if ~exist(temp, 'dir'), mkdir(tem
 baseprocpath = [datapath 'processed\'];
 setsize = 200;  %how many data files to process in one set
 
-if dotime,
+if dotime
     procpath = [baseprocpath 'time\'];
     plotflag = timeplotflag; 
     disp('PROCESSING TIME FILES')
-    if docells,
+    if docells
         filetypelist = cellfiletypelist;
         timebatch2
-    end;
- end;
+    end
+end
 
-if domerge,
+if domerge
     procpath = baseprocpath;
     plotflag = mergeplotflag;
     disp('MERGING')
-    if docells,
+    if docells
         filetype = 'cell';  %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
         filetypelist = cellfiletypelist;
         mergebatch2
-    end;
-end;
+    end
+end
 
-if doclassify,
+if doclassify
     procpath = baseprocpath;
     timepath = [baseprocpath 'time\'];
     beadpath = [baseprocpath 'beads\']; 
@@ -166,9 +173,9 @@ if doclassify,
     mergedpath = [baseprocpath 'grouped\merged\'];
     plotflag = classplotflag;
     disp('CLASSIFYING')
-    if dobeads,
+    if dobeads
         disp('BEADS!')
-        if ismac, 
+        if ismac 
             datapath=regexprep(baseprocpath,'\\sosiknas1','Volumes');
             datapath=regexprep(datapath,'\\','/');
             timepath = fullfile(datapath,'time/');
@@ -178,7 +185,7 @@ if doclassify,
         savepath = [baseprocpath 'beads\']; 
         filetypelist = beadfiletypelist;
         
-        if beadmovieflag2==1; %only run if beads have already been processed! 
+        if beadmovieflag2==1 %only run if beads have already been processed! 
             disp('MAKING BEAD MOVIE - NO OTHER PROCESSING!')
             addpath ..\secondary_processing\
             if ismac
@@ -191,27 +198,28 @@ if doclassify,
             beadbatch6M %temp test for bead movies July 11, 2016
         end
         %beadbatch6_field 
-    end;
-    if docells,
+    end
+    if docells
         disp('CELLS!')
         filetypelist = cellfiletypelist;
         cellbatch8d_field
         %cellbatch7_field
-    end;
-end;
+    end
+end
 
-if doplotgroup,
+if doplotgroup
     disp('PLOTTING FINAL RESULTS')
     procpath = [baseprocpath 'grouped\'];
     filetypelist = plotgroupfiletypelist;
     plotgroup_field
-end;
+end
 
 if movieflag
     addpath ..\secondary_processing\
     groupedpath = [baseprocpath 'grouped\']; 
     mergedpath = [baseprocpath 'grouped\merged\'];
     savepath = '\\sosiknas1\Lab_data\MVCO\FCB\MVCO_movies\together_movies\';
+    savepath = 'C:\work\mvco\FCB\MVCO_movies\together_movies\';
     mvco_movies_avi_format(year2do,groupedpath,mergedpath,savepath)
 end
 

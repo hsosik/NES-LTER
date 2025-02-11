@@ -48,8 +48,9 @@ end
 
 
 %%
-count=0;
-groupedfile = grouplist(chorder(count+1),:); %see what the next file needs to be
+%count=0;
+%groupedfile = grouplist(chorder(count+1),:); %see what the next file needs to be
+groupedfile = grouplist(chorder(1),:); %see what the next file needs to be
 
 eval(['load ' groupedpath0 groupedfile])
 disp(['loaded 1st grouped and merged file...' groupedfile])
@@ -70,10 +71,10 @@ bins = 10.^(0:log10(maxvalue)/127:log10(maxvalue));  %make 256 log spaced bins
 maxvalueSSC = 1e7;  %is this too high?
 binsSSC = 10.^(0:log10(maxvalueSSC)/127:log10(maxvalueSSC));  %make 256 log spaced bins
 
-while count <= length(filedate)-1 %have gone through all the hours...
-    %
+%while count <= 20 %length(filedate)-1 %have gone through all the hours...
+for count = 1:length(filedate)    %
     %profile on
-    count=count+1;
+%    count=count+1;
     %for count=1:20
     j=find(cellresults(:,1)==filedate(chorder(count))); %This should be there
     
@@ -171,6 +172,7 @@ while count <= length(filedate)-1 %have gone through all the hours...
         end;
         set(gca, 'xscale', 'log', 'yscale', 'log','Fontsize',14)
         axis([1 1e7 1 1e6])
+        grid on
 
         
         subplot(2,4,7,'replace')
@@ -182,7 +184,8 @@ while count <= length(filedate)-1 %have gone through all the hours...
         end;
         set(gca, 'xscale', 'log', 'yscale', 'log','Fontsize',14)
         axis([1 1e7 1 1e6])
-        
+        grid on
+
         subplot(2,4,8,'replace')
         hold on
         ylabel('PE','Fontsize',14), xlabel('CHL','Fontsize',14)
@@ -193,6 +196,7 @@ while count <= length(filedate)-1 %have gone through all the hours...
         %loglog([1:10:1e5], 10.^(log10([1:10:1e5])*fit(1) + fit(2)), 'r')
         set(gca, 'xscale', 'log', 'yscale', 'log','Fontsize',14)
         axis([1 1e6 1 1e6])
+        grid on
         if ~isempty(h1)
             [hleg, objs]=legend([h1 h2 h3 h4 h5 h6],'syn', 'bright cryptos', 'junk w/pe', 'euks (i.e., no pe)', 'euk junk', 'dim cryptos','Orientation','Horizontal');
             hmarkers=findobj(objs,'type','line');
