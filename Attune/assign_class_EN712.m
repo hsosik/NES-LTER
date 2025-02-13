@@ -1,4 +1,4 @@
-function [ class , bounds] = assign_class_EN712( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
+    function [ class , bounds] = assign_class_EN712( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 
 plot_flag = 0; 
 
@@ -18,7 +18,7 @@ plot_flag = 0;
     synminX = 770 ; 
     synXcorners = [4200 15000]; 
 
-    eukminX = 5e3; 
+    eukminX = 9e3; %5e3; 
     eukcorner = [5e4 800]; 
     eukmaxY = 2e4; 
     eukmaxYlower = 300; 
