@@ -535,10 +535,10 @@ for typenum = 1:size(filetypelist,1)
                                  sscmin = max([1000 ssc_synlow*.8]); 
                             elseif startsWith(filename, {'FCB2_2016_2'})
                                  sscmin = 50;
-                            elseif startsWith(filename, {'FCB2_2018_2'})
+                            elseif startsWith(filename, {'FCB1_2018_2'})
                                  sscmin = 100;
-                            else
 %                                % sscmin = ssc_synlow/2;
+                             else
                                 sscmin = ssc_synlow*.8;
                             end
                             %junkind = find(temp(:,1) > pe_synhigh & temp(:,2) > ssc_synlow/10 & temp(:,2) < sscmin); %/2
