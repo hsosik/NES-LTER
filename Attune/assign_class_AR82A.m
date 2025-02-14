@@ -1,4 +1,4 @@
- function [ class , bounds] = assign_class_AR79( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
+ function [ class , bounds] = assign_class_AR82A( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 
 plot_flag = 0; 
 
@@ -7,8 +7,8 @@ plot_flag = 0;
 %= 340; If BL3 voltage is >340, it is a Pro sample and needs pro gate.
 %Other gates will need to move as well on CHl channel.
 
-%for files that have pro on AR78
-if startdate > datenum('09-Nov-2023 16:07:22') && startdate <datenum('11-Nov-2023 17:19:07')
+%for files that have pro on AR82
+if endsWith(fcshdr.tr1_par, "_SSC") && fcshdr.tr1_level < 500
     phase = 2;
 else
 %regular shelf settings
@@ -31,15 +31,15 @@ end
     synminX = 10 ; 
     synXcorners = [7000 30000]; 
 
-    eukminX = 5e3; 
+    eukminX = 2000;%5e3; 
     eukcorner = [20000 1200]; 
     eukmaxY = 4e4; 
     eukmaxYlower = 300; 
     gl2_noise_thresh = 10000; %basically synminY
     
     synGL1A2GL1Hmax = 4; %PE area to height
-    synGL1H2BL3Hslope = 1.1; %PE to CHL, ?1.2 with .8 offset?
-    synGL1H2BL3Hoffset = .4; %PE to CHL .4 on RB, .3 on TN, .8?
+    synGL1H2BL3Hslope = 1.1;%1.1; %PE to CHL, ?1.2 with .8 offset?
+    synGL1H2BL3Hoffset = .2; %PE to CHL .4 on RB, .3 on TN, .8?
     syneukBL3H2SSCHslope = 1.3; %CHL to SSC
     syneukBL3H2SSCHoffset = -2.5; %-.6; %PE to CHL -.8 on TN
     nonsynfactorA = 25; %6
@@ -47,20 +47,21 @@ end
 
 
     if phase == 2
-    eukminX =  10000;%2000;%5000;%5e3; 
-    eukcorner = [10000 900]; %[20000 1200]; 
+    eukminX =  9000;%2000;%5000;%5e3; 
+    eukcorner = [10000 700]; %[20000 1200]; 
     eukmaxY = 4e4; 
-    eukmaxYlower = 400;%300; 
+    eukmaxYlower = 500;%300; 
     gl2_noise_thresh = 3000;%10000; %basically synminY 
-    synGL1H2BL3Hoffset = -.2; %PE to CHL .4 on RB, .3 on TN, .8?
+    synGL1H2BL3Hslope = 1.1;
+    synGL1H2BL3Hoffset = -.3; %PE to CHL .4 on RB, .3 on TN, .8?
     end
   
     
     
     % next 4 lines added for case with Pro.
-    prominX = 300;  
+    prominX = 250;  
     promaxX = 3000;
-    prominY = 15;
+    prominY = 20;
     promaxY = 400;
 
 %     prominX =  2000;%5000;%5e3; 
@@ -111,9 +112,11 @@ end
 
 
     if phase == 1
-        geuk_main_gate = [geuk_main_gate(1,1) 100; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)]; 
+        %geuk_main_gate = [geuk_main_gate(1,1) 100; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)]; 
+        geuk_main_gate = [geuk_main_gate(1,1) 250; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)]; 
     else
         geuk_main_gate = [geuk_main_gate(1,1) 100; 10000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)];
+        %geuk_main_gate = [geuk_main_gate(1,1) 100; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)];
     end
 
 

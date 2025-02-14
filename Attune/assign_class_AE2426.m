@@ -1,4 +1,4 @@
- function [ class , bounds] = assign_class_AR79( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
+ function [ class , bounds] = assign_class_AE2426( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 
 plot_flag = 0; 
 
@@ -7,8 +7,9 @@ plot_flag = 0;
 %= 340; If BL3 voltage is >340, it is a Pro sample and needs pro gate.
 %Other gates will need to move as well on CHl channel.
 
-%for files that have pro on AR78
-if startdate > datenum('09-Nov-2023 16:07:22') && startdate <datenum('11-Nov-2023 17:19:07')
+%for files that have pro on AE2426 - used date range in the past, hopefully
+%this works on triggersettings, it did for AR82
+if endsWith(fcshdr.tr1_par, "_SSC") && fcshdr.tr1_level < 500
     phase = 2;
 else
 %regular shelf settings
@@ -34,7 +35,7 @@ end
     eukminX = 5e3; 
     eukcorner = [20000 1200]; 
     eukmaxY = 4e4; 
-    eukmaxYlower = 300; 
+    eukmaxYlower = 400;%300; 
     gl2_noise_thresh = 10000; %basically synminY
     
     synGL1A2GL1Hmax = 4; %PE area to height
@@ -47,7 +48,7 @@ end
 
 
     if phase == 2
-    eukminX =  10000;%2000;%5000;%5e3; 
+    eukminX =  5000;%2000;%5000;%5e3; 
     eukcorner = [10000 900]; %[20000 1200]; 
     eukmaxY = 4e4; 
     eukmaxYlower = 400;%300; 
@@ -110,22 +111,35 @@ end
     geuk_main_gate(5,1) = eukminX; 
 
 
-    if phase == 1
-        geuk_main_gate = [geuk_main_gate(1,1) 100; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)]; 
-    else
-        geuk_main_gate = [geuk_main_gate(1,1) 100; 10000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)];
-    end
+%     if phase == 1
+%         geuk_main_gate = [geuk_main_gate(1,1) 100; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)]; 
+%     else
+%         geuk_main_gate = [geuk_main_gate(1,1) 100; eukminX geuk_main_gate(1,2); geuk_main_gate(2:end,:)];
+%     end
 
 
     % assingments for euk, syn and pro 
     in_euk = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
    if exist("pro_main_gate", "var")
-    in_pro = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(pro_main_gate(:,1)),log10(pro_main_gate(:,2)))...
-        & (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(pro_2nd_gate(:,1)),log10(pro_2nd_gate(:,2))));
+   in_pro_chl =inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(pro_main_gate(:,1)),log10(pro_main_gate(:,2)));
+    in_pro_ssc = inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(pro_main_gate(:,1)),log10(pro_main_gate(:,2)));
+      in_pro = in_pro_chl & in_pro_ssc;
+   %disregard pro gating if it is spread out along the scatter channel,
+   %probably mostly detritus
+       if sum(in_pro)/sum(in_pro_chl) < .8
+        in_pro = ~logical(fcsdatlog(:,npar_synX));
+       
+       end
+
+%        in_pro = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(pro_main_gate(:,1)),log10(pro_main_gate(:,2)))...
+%         & (inpolygon(fcsdatlog(:,npar_synX),fcsdatlog(:,npar_synY),log10(pro_2nd_gate(:,1)),log10(pro_2nd_gate(:,2))));
+
    else 
        in_pro = ~logical(fcsdatlog(:,npar_synX));
    end
+
+   
 
     %% Part 2
     %it would be really nice if we could adjust the diagonal line in the
