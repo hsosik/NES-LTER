@@ -1,5 +1,7 @@
 
 clear all; close all;
+miraRun = readtable('\\sosiknas1\Lab_data\Attune\MVCO_Attune_Runs_Mira\hbac_syn_2024-05-17.csv');
+
 %Load FCB data
 load('\\sosiknas1\Lab_data\MVCO\FCB\summary\FCB_compiledC_tables.mat')
 
