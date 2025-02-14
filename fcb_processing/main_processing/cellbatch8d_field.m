@@ -535,6 +535,8 @@ for typenum = 1:size(filetypelist,1)
                                  sscmin = max([1000 ssc_synlow*.8]); 
                             elseif startsWith(filename, {'FCB2_2016_2'})
                                  sscmin = 50;
+                            elseif startsWith(filename, {'FCB2_2018_2'})
+                                 sscmin = 100;
                             else
 %                                % sscmin = ssc_synlow/2;
                                 sscmin = ssc_synlow*.8;
