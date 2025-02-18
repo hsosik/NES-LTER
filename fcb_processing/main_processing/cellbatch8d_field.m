@@ -136,8 +136,14 @@ for typenum = 1:size(filetypelist,1)
                 clear junk beadind
                 
                 partialdatmerged = double(partialdatmerged);
+                %special flag for chunk of time in Feb2023 when SSC dropped by ~3000 
+                flag2023 = 0;
+                if cellresults(sectionnum,1) > datenum(2023,2,4,1,0,0) && cellresults(sectionnum,1) < datenum(2023,2,14,17,0,0)
+                    flag2023 = 1;
+                    partialdatmerged(:,5) = (partialdatmerged(:,5)+800)*10;
+                end
                 partialdatmerged(:,2:5) = partialdatmerged(:,2:5) + 1;
-                
+
                 a = find(partialdatmerged(datbins,4) ~= 1 & partialdatmerged(datbins,5) ~= 1);  %zero chl is not allowed...also skip 0 SSC
                 datbins2 = datbins(a);
                 clear a
@@ -315,6 +321,11 @@ for typenum = 1:size(filetypelist,1)
                    vtrough(ii) = 200./binc(ii);
                    ii = find(binc<5e3); %n, Jul2024 
                    vtrough(ii) = max(vtrough(ii), 200./binc(ii));
+           elseif startsWith(filename,{'FCB2_2023_1'})
+                   ii = find(binc<1e4); %n, Jul2024 
+                   vtrough(ii) = 10./binc(ii);
+                   ii = find(binc<5e3); %n, Jul2024 
+                   vtrough(ii) = max(vtrough(ii), 10./binc(ii));
             elseif startsWith(filename,{'FCB1_2021_2' 'FCB2_2016_0' 'FCB2_2016_1'}) || (startsWith(filename, 'FCB2') && year2do > 2016 && year2do < 2023)
                    ii = find(binc<1e3); %n, Jul2024 
                    vtrough(ii) = 100./binc(ii);
@@ -326,6 +337,11 @@ for typenum = 1:size(filetypelist,1)
                   ii = find(binc<5e3); %n, Jul2024 
                   vtrough(ii) = max(vtrough(ii), 250./binc(ii));
             end
+            if flag2023
+                  ii = find(binc<5e4); %n, Jul2024 
+                  vtrough(ii) = 100./binc(ii);
+            end
+           
                %if startsWith(filename,{'FCB1_2017', 'FCB1_2018'}) %2017 has a sharp PE baseline
                if ismember(year2do, [2017 2018]) || startsWith(filename,'FCB1_2016')
                    im = partialdatmerged(datbins2,2)<200 & partialdatmerged(datbins2,5)<1e4 & partialdatmerged(datbins2,5)>1e2;
@@ -565,7 +581,11 @@ for typenum = 1:size(filetypelist,1)
                         % new crypto scheme 5-10-03, must be larger than syn mean on SSC and have high PE/CHL (beads are rel. low on PE/CHL, Heidi
                         tempmean = mean(partialdatmerged(datbins2pe(tind),5));  %mean ssc of syn
                         tempmean2 = mean(partialdatmerged(datbins2pe(tind),2));  %mean pe of syn
-                        tind = find(partialdatmerged(datbins2pe(junkind),5) > tempmean*1.5);
+                        if flag2023
+                            tind = find(partialdatmerged(datbins2pe(junkind),5) > tempmean*1.1);
+                        else
+                            tind = find(partialdatmerged(datbins2pe(junkind),5) > tempmean*1.5);
+                        end
                         classpe(junkind(tind)) = 6; %reassign class to "dim" cryptos
                         %next two lines added for "lg cryptos", Heidi 6/2/03
                         tind = find(partialdatmerged(datbins2pe(junkind),2) > 5e4); %PE above cutoff
@@ -648,6 +668,9 @@ for typenum = 1:size(filetypelist,1)
                     classpe(temp) = 5; %disp(length(temp))
                 end
                 clear temp %power coeff
+                if flag2023 %reset SSC values
+                    partialdatmerged(:,5) = partialdatmerged(:,5)/10-800;
+                end
                 if plotflag %& ~mod(sectionnum,10)%, %mod(sectionnum,6) == 1,   %make surf plots
                     maxvalue = 1e6;  %is this too high?
                     bins = 10.^(0:log10(maxvalue)/127:log10(maxvalue));  %make 256 log spaced bins
@@ -771,7 +794,7 @@ for typenum = 1:size(filetypelist,1)
                     axis([1 1e6 1 1e6])
                     grid on
                     disp('pause for graphs...')
-                    pause %(0.1)
+                    pause (0.1)
                     disp('reading next...')
                 end  %if 1, (to plot)
                 
