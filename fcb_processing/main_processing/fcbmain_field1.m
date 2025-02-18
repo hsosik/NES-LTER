@@ -7,12 +7,12 @@ clear all, close all
 warning off 
 
 %%USER CHANGE - below here
-for year2do = 2023 %2016:2022%[2010 2011 2013 2014] %2003:2004 %2011, 2005
+for year2do = 2024 %2016:2022%[2010 2011 2013 2014] %2003:2004 %2011, 2005
     
-dotime = 0; %0 = NO, 1 = YES
+dotime = 1; %0 = NO, 1 = YES
 domerge = 0;
-doclassify = 1;
-doplotgroup = 1;
+doclassify = 0;
+doplotgroup = 0;
 docells = 1;
 
 dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
