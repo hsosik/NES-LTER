@@ -9,10 +9,10 @@ warning off
 %%USER CHANGE - below here
 for year2do = 2024 %2016:2022%[2010 2011 2013 2014] %2003:2004 %2011, 2005
     
-dotime = 0; %0 = NO, 1 = YES
-domerge = 0;
-doclassify = 1;
-doplotgroup = 1;
+dotime = 1; %0 = NO, 1 = YES
+domerge = 1;
+doclassify = 0;
+doplotgroup = 0;
 docells = 1;
 
 dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
@@ -40,8 +40,8 @@ SSC2PE_cutoff = 50;  %50
 cellfiletypelist = ['FCB1_XXXX_0'; 'FCB2_XXXX_0'; 'FCB1_XXXX_1'; 'FCB2_XXXX_1'; 'FCB1_XXXX_2'; 'FCB2_XXXX_2';'FCB1_XXXX_3'; 'FCB2_XXXX_3'];
 cellfiletypelist = char(regexprep(cellstr(cellfiletypelist), 'XXXX', num2str(year2do)));
 
-%datapath = regexprep('\\sosiknas1\Lab_data\MVCO\FCB\MVCO_JanXXXX\data\', 'XXXX', num2str(year2do));
-datapath = regexprep('C:\work\mvco\FCB\MVCO_janXXXX\data\', 'XXXX', num2str(year2do));
+datapath = regexprep('\\sosiknas1\Lab_data\MVCO\FCB\MVCO_JanXXXX\data\', 'XXXX', num2str(year2do));
+%datapath = regexprep('C:\work\mvco\FCB\MVCO_janXXXX\data\', 'XXXX', num2str(year2do));
 %datapath = '\\sosiknas1\Lab_data\MVCO\FCB\FCB_tests\docktest25Aug2016\';
 %datapath = 'C:\temp\FCBtest\';
 
