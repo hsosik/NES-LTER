@@ -82,14 +82,14 @@ for typenum = 1:size(filetypelist,1)
         fit1 = fit; clear fit %reserved function name in matlab now
         partialdatmerged = datmerged;
         cellPE = NaN(length(timesectionendbin),numcluster);
-        cellFLS = NaN;
-        cellCHL = NaN;
-        cellSSC = NaN;
-        cellPEmode = NaN;
-        cellFLSmode = NaN;
-        cellCHLmode = NaN;
-        cellSSCmode = NaN;
-        cellNUM = NaN;
+        cellFLS = cellPE;
+        cellCHL = cellPE;
+        cellSSC = cellPE;
+        cellPEmode = cellPE;
+        cellFLSmode = cellPE;
+        cellCHLmode = cellPE;
+        cellSSCmode = cellPE;
+        cellNUM = cellPE;
         cellresults = NaN(length(timesectionendbin),3);
         beadmatch = NaN(length(timesectionendbin),13);
         %for sectionnum = 1:min([5 length(timesectionendbin)]) %:length(timesectionendbin) %7
@@ -147,7 +147,7 @@ for typenum = 1:size(filetypelist,1)
                 a = find(partialdatmerged(datbins,4) ~= 1 & partialdatmerged(datbins,5) ~= 1);  %zero chl is not allowed...also skip 0 SSC
                 datbins2 = datbins(a);
                 clear a
-                
+      if length(datbins) > 10
                 maxvalue = 1e7;
                 lbins = 24;
                 bins = 10.^(1:(log10(maxvalue)-1)/(lbins-1):log10(maxvalue));
@@ -724,22 +724,29 @@ for typenum = 1:size(filetypelist,1)
                     %        title('PE containing cells only')
                     clear maxvalue bins
                 end
-                
-                colorstr = ['r', 'b', 'k', 'g', 'y', 'c', 'm'];
-                      
+                                      
                 mergedwithclass = [partialdatmerged NaN*ones(size(partialdatmerged,1),1)];
                 mergedwithclass(datbins2pe,end) = classpe;
                 mergedwithclass(datbins2nope,end) = classnope;
                 mergedwithclass = mergedwithclass(datbins,:);
                 clear classpe classnope
+      else %if length(datbins) > 10
+                modeflag = 0;
+                tempmode = [0 0];
+                mergedwithclass = [partialdatmerged NaN*ones(size(partialdatmerged,1),1)];
+                mergedwithclass(:,end) = 0;
+                mergedwithclass = mergedwithclass(datbins,:);
+      end
                 if plotflag %& ~mod(sectionnum,2), %~mod(sectionnum+2,4), %mod(sectionnum,6) == 1, %make cluster plots
+                    colorstr = ['r', 'b', 'k', 'g', 'y', 'c', 'm'];
+
                     figure(2)
                     clf,
                     subplot(221)
                     hold on
                     ylabel('CHL'), xlabel('FLS')
                     for c = 1:numcluster
-                        ind = find(mergedwithclass(:,end) == c);
+                        ind = (mergedwithclass(:,end) == c);
                         eval(['loglog(mergedwithclass(ind,3),mergedwithclass(ind,4), ''' colorstr(c) 'o'', ''markersize'', 1)'])
                     end
                     set(gca, 'xscale', 'log', 'yscale', 'log')
@@ -767,11 +774,11 @@ for typenum = 1:size(filetypelist,1)
                     hold on
                     ylabel('CHL'), xlabel('SSC')
                     for c = 1:numcluster
-                        ind = find(mergedwithclass(:,end) == c);
+                        ind = (mergedwithclass(:,end) == c);
                         eval(['loglog(mergedwithclass(ind,5),mergedwithclass(ind,4), ''' colorstr(c) 'o'', ''markersize'', 1)'])
                     end
                     c = 1;%overlay syn again on top
-                    ind = find(mergedwithclass(:,end) == c);
+                    ind = (mergedwithclass(:,end) == c);
                     eval(['loglog(mergedwithclass(ind,5),mergedwithclass(ind,4), ''' colorstr(c) 'o'', ''markersize'', 1)'])
                     set(gca, 'xscale', 'log', 'yscale', 'log')
                     set(gca, 'Ygrid', 'on')
@@ -784,8 +791,7 @@ for typenum = 1:size(filetypelist,1)
                     hold on
                     ylabel('PE'), xlabel('CHL')
                     for c = 1:numcluster
-                   
-                        ind = find(mergedwithclass(:,end) == c);
+                        ind = (mergedwithclass(:,end) == c);
                         eval(['loglog(mergedwithclass(ind,4),mergedwithclass(ind,2), ''' colorstr(c) 'o'', ''markersize'', 1)'])
                     end
                     loglog([1:10:1e5], 10.^(log10([1:10:1e5])*fit1(1) + fit1(2)), 'r')
@@ -829,6 +835,9 @@ for typenum = 1:size(filetypelist,1)
                         cellCHLmode(sectionnum,c) = NaN;
                         cellSSCmode(sectionnum,c) = NaN;
                     end  %if ~isempty(ind)
+                    if sum(cellNUM(sectionnum,:))==0 %all counts are zero
+                        cellNUM(sectionnum,:) = NaN; %unusual case (e.g., 7 oct 2024) with too few in hour to get any signature gates
+                    end
                 end %for c = 1:numcluster
                 clear c ind maxvalue bins
                 

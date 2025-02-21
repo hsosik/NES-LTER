@@ -9,10 +9,10 @@ warning off
 %%USER CHANGE - below here
 for year2do = 2024 %2016:2022%[2010 2011 2013 2014] %2003:2004 %2011, 2005
     
-dotime = 1; %0 = NO, 1 = YES
+dotime = 0; %0 = NO, 1 = YES
 domerge = 0;
-doclassify = 0;
-doplotgroup = 0;
+doclassify = 1;
+doplotgroup = 1;
 docells = 1;
 
 dobeads = 0; %ALWAYS MERGE CELLS BEFORE CORRESPONDING BEADS
@@ -121,13 +121,14 @@ switch year2do
     case 2018
         SSC2PE_cutoff = 200;
         mergeprocstr = 'fcbmergeproc3';
-    case {2019, 2020, 2021, 2022, 2023, 2024, 2025}
+    case {2019, 2020, 2021, 2022, 2023, 2025}
         SSC2PE_cutoff = 200;
         mergeprocstr = 'fcbmergeproc3';
-        %pedist_thre = 9; %10; %8;  
-    %case 2021
-    %    SSC2PE_cutoff = 200;
-    %    mergeprocstr = 'fcbmergeproc3';
+    case {2024}
+        SSC2PE_cutoff = 200;
+        mergeprocstr = 'fcbmergeproc3';
+        readrawstr = 'fcbreadraw2b';
+        timeprocstr = 'fcbtimeproc100_2b';
 end
 
     %datapath = regexprep(datapath, '\\\\queenrose\\mvco', 'c:\\work'); %temp for olive
