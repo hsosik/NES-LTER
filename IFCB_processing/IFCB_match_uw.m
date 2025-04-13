@@ -9,7 +9,7 @@ function [IFCB_match] =  IFCB_match_uw(IFCB_files, IFCB_mdate, uw)
 warning off
 
 %IFCB_mdate = IFCB_file2date(cellstr(IFCB_files));
-iso8601format = 'yyyy-mm-dd hh:MM:ss';
+iso8601format = 'yyyy-MM-dd HH:mm:ss';
 if ismember('mdate_fullres', uw.Properties.VariableNames)
     uw_mdate = uw.mdate_fullres; %case for NESLTER_broadscale with added full resolution gps
 elseif ismember('matdate', uw.Properties.VariableNames) %case for NESLTER_broadscale only SAMOS
@@ -27,6 +27,9 @@ uw_lon = uw.(t{ilon(1)});
 IFCB_match(1,:) = uw(1,:);
 IFCB_match.lat(1:length(IFCB_mdate)) = NaN(size(IFCB_mdate)); 
 IFCB_match.lon(1:length(IFCB_mdate)) = NaN(size(IFCB_mdate));
+IFCB_match(3,:) = IFCB_match(1,:);
+IFCB_match = IFCB_match(2,:);
+blank_row = IFCB_match;
 nnind = find(~isnan(uw_mdate));
 
 for count = 1:length(IFCB_mdate)
@@ -56,7 +59,8 @@ for count = 1:length(IFCB_mdate)
             %keyboard
         else
             %IFCB_match(count,1:size(uw,2)) = array2table(NaN(size(uw(1,:))));
-            IFCB_match(count,1:size(uw,2)-1) = array2table(NaN(size(uw(1,1:end-1)))); %skip date cell on end??
+            %IFCB_match(count,1:size(uw,2)-1) = array2table(NaN(size(uw(1,1:end-1)))); %skip date cell on end??
+            IFCB_match(count,:) = blank_row;
         end
     end
 end
