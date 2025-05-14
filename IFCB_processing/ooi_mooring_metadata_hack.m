@@ -11,3 +11,5 @@ bd = dir('\\sosiknas1\IFCB_data\ooi\pioneer_mooring\data\beads\*.roi');
 meta_data.sample_type(:) = {'mooring'};
 meta_data.sample_type(c) = {'bead'};
 meta_data.skip(:) = 0;
+
+save('\\sosiknas1\IFCB_products\ooi\pioneer_mooring\summary\meta_data', 'meta_data')
