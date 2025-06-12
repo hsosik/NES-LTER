@@ -14,9 +14,11 @@ if ~exist(outfile, 'dir')
 end
 outfile = [outfile 'uw_compiled'];
 
-uw = table;
-for ii = 1:length(flist)
-    uw = [uw; readtable([basepath flist(ii).name])];
+uw = readtable([basepath flist(1).name]);
+for ii = 2:length(flist)
+    disp(ii)
+    %uw = [uw; readtable([basepath flist(ii).name])];
+    uw = outerjoin(uw, readtable([basepath flist(ii).name]), 'MergeKeys', true);
 end
 uw_datetime = datetime(uw.DATE_GMT, 'InputFormat', 'uuuu/MM/dd')+uw.TIME_GMT;
 uw.matdate = datenum(uw_datetime); %for input to IFCB_match_uw
