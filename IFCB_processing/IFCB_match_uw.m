@@ -32,11 +32,11 @@ nnind = find(~isnan(uw_mdate));
 for count = 1:length(IFCB_mdate)
     [m,ia] = min(abs(IFCB_mdate(count)-uw_mdate));
     if m < 5/60/24 %5 minutes as days
-        IFCB_match(count,1:end-2) = uw(ia,:);
+            IFCB_match(count,1:end-2) = uw(ia,:);
         IFCB_match.lat(count) = uw_lat(ia);
         IFCB_match.lon(count) = uw_lon(ia);        
     else
-        if ia < length(uw_mdate) && ia > 1 %otherwise no match (IFCB file after end of uw data or before beginning)
+        if ia < length(uw_mdate) && ia > 1 && m<2/24 %otherwise no match (IFCB file after end of uw data or before beginning) OR gap longer than 2 h
             if IFCB_mdate(count) > uw_mdate(ia) %closest to end of gap
                 it = ia;
             else %closest to start of gap
@@ -52,8 +52,8 @@ for count = 1:length(IFCB_mdate)
                 IFCB_match.latitude_fullres(count) = IFCB_match.lat(count);
                 IFCB_match.longitude_fullres(count) = IFCB_match.lon(count);
             end
-            disp('CHECK interpolation')
-            %keyboard
+            disp(['CHECK interpolation file: ' char(IFCB_files(count))])
+%             keyboard
         else
             %IFCB_match(count,1:size(uw,2)) = array2table(NaN(size(uw(1,:))));
             IFCB_match(count,1:size(uw,2)-1) = array2table(NaN(size(uw(1,1:end-1)))); %skip date cell on end??
