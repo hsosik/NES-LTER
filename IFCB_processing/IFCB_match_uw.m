@@ -9,7 +9,7 @@ function [IFCB_match] =  IFCB_match_uw(IFCB_files, IFCB_mdate, uw)
 warning off
 
 %IFCB_mdate = IFCB_file2date(cellstr(IFCB_files));
-iso8601format = 'yyyy-MM-dd HH:mm:ss';
+iso8601format = 'yyyy-mm-dd hh:MM:ss';
 if ismember('mdate_fullres', uw.Properties.VariableNames)
     uw_mdate = uw.mdate_fullres; %case for NESLTER_broadscale with added full resolution gps
 elseif ismember('matdate', uw.Properties.VariableNames) %case for NESLTER_broadscale only SAMOS
@@ -27,19 +27,16 @@ uw_lon = uw.(t{ilon(1)});
 IFCB_match(1,:) = uw(1,:);
 IFCB_match.lat(1:length(IFCB_mdate)) = NaN(size(IFCB_mdate)); 
 IFCB_match.lon(1:length(IFCB_mdate)) = NaN(size(IFCB_mdate));
-IFCB_match(3,:) = IFCB_match(1,:);
-IFCB_match = IFCB_match(2,:);
-blank_row = IFCB_match;
 nnind = find(~isnan(uw_mdate));
 
 for count = 1:length(IFCB_mdate)
     [m,ia] = min(abs(IFCB_mdate(count)-uw_mdate));
     if m < 5/60/24 %5 minutes as days
-        IFCB_match(count,1:end-2) = uw(ia,:);
+            IFCB_match(count,1:end-2) = uw(ia,:);
         IFCB_match.lat(count) = uw_lat(ia);
         IFCB_match.lon(count) = uw_lon(ia);        
     else
-        if ia < length(uw_mdate) && ia > 1 %otherwise no match (IFCB file after end of uw data or before beginning)
+        if ia < length(uw_mdate) && ia > 1 && m<2/24 %otherwise no match (IFCB file after end of uw data or before beginning) OR gap longer than 2 h
             if IFCB_mdate(count) > uw_mdate(ia) %closest to end of gap
                 it = ia;
             else %closest to start of gap
@@ -55,12 +52,11 @@ for count = 1:length(IFCB_mdate)
                 IFCB_match.latitude_fullres(count) = IFCB_match.lat(count);
                 IFCB_match.longitude_fullres(count) = IFCB_match.lon(count);
             end
-            disp('CHECK interpolation')
-            %keyboard
+            disp(['CHECK interpolation file: ' char(IFCB_files(count))])
+%             keyboard
         else
             %IFCB_match(count,1:size(uw,2)) = array2table(NaN(size(uw(1,:))));
-            %IFCB_match(count,1:size(uw,2)-1) = array2table(NaN(size(uw(1,1:end-1)))); %skip date cell on end??
-            IFCB_match(count,:) = blank_row;
+            IFCB_match(count,1:size(uw,2)-1) = array2table(NaN(size(uw(1,1:end-1)))); %skip date cell on end??
         end
     end
 end
