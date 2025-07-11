@@ -26,6 +26,11 @@ load('\\sosiknas1\Lab_data\LTER\NESLTER_broadscale\20250528_HB2503\compiled_unde
 uw(end+1:end+height(S),S.Properties.VariableNames)=S;
 uw{end-height(S)+1:end,~ismember(uw.Properties.VariableNames,S.Properties.VariableNames)} = NaN;
 
+%TC 7/11/25 - 1 specific GPS lat/lon that exactly matches IFCB bin is
+%erroneous. Set lat/lon to the coordinates of previous minute
+uw.latitude_fullres(uw.matdate == datenum('June 6, 2025 20:36')) = 41.19759;
+uw.longitude_fullres(uw.matdate == datenum('June 6, 2025 20:36')) = -70.936371;
+
 save('\\sosiknas1\Lab_data\LTER\NESLTER_broadscale\20250528_HB2503\compiled_underway\HB2503uw_compiled.mat', 'uw', '-append')
 
 
