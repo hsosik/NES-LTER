@@ -31,6 +31,9 @@ ifcbbase = '\\sosiknas1\IFCB_products\NESLTER_transect\summary\';
 
 %clist = {'AR29' 'RB1904' 'TN368'}; ifcbbase = '\\sosiknas1\IFCB_products\SPIROPA\summary\'; %'AR29' 'RB1904' 'TN368'
 %clist = {'AR43' 'EN688'}; ifcbbase = '\\sosiknas1\IFCB_products\OTZ\summary\';
+%just do this cruise
+clist_all = clist_all(contains(clist_all, 'EN727')); yr = 2025; cruiseStr_all = {'EN727'};
+
 pout = '\\sosiknas1\Lab_data\Attune\cruise_data\IFCB_Attune_merge\summary_files_discrete\';
 attune_euk_class = [1,5,6];
 %
