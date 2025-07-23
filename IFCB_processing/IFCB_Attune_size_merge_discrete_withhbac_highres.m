@@ -8,10 +8,11 @@ clist_all = {t.folder}';
 
 %SKIP SOME FOR NOW since output not available from attune proc
 clist_all(contains(clist_all, 'AR28B')) = [];
+clist_all(contains(clist_all, 'AR32')) = [];
 clist_all(contains(clist_all, 'SR2018')) = [];
 clist_all(contains(clist_all, 'AR66B')) = [];
 clist_all(contains(clist_all, 'AR77')) = [];
-%clist_all(contains(clist_all, 'EN695')) = [];
+clist_all(contains(clist_all, 'AE2426')) = [];
 
 %SKIP SOME MORE That need different IFCB files
 clist_all(contains(clist_all, 'SG2105')) = [];
@@ -19,20 +20,22 @@ clist_all(contains(clist_all, 'HB1907')) = [];
 clist_all(contains(clist_all, 'TN368')) = [];
 clist_all(contains(clist_all, 'EN688')) = [];
 clist_all(contains(clist_all, 'MVCO')) = [];
+clist_all(contains(clist_all, '20190303_AL')) = [];
+
 
 cruiseStr_all = split(clist_all,'_');
 cruiseStr_all = cruiseStr_all(:,end);
 yr = split(clist_all,filesep);
 yr = yr(:,end);
 yr = extractBefore(yr,5);
-yrlist = unique(yr);
 
 ifcbbase = '\\sosiknas1\IFCB_products\NESLTER_transect\summary\';
 
 %clist = {'AR29' 'RB1904' 'TN368'}; ifcbbase = '\\sosiknas1\IFCB_products\SPIROPA\summary\'; %'AR29' 'RB1904' 'TN368'
 %clist = {'AR43' 'EN688'}; ifcbbase = '\\sosiknas1\IFCB_products\OTZ\summary\';
 %just do this cruise
-clist_all = clist_all(contains(clist_all, 'EN727')); yr = 2025; cruiseStr_all = {'EN727'};
+clist_all = clist_all(contains(clist_all, 'EN727')); yr = {'2025'}; cruiseStr_all = {'EN727'};
+yrlist = unique(yr);
 
 pout = '\\sosiknas1\Lab_data\Attune\cruise_data\IFCB_Attune_merge\summary_files_discrete\';
 attune_euk_class = [1,5,6];
