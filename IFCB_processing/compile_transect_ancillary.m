@@ -28,12 +28,19 @@ slist_cast = {'pid' 'cruise' 'lat' 'lon' 't090c' 'sal00' 'depth' 'mdate'};
          orig_var = {'sbe45pri_temp_c' 'sbe45pri_sal_psu'};
      elseif strncmp('hrs', cruises{count1},3)
          orig_var = {'water_temperature_degree_c' 'salinity_psu'};
+     elseif strncmp('PC', cruises{count1},2)
+         orig_var = {'TW' 'SSPS'};
+     elseif strncmp('HRS', cruises{count1},3)
+         orig_var = {'water_temperature_degree_c' 'salinity_psu'};
      else
          orig_var = {'sbe48t' 'sbe45s'};
      end
      %u = load([ubase 'NESLTER_transect_' cruises{count1} '_uw_match.mat']);
      u = load([ubase filelist{count1}]);
      u.IFCB_match_uw_results.Properties.VariableNames(orig_var) = {'temperature' 'salinity'};
+     if strcmp('PC2408', cruises{count1})
+         u.IFCB_match_uw_results.cruise(:) = {'PC2408'};
+     end
      [~,ia] = ismember(slist, u.IFCB_match_uw_results.Properties.VariableNames);
      match_uw = [match_uw; u.IFCB_match_uw_results(:,ia)];
      if exist([ubase 'NESLTER_transect_' cruises{count1} '_cast_match.mat'], 'file')
