@@ -15,14 +15,17 @@ end
 outfile = [outfile 'uw_compiled'];
 
 uw = readtable([basepath flist(1).name]);
+uw.Properties.VariableNames = lower(uw.Properties.VariableNames);
 for ii = 2:length(flist)
     disp(ii)
     %uw = [uw; readtable([basepath flist(ii).name])];
-    uw = outerjoin(uw, readtable([basepath flist(ii).name]), 'MergeKeys', true);
+    temp = readtable([basepath flist(ii).name], 'MissingRule','fill', 'TreatAsMissing',"NODATA");
+    temp.Properties.VariableNames = lower(temp.Properties.VariableNames);
+    uw = outerjoin(uw, temp, 'MergeKeys', true);
 end
-uw_datetime = datetime(uw.DATE_GMT, 'InputFormat', 'uuuu/MM/dd')+uw.TIME_GMT;
-uw.matdate = datenum(uw_datetime); %for input to IFCB_match_uw
 uw.Properties.VariableNames = lower(uw.Properties.VariableNames);
+uw.datetime = datetime(uw.date_gmt, 'InputFormat', 'uuuu/MM/dd')+uw.time_gmt;
+uw.matdate = datenum(uw.datetime); %for input to IFCB_match_uw
 
 notes = {'Heidi Sosik, WHOI, produced with compile_tsg_oleander.m from '};
 save(outfile, 'uw', 'notes')
