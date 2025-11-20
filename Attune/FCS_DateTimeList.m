@@ -103,5 +103,8 @@ end
 [~,ind] = sort(FCSfileinfo.matdate_start);
 FCSfileinfo = FCSfileinfo(ind, :); 
 
+%add a flag for runs with settings to detect Prochlorococcus 
+FCSfileinfo.pro_measured(:) = 0;
+FCSfileinfo.pro_measured(endsWith(FCSfileinfo.trigger1_parameter, "_SSC") & FCSfileinfo.trigger1_threshhold < 500) = 1;
 
 end
