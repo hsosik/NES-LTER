@@ -4,11 +4,10 @@ function [] = compile_IFCB_metadata(ToTag_xlsFile)
 [~,f] = fileparts(ToTag_xlsFile);
 cruise = strsplit(f, '_');
 cruise = lower(cruise{3});
-apibase = 'https://nes-lter-data.whoi.edu/api/';
-myreadtable = @(filename)readtable(filename,'Delimiter','comma');
-options = weboptions('ContentReader',myreadtable, 'timeout', 30);
-%options = weboptions('ContentType', 'table');
-
+apibase = 'https://nes-lter-api.whoi.edu/api/'; % api2
+%apibase = 'https://nes-lter-data.whoi.edu/api/'; %api1
+%myreadtable = @(filename)readtable(filename,'Delimiter','comma');
+%options = weboptions('ContentReader',myreadtable, 'timeout', 30);
 opts = detectImportOptions(ToTag_xlsFile);
 opts = setvartype(opts, {'tag1' 'tag2' 'comments'}, 'char');
 totag = readtable(ToTag_xlsFile, opts);
@@ -22,7 +21,9 @@ totag = addvars(totag,t,t,t,t, 'NewVariableNames', {'lat' 'lon' 'depth' 'niskin'
 %totag = addvars(totag,t, 'NewVariableNames', {'datetime'})
 
 %load the ship's underway data
-uw = webread([apibase 'underway/' cruise '.csv'], options);
+%uw = webread([apibase 'underway/' cruise '.csv'], options);
+uw = readtable([apibase 'underway/get/' cruise]); %api2
+%https://nes-lter-api.whoi.edu/api/underway/get/ar95
 
 %load the event log
 %event_log = webread([apibase 'events/' cruise '.csv'], options);
@@ -57,7 +58,9 @@ totag.niskin(uwind) = NaN;
 castind = strmatch('cast', totag.(tagstr));
 if ~isempty(castind)
     %load the ship's CTD btl data
-    bottle_data = webread([apibase 'ctd/' cruise '/bottles.csv'], options);
+%    bottle_data = webread([apibase 'ctd/' cruise '/bottles.csv'], options);
+    bottle_data = readtable([apibase 'ctd/bottles/' cruise]);  %api2
+    %https://nes-lter-api.whoi.edu/api/ctd/bottles/ar92
     
     %find and read the cruise-specific IFCB logfile
     logfilelist = readtable('\\sosiknas1\IFCB_data\NESLTER_transect\to_tag\NESLTER_transect_IFCB_log_tag_filelist.xlsx');

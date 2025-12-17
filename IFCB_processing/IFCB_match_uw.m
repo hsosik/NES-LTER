@@ -15,7 +15,8 @@ if ismember('mdate_fullres', uw.Properties.VariableNames)
 elseif ismember('matdate', uw.Properties.VariableNames) %case for NESLTER_broadscale only SAMOS
     uw_mdate = uw.matdate; %case for NESLTER_broadscale
 else
-    uw_mdate = datenum(uw.date, iso8601format);
+    %uw_mdate = datenum(uw.date, iso8601format);
+    uw_mdate = datenum(strcat(char(uw.date_gmt), char(uw.time_gmt)),'yyyy/mm/ddHH:MM:ss.FFF'); %api2
 end
 t = uw.Properties.VariableNames;
 %ilat = find(contains(t, 'latitude'));
@@ -56,7 +57,8 @@ for count = 1:length(IFCB_mdate)
 %             keyboard
         else
             %IFCB_match(count,1:size(uw,2)) = array2table(NaN(size(uw(1,:))));
-            IFCB_match(count,1:size(uw,2)-1) = array2table(NaN(size(uw(1,1:end-1)))); %skip date cell on end??
+            %IFCB_match(count,1:size(uw,2)-1) = array2table(NaN(size(uw(1,1:end-1)))); %skip date cell on end??
+            IFCB_match{count,strcmp(IFCB_match.Properties.VariableTypes, 'double')} = NaN;
         end
     end
 end
