@@ -16,7 +16,8 @@ elseif ismember('matdate', uw.Properties.VariableNames) %case for NESLTER_broads
     uw_mdate = uw.matdate; %case for NESLTER_broadscale
 else
     %uw_mdate = datenum(uw.date, iso8601format);
-    uw_mdate = datenum(strcat(char(uw.date_gmt), char(uw.time_gmt)),'yyyy/mm/ddHH:MM:ss.FFF'); %api2
+    %uw_mdate = datenum(strcat(char(uw.date_gmt), char(uw.time_gmt)),'yyyy/mm/ddHH:MM:ss.FFF'); %api2
+    uw_mdate = datenum(uw.date,'yyyy-mm-dd HH:MM:ss.FFF+00:00'); %api2
 end
 t = uw.Properties.VariableNames;
 %ilat = find(contains(t, 'latitude'));

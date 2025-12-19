@@ -125,7 +125,7 @@ end
 
 switch cruise
     case 'AR29'
-        p.uw_fullname = '\\sosiknas1\Lab_data\SPIROPA\20180414_AR29\underway\procAR29_underway_all.mat';
+        p.uw_fullname = '\\sosiknas1\Lab_data\SPIROPA\20180414_AR29\underway\proc\AR29_underway_all.mat';
     case 'RB1904' 
         p.uw_fullname = '\\sosiknas1\Lab_data\SPIROPA\20180503_RB1904\compiled_underway\rb1904_uw_compiled.mat';
     case 'TN368' 
@@ -133,7 +133,8 @@ switch cruise
     case 'AR43' 
         p.uw_fullname = '\\sosiknas1\Lab_data\OTZ\20200311_AR43\underway\proc\ar43_underway.csv';  
     otherwise %DEFAULT, NES LTER api
-        p.uw_fullname = ['https://nes-lter-data.whoi.edu/api/underway/' lower(cruise) '.csv'];
+%        p.uw_fullname = ['https://nes-lter-data.whoi.edu/api/underway/' lower(cruise) '.csv'];
+        p.uw_fullname = ['https://nes-lter-api.whoi.edu/api/underway/get/' cruise]; % api2
 end
 
 %% Nothing below this section should change between cruises!
