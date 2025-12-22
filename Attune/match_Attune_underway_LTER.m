@@ -74,7 +74,11 @@ load( AttuneTable_fullname )
 %NEW APPROACH to simplify from above (Heidi, Dec 2025) 
 if startsWith(uw_fullname, 'http')
     uw = readtable(uw_fullname, 'Delimiter', ',');
-    uw_mdate = datenum(uw.date,'yyyy-mm-dd HH:MM:ss'); 
+    if ismember('date',uw.Properties.VariableNames) %hack for now because api2 is inconsistent
+        uw_mdate = datenum(uw.date,'yyyy-mm-dd HH:MM:ss'); 
+    else
+         uw_mdate = datenum(uw.datetime_iso8601,'yyyy-mm-ddTHH:MM:ss'); 
+    end
 elseif contains(uw_fullname, '.mat') %spiropa cases
     load(uw_fullname); %must contain variable uw
     uw_mdate = uw.matdate;
