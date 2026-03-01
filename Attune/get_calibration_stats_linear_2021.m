@@ -23,7 +23,10 @@
 function get_calibration_stats_linear_2021(outpath, classpath, stepsize, DIM)
 %DIM should be either 'A' or 'H' for ssc-a or ssc-h
          %ssc_ch_num = 3; %3 ssc-a, 12 ssc-h 
+%case for underway
 fpath = regexprep(outpath, 'bead_calibrated', 'FCS');
+%case for discretes
+fpath = regexprep(outpath, 'outputs', 'FCS');
 
 saverpath = [classpath 'calibration']; 
 if ~exist([classpath 'calibration'], 'dir')
@@ -83,6 +86,7 @@ end
     new_ssc_vals(t(1:2:end)) = 10.^[intercept + slope.*(gl1_vals(t(1:2:end)))];
     
     calibrate_info = table; 
+    calibrate_info.filename = string(filename);
     calibrate_info.ssc_ch_num = ssc_ch_num; 
     calibrate_info.qc = qc_warning; 
     calibrate_info.intercept = intercept; 
