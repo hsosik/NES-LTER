@@ -53,6 +53,7 @@ else  %initialize
             FCSfileinfo = table(fcslist);
             FCSfileinfo.matdate_start = NaN(size(fcslist));
             FCSfileinfo.matdate_stop = FCSfileinfo.matdate_start;
+            FCSfileinfo.date_processed = NaT(size(fcslist));;
             FCSfileinfo.vol_analyzed = FCSfileinfo.matdate_start;
             FCSfileinfo.trigger1_parameter = cell(size(FCSfileinfo.matdate_start));
             FCSfileinfo.trigger1_threshhold = FCSfileinfo.matdate_start;
@@ -74,12 +75,18 @@ if b > 0 %now add to existing table
         if ~(fcshdr.TotalEvents==0)
             FCSfileinfo.matdate_start(ii) = datenum([fcshdr.date ', ' fcshdr.starttime]);
             FCSfileinfo.matdate_stop(ii) = datenum([fcshdr.date ', ' fcshdr.stoptime]);
+            FCSfileinfo.date_processed(ii) = datetime(fcshdr.date);
             FCSfileinfo.vol_analyzed(ii) = fcshdr.VOL;
             FCSfileinfo.trigger1_parameter(ii) = {fcshdr.tr1_par};
             FCSfileinfo.trigger1_threshhold(ii) = fcshdr.tr1_level;
+            itemp = find(startsWith({fcshdr.par.name},extractAfter(fcshdr.tr1_par,'_')));
+            FCSfileinfo.trigger1_hv(ii) = fcshdr.par(itemp(1)).hv;
+            
             if isfield(fcshdr, 'tr2_par')
                 FCSfileinfo.trigger2_parameter(ii) = {fcshdr.tr2_par};
                 FCSfileinfo.trigger2_threshhold(ii) = fcshdr.tr2_level;
+                itemp = find(startsWith({fcshdr.par.name},extractAfter(fcshdr.tr2_par,'_')));
+                FCSfileinfo.trigger2_hv(ii) = fcshdr.par(itemp(1)).hv;
             end
             %adding quality control flags 
             t = find(fcsdat(:,12)>200 & fcsdat(:,3)>200);
