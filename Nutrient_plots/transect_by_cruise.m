@@ -12,8 +12,9 @@
 
 %cruises = readtable("C:\Users\heidi\Downloads\cruise_metadata.csv");
 opt = weboptions('Timeout', 60);
-cruises = webread('https://nes-lter-data.whoi.edu/api/cruises/metadata.csv', opt);
-cruises = cruises.cruise;
+cruises = webread('https://nes-lter-api.whoi.edu/api/ctd/cruises/get/all', opt);
+cruises = cruises.name;
+% cruises = cruises.cruise;
 %%
 if 1 %1 to read from the APIs, 0 to load the stored (multi-cruise) file
     nut = table;
@@ -24,7 +25,7 @@ if 1 %1 to read from the APIs, 0 to load the stored (multi-cruise) file
             %opt = detectImportOptions(['https://nes-lter-data.whoi.edu/api/nut/' cruises{count1} '.csv']);
             %opt.VariableTypes(strcmp(opt.VariableNames, 'alternate_sample_id')) = {'char'};
             %opt.Timeout = 120;
-            n = webread(['https://nes-lter-data.whoi.edu/api/nut/' cruises{count1} '.csv'], opt);
+            n = webread(['https://nes-lter-api.whoi.edu/api/nut/' cruises{count1}], opt);
             n.alternate_sample_id = []; %move this column since the type doesn't match between all cruises
             %n.nearest_station = [];
             %n.distance_km = [];
