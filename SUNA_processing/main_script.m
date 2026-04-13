@@ -7,10 +7,10 @@
 % this processing script is an example for post-possessing SUNA nitrate data that
 % are collected from a SUNA-CTD rosette intrgration. The paper documenting
 % these processing steps is:
+
 % Zheng, Bofu, E. Taylor Crockford, Weifeng (Gordon) Zhang, Rubao Ji, and Heidi M. Sosik. Bias-corrected
 % high­ resolution nitrate profiles from a CTD rosette­-mounted submersible ultraviolet nitrate
 % analyzer. Limnology and Oceanography: Methods, 2024
-
 
 %% load all necessary files
 clear all
