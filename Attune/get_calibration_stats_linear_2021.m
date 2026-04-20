@@ -86,7 +86,7 @@ end
     new_ssc_vals(t(1:2:end)) = 10.^[intercept + slope.*(gl1_vals(t(1:2:end)))];
     
     calibrate_info = table; 
-    calibrate_info.filename = string(filename);
+    calibrate_info.filename = classlist(counti).name;
     calibrate_info.ssc_ch_num = ssc_ch_num; 
     calibrate_info.qc = qc_warning; 
     calibrate_info.intercept = intercept; 
@@ -97,17 +97,18 @@ end
     
     joint_table = [joint_table; calibrate_info];
 
-        figure(98)
+        figure(98), clf
         plot(gl1_vals, ssc_value, '.')
         xlabel('GL1 - low sensitivity')
         ylabel('SSC - high sensitivity')
         hold on 
-        plot([1 max(gl1_vals)], [intercept (intercept + slope*(max(gl1_vals)))])
         plot(gl1_vals(t), ssc_value(t), '.b')
         plot(gl1_vals, new_ssc_vals, 'g.')
         plot(gl1_vals(ind_to_fit), ssc_value(ind_to_fit), 'r.')
+        plot([1 max(gl1_vals)], [intercept (intercept + slope*(max(gl1_vals)))], 'linewidth',2)
         title(num2str(qc_warning))
-        axis([0 1e5 0 1e6])
+%        axis([0 1e5 0 1e6])
+        axis([0 2e4 0 1.1e6])
         print(figure(98), fullfile(saverpath, regexprep(classlist(counti).name, '.mat', '.png')), '-dpng')
         clf(98)
                  
