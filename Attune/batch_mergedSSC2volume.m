@@ -45,8 +45,8 @@ for filecount = 1:height(mergeT)
         volume_cubic_micron(ii) = Attune_SC2vol(fcsdat.("SSC-H")(ii)./beadSSCmean.mean_SSCH_1micron(bdrow),strcat('SSC-H'));
         ctemp = load([p.classpath regexprep(mergeT.filename{filecount},'.fcs', '.mat')]);
         c.class = ctemp.class;  clear ctemp %TEMP get rid of old stuff
-        c.c.vol_notes = {strcat('calibrated: ', string(datetime())); strcat(' using SSC-', p.SSCDIM); vol_func_string};
-        c.ssc_merge = sscmerge; c.beadSSCmean = beadSSCmean; c.file_hv.SSC = mergeT.SSC_hv; c.file_hv.GL1 = mergeT.GL1_hv;
+        c.vol_notes = {strcat('calibrated: ', string(datetime())); strcat(' using SSC-', p.SSCDIM); vol_func_string};
+        c.ssc_merge = sscmerge; c.beadSSCmean = beadSSCmean; c.file_hv.SSC = mergeT.SSC_hv(filecount); c.file_hv.GL1 = mergeT.GL1_hv(filecount);
         c.volume_cubic_microns = volume_cubic_micron;
         c.merge_info = array2table([mergeT.slope_median(filecount) gl1min gl1max sscmax SSCAmin], 'variablenames', {'slope' 'GL1min' 'GL1max' 'SSCmax' 'SSCAmin'}); 
         save([p.classpath regexprep(mergeT.filename{filecount},'.fcs', '.mat')],'-struct', "c")
