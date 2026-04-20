@@ -81,7 +81,7 @@ end
             %typically this is GL1-H for older cruises and GL2-H for new
 
 %step(3) = 0; %Assign beads to make beadstats table and bead plots
-    p.beadfiles2include = {'FCB_bead'};
+    p.beadfiles2include = {'FCB_bead' 'fcb_bead'};
 %    beadtype = 'FCB';   %'PT';%'PT';%
     %check OD2setting above in step 2 settings
     
@@ -141,57 +141,57 @@ end
 % framemaker etc. 
 
 %% some file structure setup  
-fpath = [p.basepath filesep 'FCS' filesep];
-outpath = [p.basepath filesep 'bead_calibrated' filesep];
-beadfigpath = [outpath filesep 'bead_plots_2021'];
-classpath = [outpath 'class' filesep];
+p.fpath = [p.basepath filesep 'FCS' filesep];
+p.outpath = [p.basepath filesep 'bead_calibrated' filesep];
+beadfigpath = [p.outpath filesep 'bead_plots_2026'];
+p.classpath = [p.outpath 'class' filesep];
 
-if ~exist(outpath, 'dir')
-    mkdir(outpath)
+if ~exist(p.outpath, 'dir')
+    mkdir(p.outpath)
 end
 if ~exist(beadfigpath, 'dir')
     mkdir(beadfigpath)
 end
 
-if ~exist(classpath, 'dir')
-    mkdir(classpath)
+if ~exist(p.classpath, 'dir')
+    mkdir(p.classpath)
 end
 
 %% Save variables for steps being used
 
-save([outpath '\Processing_variables.mat'], 'p')
+save([p.outpath '\Processing_variables.mat'], 'p')
 % if step(3)
 %     step2vars = {dont_overwrite_volumes, assign_class_function, filetype2exclude, OD2setting, appendonly, makemovieasyougo};
-%     save([outpath '\Processing_variables.mat'], 'step2vars', '-append')
+%     save([p.outpath '\Processing_variables.mat'], 'step2vars', '-append')
 % end
 % if step(4)
 %     step3vars = {beadfiles2include, beadtype, OD2setting};
-%     save([outpath '\Processing_variables.mat'], 'step3vars', '-append')
+%     save([p.outpath '\Processing_variables.mat'], 'step3vars', '-append')
 % end
 % if step(5)
 %     step4vars = {SSCDIM}
-%     save([outpath '\Processing_variables.mat'], 'step4vars', '-append')
+%     save([p.outpath '\Processing_variables.mat'], 'step4vars', '-append')
 % end
 % if step(6)
 %     step5vars = {SSCDIM, OD2setting}
-%     save([outpath '\Processing_variables.mat'], 'step5vars', '-append')
+%     save([p.outpath '\Processing_variables.mat'], 'step5vars', '-append')
 % 
 % end
 % if step(8) | (step(3) & makemovieasyougo) 
 %     step7vars = {makemovieasyougo, framemaker, moviechannels, stepsize};
-%     save([outpath '\Processing_variables.mat'], 'step7vars', '-append')
+%     save([p.outpath '\Processing_variables.mat'], 'step7vars', '-append')
 % end
 % if step(9) 
 %     step8vars = {uw_fullname};
-%     save([outpath '\Processing_variables.mat'], 'step8vars', '-append')
+%     save([p.outpath '\Processing_variables.mat'], 'step8vars', '-append')
 % end
 
 %% STEP 1
 if step(1)
-    [FCSfileinfo] = FCS_DateTimeList(fpath); 
-    save([outpath 'FCSfileinfo.mat'], 'FCSfileinfo'); 
+    [FCSfileinfo] = FCS_DateTimeList(p.fpath); 
+    save([p.outpath 'FCSfileinfo.mat'], 'FCSfileinfo'); 
 else 
-    load([outpath filesep 'FCSfileinfo.mat'])
+    load([p.outpath filesep 'FCSfileinfo.mat'])
 end
 
 %% STEP 2
@@ -208,7 +208,7 @@ end
 %% STEP 4
 if step(4)
    clear FCSfileinfo %need to get back to version that hasn't been cut down for class files in case step 2 was run
-   load([outpath filesep 'FCSfileinfo.mat'])
+   load([p.outpath filesep 'FCSfileinfo.mat'])
 
    if strcmp(p.OD2setting, 'GL1')
        bead_ch_names = {'GL1-A', 'BL3-H', 'GL3-H'}; 
@@ -217,26 +217,31 @@ if step(4)
    end
     %First should be scattering channel, second chlorophyl 
 
-   %process_beads_only(outpath, bead_ch_names, FCSfileinfo, beadfiles2include)
-   process_beads_PT_adjust_2(p.basepath, FCSfileinfo, p.beadfiles2include, p.beadtype, p.OD2setting) %this line works for FCB bead
+   %process_beads_only(p.outpath, bead_ch_names, FCSfileinfo, beadfiles2include)
+   process_beads_PT_adjust_3(p.basepath, FCSfileinfo, p.beadfiles2include, p.beadtype, p.OD2setting) %this line works for FCB bead
     
 end
 %% STEPS 5 - 6
 %size calibration, can be redone without reassigning classes if bead processing is adjusted
 if step(5)
     if strcmp(p.OD2setting, 'GL1')
-        get_calibration_stats_linear_2021(outpath, classpath, 50, p.SSCDIM) %A means ssch_ch_num is ssc-a
+        saverpath = [p.classpath filesep 'calibration' filesep]; 
+        if ~exist(saverpath, 'dir')
+            mkdir([saverpath])
+        end
+        stepsize4plot = 50;
+        scattering_merge(p, saverpath, stepsize4plot) 
+        %get_calibration_stats_linear_2021(p.outpath, savepath, 50, p.SSCDIM) %A means ssch_ch_num is ssc-a
     end
 end
 if step(6) 
-    use_calibration_stats_linear(outpath, classpath, p.SSCDIM, p.OD2setting)  
+    %use_calibration_stats_linear(p.outpath, p.classpath, p.SSCDIM, p.OD2setting)
+    batch_mergedSSC2volume(p)
 end
-
-
 
 %% STEP 7
 if step(7)
-    generate_attune_table(classpath, [outpath 'FCSfileinfo.mat'])
+    generate_attune_table(p.classpath, [p.outpath 'FCSfileinfo.mat'])
     %this function will generate attune table for files with class files
     %only, generally beads are removed
 end
@@ -244,13 +249,13 @@ end
 %% STEP 8 
 % make a movie 
 if step(8)
-    attune_lter_moviemaker(fpath, classpath, p.OD2setting, p.framemaker, p.moviechannels, p.stepsize)
+    attune_lter_moviemaker(p.fpath, p.classpath, p.OD2setting, p.framemaker, p.moviechannels, p.stepsize)
 end
 
 %% STEP 9
 % match underway data 
 if step(9)
-    Attune_uw_match = match_Attune_underway_LTER([outpath 'AttuneTable.mat'],p.uw_fullname); 
+    Attune_uw_match = match_Attune_underway_LTER([p.outpath 'AttuneTable.mat'],p.uw_fullname); 
 end
 
 
@@ -260,7 +265,7 @@ end
 % Also standardizes the names of the environmental data from step 8. 
 if step(10)
     get_cruise_voldists_fromEDItable2(p.basepath)
-    Plot_Voldists_function(p.basepath, outpath)
+    Plot_Voldists_function(p.basepath, p.outpath)
 end
 
 end
@@ -268,9 +273,9 @@ end
 
 function makeClassFiles(p, FCSfileinfo) 
 
-fpath = [p.basepath filesep 'FCS' filesep];
-outpath = [p.basepath filesep 'bead_calibrated' filesep];
-classpath = [outpath 'class' filesep];
+p.fpath = [p.basepath filesep 'FCS' filesep];
+p.outpath = [p.basepath filesep 'bead_calibrated' filesep];
+p.classpath = [p.outpath 'class' filesep];
 
 if strcmp(p.OD2setting, 'GL1')
     ssc_name = 'GL1'; 
@@ -290,7 +295,7 @@ end
    
     if p.appendonly %in this case remove elements from list that alredy have class files 
         fcslist = regexprep(FCSfileinfo.fcslist, '.fcs', '.mat'); %fcslist 
-        classlist = dir(classpath); %existing class files 
+        classlist = dir(p.classpath); %existing class files 
         classlist = {classlist(:).name};
         FCSfileinfo(ismember(fcslist, classlist), :) = []; %remove them
     end
@@ -305,7 +310,7 @@ end
 
     
     if p.makemovieasyougo
-        v = VideoWriter([classpath 'Attune_cyto_vid.avi']); 
+        v = VideoWriter([p.classpath 'Attune_cyto_vid.avi']); 
         v.FrameRate = 10; 
         open(v)
     end
@@ -316,7 +321,7 @@ end
          if ~rem(count,10)
             disp([num2str(count) ' of ' num2str(length(filelist))])
          end
-        filename = [fpath filelist{count}];
+        filename = [p.fpath filelist{count}];
         disp(filename)
         [fcsdat,fcshdr] = fca_readfcs(filename);
         [~,fname] = fileparts(filename);
@@ -325,9 +330,9 @@ end
         notes = ['Class 1= Euk, Class 2 = Syn, Class 3 = lowPEeuks, Class 4 = hiPEeuks, Class 5 = Syn_euk_coincident1, Class 0 = junk; Cell volume in cubic microns;',  p.assign_class_function, string(datetime)];
         
         if p.dont_overwrite_volumes 
-            save([classpath regexprep(filelist{count}, '.fcs', '')], 'class', 'notes', '-append') %I think class files wont have volume yet if we don't have bead statistics to calibrate 
+            save([p.classpath regexprep(filelist{count}, '.fcs', '')], 'class', 'notes', '-append') %I think class files wont have volume yet if we don't have bead statistics to calibrate 
         else
-            save([classpath regexprep(filelist{count}, '.fcs', '')], 'class', 'notes') %I think class files wont have volume yet if we don't have bead statistics to calibrate 
+            save([p.classpath regexprep(filelist{count}, '.fcs', '')], 'class', 'notes') %I think class files wont have volume yet if we don't have bead statistics to calibrate 
         end
         
         if p.makemovieasyougo
@@ -341,7 +346,7 @@ end
             fcsdat(fcsdat(:,ssc_ch)<0, ssc_ch) = cf*fcsdat(fcsdat(:,ssc_ch)<0, ssch);
             
             % call the function to make the plots and getframe
-            eval(['Frame = ', p.framemaker, '(fcsdat, fcshdr, class, moviechannels, QC_flags(count))']);
+            eval(['Frame = ', p.framemaker, '(fcsdat, fcshdr, class, moviechannels, QC_flags(count));']);
             
             % add to movie
             writeVideo(v, Frame);
@@ -352,7 +357,7 @@ end
     
     if p.makemovieasyougo
         close (v)
-        disp(['Result video saved:' classpath 'Attune_cyto_vid.avi'])
+        disp(['Result video saved:' p.classpath 'Attune_cyto_vid.avi'])
     end
 end
 
