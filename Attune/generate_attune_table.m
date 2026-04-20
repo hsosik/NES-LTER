@@ -33,7 +33,6 @@ AttuneTable.trigger2_threshhold = Attune.FCSfileinfo.trigger2_threshhold;
 %we want Syn, Euk<=2, Euk<=3, Euk<=5, Euk<=10, Euk<=20, PEeuk<=2, PEeuk<=3,
 %PEeuk<5, PEeuk<10, PEeuk<20
 
-
 EukSizes = [0 2 3 5 10 20];
 %numBins = 1+2*(length(EukSizes)-1);
 numBins = 1+2*(length(EukSizes))-1; %this is brittle, added a column for Pro
@@ -63,7 +62,7 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
     carbon = real(carbon); %having issues with formatting, keeps having valus with + 0i. 
 
     if exist('file_hv', 'var')
-        Scatter_hv(count) = file_hv;
+        Scatter_hv(count) = file_hv.SSC;
     end
     
     eval(['rename_class = class;']) %issues with class as a variable name since its a function in matlab 
