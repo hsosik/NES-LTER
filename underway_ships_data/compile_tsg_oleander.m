@@ -27,6 +27,16 @@ uw.Properties.VariableNames = lower(uw.Properties.VariableNames);
 uw.datetime = datetime(uw.date_gmt, 'InputFormat', 'uuuu/MM/dd')+uw.time_gmt;
 uw.matdate = datenum(uw.datetime); %for input to IFCB_match_uw
 
+uw.section(:) = 1;
+uw.section(isnan(uw.dec_lat)) = 0;
+uw.section(uw.dec_lat<32.293) = 0;
+uw.section(uw.dec_lat>40.668) = 0;
+a = find(uw.section);
+b = [1; a(diff(a)>100); size(uw,1)];
+for ii = 1:length(b)-1
+    uw.section(b(ii):b(ii+1)-1) = ii; 
+end
+
 notes = {'Heidi Sosik, WHOI, produced with compile_tsg_oleander.m from '};
 save(outfile, 'uw', 'notes')
 disp('results saved: ') 
@@ -51,7 +61,7 @@ disp([basepath 'uw_match.mat'])
 
 %%
 match_uw = table;
-slist = {'pid' 'lat' 'lon' 'temperature' 'salinity' 'mdate'};
+slist = {'pid' 'lat' 'lon' 'temperature' 'salinity' 'mdate'  'section'};
 orig_var = {'sbe45_temp' 'sbe45_sal'};
 IFCB_match_uw_results.Properties.VariableNames(orig_var) = {'temperature' 'salinity'};
 [~,ia] = ismember(slist, IFCB_match_uw_results.Properties.VariableNames);
