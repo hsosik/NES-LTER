@@ -31,6 +31,7 @@ for filecount = 1:height(mergeT)
         filename = [p.fpath, mergeT.filename{filecount}];
         [fcsdat,fcshdr] = fca_readfcs(filename);
         fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
+        bdrow = find(mergeT.SSC_hv(filecount)==beadSSCmean.SSC_hv);  %FIX THIS LATER IF KEEPING
         ssc_bdnorm = fcsdat.(sscstr)./beadSSCmean.mean_SSCA_1micron(bdrow);
         gl1_bdnorm = fcsdat.(gl1str)./beadGL1mean.mean_GL1A_1micron(bdrow);
         sscmerge_bdnorm = ssc_bdnorm;
@@ -62,7 +63,7 @@ for filecount = 1:height(mergeT)
         %%c.class = ctemp.class;  clear ctemp %TEMP get rid of old stuff
         c = load([p.classpath regexprep(mergeT.filename{filecount},'.fcs', '.mat')]);
         c.vol_notes = {strcat('calibrated: ', string(datetime())); strcat(' using SSC-', p.SSCDIM); vol_func_string};
-        c.ssc_merge = sscmerge; c.beadSSCmean = beadSSCmean; c.file_hv.SSC = mergeT.SSC_hv(filecount); c.file_hv.GL1 = mergeT.GL1_hv(filecount);
+        c.ssc_merge_bdnorm = sscmerge_bdnorm; c.beadSSCmean = beadSSCmean; c.beadGL1mean = beadGL1mean; c.file_hv.SSC = mergeT.SSC_hv(filecount); c.file_hv.GL1 = mergeT.GL1_hv(filecount);
         c.volume_cubic_microns = volume_cubic_micron;
         c.merge_info = array2table([mergeT.slope_median(filecount) gl1min gl1max sscmax SSCAmin], 'variablenames', {'slope' 'GL1min' 'GL1max' 'SSCmax' 'SSCAmin'}); 
         save([p.classpath regexprep(mergeT.filename{filecount},'.fcs', '.mat')],'-struct', "c")
