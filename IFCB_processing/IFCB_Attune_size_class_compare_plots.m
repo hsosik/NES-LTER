@@ -1,21 +1,26 @@
+function IFCB_Attune_size_clas_compare_plots(clist)
+
 %clist = {'EN608' 'EN617' 'EN627' 'EN644' 'EN649' 'EN655' 'EN657' 'EN661' 'EN668'}; 
 %clist = {'AR28' 'AR31' 'AR34' 'AR39' 'AR61B' 'AR62' 'AR63' 'AT46'};
 
 %clist = {'EN608' 'EN617' 'EN627' 'EN644' 'EN649' 'EN655' 'EN657' 'EN661' 'EN668' 'AR28' 'AR31' 'AR34' 'AR39' 'AR61B' 'AR62' 'AR63'};% 'AT46'}; 
 
 p = '\\sosiknas1\Lab_data\Attune\cruise_data\IFCB_Attune_merge\summary_files\';
-clist = dir([p '*_IFCB_Attune_merge_sum.mat']);
-clist = {clist.name}';
+%clist = dir([p '*_IFCB_Attune_merge_sum.mat']);
+%clist = {clist.name}';
 %clist = {'TN368' 'RB1904' 'AR29'}; %p = '\\sosiknas1\IFCB_products\SPIROPA\summary\';
 %clist = {'EN695' 'HRS2303' 'EN706'};
-clist = {'AR99'};
+%clist = {'AR99'};
 %clist = {'20220713_EN685_IFCB_Attune_merge_sum.mat'};
+
+if ischar(clist), clist = cellstr(clist); end
+
 outdir =  '\\sosiknas1\Lab_data\Attune\cruise_data\IFCB_Attune_merge\plots_Scatter_TimeSeries\';
 plotEachSample = 1;
 attunebase = '\\sosiknas1\Lab_data\Attune\cruise_data\';
 for count = 1:length(clist)
     %cruiseStr = clist{count}; 
-    f = dir([p '*' clist{count} '*']);
+    f = dir([p '*' clist{count} '_IFCB_Attune_merge_sum.mat']);
     fout = regexprep(f.name, '_IFCB_Attune_merge_sum.mat', '');
     if ~exist(outdir, 'dir')
         mkdir(outdir)
@@ -29,8 +34,10 @@ for count = 1:length(clist)
     for c = 1:5
         nexttile
         b = c+2;
-        %plot([ifcbHcount.diatom(:,b)+ifcbHcount.dino(:,b)+ifcbHcount.nano(:,b)+ifcbHcount.ciliate(:,b)+ifcbHcount.otherPhyto(:,b)]./ifcbHmeta.ml_analyzed, attuneHcount.Euk(:,b)./attuneml', '.')
-        plot(ifcbHcount.protist_tricho(:,b)./ifcbHmeta.ml_analyzed, attuneHcount.Euk(:,b)./attuneml', '.')
+        %%plot([ifcbHcount.diatom(:,b)+ifcbHcount.dino(:,b)+ifcbHcount.nano(:,b)+ifcbHcount.ciliate(:,b)+ifcbHcount.otherPhyto(:,b)]./ifcbHmeta.ml_analyzed, attuneHcount.Euk(:,b)./attuneml', '.')
+        %plot(ifcbHcount.protist_tricho(:,b)./ifcbHmeta.ml_analyzed, attuneHcount.Euk(:,b)./attuneml', '.')
+        gscatter(ifcbHcount.protist_tricho(:,b)./ifcbHmeta.ml_analyzed, attuneHcount.Euk(:,b)./attuneml',ifcbHmeta.ifcb,[],'.',8)
+        %gscatter((ifcbHcount.protist_tricho(:,b)+ifcbHcount.Detritus(:,b))./ifcbHmeta.ml_analyzed, attuneHcount.Euk(:,b)./attuneml',ifcbHmeta.ifcb,[],'.',8)        
         line(xlim, xlim)
         title([num2str(binrange(1,b)) '-' num2str(binrange(2,b)) ' \mum'])
     end
@@ -51,7 +58,8 @@ for count = 1:length(clist)
         nexttile
         b = c+2;
 %        plot(dt(ind), [ifcbHcount.diatom(ind,b)+ifcbHcount.dino(ind,b)+ifcbHcount.nano(ind,b)+ifcbHcount.ciliate(ind,b)]./ifcbHmeta.ml_analyzed(ind), '-')
-        plot(dt(ind), ifcbHcount.protist_tricho(ind,b)./ifcbHmeta.ml_analyzed(ind), '-')
+    %    plot(dt(ind), ifcbHcount.protist_tricho(ind,b)./ifcbHmeta.ml_analyzed(ind), '-')
+        plot(dt(ind), (ifcbHcount.protist_tricho(ind,b)++ifcbHcount.Detritus(:,b))./ifcbHmeta.ml_analyzed(ind), '-')
         hold on
         plot(dt(ind), attuneHcount.Euk(ind,b)./attuneml(ind)', '-')
         title([num2str(binrange(1,b)) '-' num2str(binrange(2,b)) ' \mum'])
@@ -72,7 +80,11 @@ for count = 1:length(clist)
         attuneHcount_sumConc = attuneHcount.Euk./attunemlEuk' + attuneHcount.Syn./attunemlSyn';
         attuneml = attunemlEuk; %used only for value displayed in plot legend
     else
-        attuneHcount_sumConc = (attuneHcount.Euk+attuneHcount.Syn)./attuneml';
+        temp = attuneHcount.Pro./attunemlPro'; temp(isnan(temp)) = 0;
+        attuneHcount_sumConc = (attuneHcount.Euk+attuneHcount.Syn)./attuneml'+temp;
+        attuneHcount_ciConc = poisson_count_ci(attuneHcount.Euk(:)+attuneHcount.Syn(:),.95);
+        attuneHcount_lciConc = reshape(attuneHcount_ciConc(:,1),size(attuneHcount_sumConc))./attuneml';
+        attuneHcount_uciConc = reshape(attuneHcount_ciConc(:,2),size(attuneHcount_sumConc))./attuneml';
     end
     diamCenters = mean([binedges(1:end-1); binedges(2:end)]);
     if plotEachSample
@@ -87,15 +99,18 @@ for count = 1:length(clist)
             hold on 
             semilogy(diamCenters,ifcbHcount_sumConc2(countSample,:), 'b-.')
             semilogy(diamCenters,attuneHcount_sumConc(countSample,:), 'g.-')
+            semilogy(diamCenters,attuneHcount_lciConc(countSample,:), 'g.:')
+            semilogy(diamCenters,attuneHcount_uciConc(countSample,:), 'g.:')
             title(ifcbHmeta.pid(countSample), 'interpreter', 'none')
             legend(['IFCB ' num2str(round(ifcbHmeta.ml_analyzed(countSample),2)) ' ml'], 'IFCB w/detritus', ['Attune +/-12min ' num2str(attuneml(countSample)) ' ml'])
             ylabel('Cells ml^{-1} per bin')
             xlabel('ESD (\mum)')
             grid
-            set(gca, 'xtick',0:5:50, 'xlim',[0 50])
+            set(gca, 'xtick',0:5:50, 'xlim',[0 50], 'ylim', [1e-1 1e6])
         %    pause
             print([attunebase_out ifcbHmeta.pid{countSample} '.png'], '-dpng')
         end
     end
     clear attuneml* 
+end
 end

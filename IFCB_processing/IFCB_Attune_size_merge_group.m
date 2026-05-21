@@ -1,10 +1,12 @@
+function IFCB_Attune_size_merge_group(clist)
 %% 2022:'AT46' 2021:'EN661' 'EN668'  2020:'EN649' 'EN655' 'EN657' 2019:'EN627' 'EN644' 2018:'EN608' 'EN617'
 %% 2019: AR34 AR39  2021: AR61B AR62 AR63
 %SPIROPA 'TN368'; 'RB1904' 'AR29'
 % OTZ 'AR43';
-clist = {'EN608' 'EN617' 'EN627' 'EN644' 'EN649' 'EN655' 'EN657' 'EN661' 'EN668' 'AT46' 'AR66B' 'EN687' 'EN685' 'EN695' 'HRS2303' 'EN706'};
-clist = {'AR78' 'AR79' 'EN712' 'AR82A' 'EN715' 'EN720' 'AE2426' 'EN727'};  %need to check/redo EN695 HRS2303 EN706 %need Attune AR70B AR77 AR78 AR79
-clist = {'AR99'};
+%clist = {'EN608' 'EN617' 'EN627' 'EN644' 'EN649' 'EN655' 'EN657' 'EN661' 'EN668' 'AT46' 'AR66B' 'EN687' 'EN685' 'EN695' 'HRS2303' 'EN706'};
+%clist = {'AR78' 'AR79' 'EN712' 'AR82A' 'EN715' 'EN720' 'AE2426' 'EN727'};  %need to check/redo EN695 HRS2303 EN706 %need Attune AR70B AR77 AR78 AR79
+%clist = {'AR99'};
+if ischar(clist), clist = cellstr(clist); end
 
 ifcbbase = '\\sosiknas1\IFCB_products\NESLTER_transect\summary\';
 %clist = {'EN608' 'EN617' 'EN627' 'EN644' 'EN649' 'EN655' 'EN657' 'EN661' 'EN668' 'AT46'};
@@ -30,6 +32,7 @@ for clistn = 1:length(clist)
         attunebase2 = [attunebase alist.name '\bead_calibrated\class\'];
     end
     AttuneTable = AttuneTable(AttuneTable.QC_flag==1,:); %omit the rows with bad QC flag
+    t_datenum = datenum(AttuneTable.StartDate);
 
     attunebase_out = [attunebase2 'sizeDistPlots\'];
     if ~exist(attunebase_out, 'dir')
@@ -88,10 +91,14 @@ for clistn = 1:length(clist)
         ifcbHcount.(cases2do{casei}) = blankH;
     end
     ifcbHcarbon = ifcbHcount;
+    ifcbHvol = ifcbHcount;
     attuneHcount.Syn = blankH;
     attuneHcount.Euk = blankH;
+    attuneHcount.Pro = blankH;
     attuneHcarbon = attuneHcount;
+    attuneHvol = attuneHcount;
     attuneml = nan(1,length(ifcb_uwind));
+    attunemlPro = nan(1,length(ifcb_uwind));
     for count = 1:length(ifcb_uwind)
         if ~rem(count,20)
             disp([num2str(count) ' of ' num2str(length(ifcb_uwind))])
@@ -109,10 +116,11 @@ for clistn = 1:length(clist)
                 ifcbHcarbon.(cases2do{casei})(count,unique(temp2)) = splitapply(@sum , temp.cellC, findgroups(temp2))';
             end
         end
-        t = datenum(AttuneTable.StartDate);
-        attune_ind = find(t>ifcb_yr.mdate(ifcb_uwind(count))-Twin & t<ifcb_yr.mdate(ifcb_uwind(count))+Twin);
+       % t = datenum(AttuneTable.StartDate);
+        attune_ind = find(t_datenum>ifcb_yr.mdate(ifcb_uwind(count))-Twin & t_datenum<ifcb_yr.mdate(ifcb_uwind(count))+Twin);
         ml = 0;
-        hSyn = zeros(length(attune_ind),nbins);
+        mlPro = 0;
+        hSyn = NaN(length(attune_ind),nbins);
         hSynC = hSyn;
         hSynV = hSyn;
         hEuk = hSyn;
@@ -124,10 +132,11 @@ for clistn = 1:length(clist)
         
         for count2 = 1:length(attune_ind)  %2:length(attune_ind) why was this starting at 2??
             f = char(regexprep(AttuneTable.Filename(attune_ind(count2)), '.fcs', '.mat'));
-            if exis t([attunebase2 f], 'file')
+            if exist([attunebase2 f], 'file')
                 c = load([attunebase2 f]);
                 %if ~isnan(c.bead_value)
-                if ~isnan(c.beadSSCmean.mean_SSCA_1micron)
+                if isfield(c, 'beadSSCmean')
+                %if ~isnan(c.beadSSCmean.mean_SSCA_1micron)
                     v = real(c.volume_cubic_microns(c.class==2)); %Syn
                     carbon = biovol2carbon(v,0);
                     d = real(biovol2esd(v));
@@ -148,6 +157,13 @@ for clistn = 1:length(clist)
                         hEukC(count2,unique(temp2)) = splitapply(@sum , carbon  , findgroups(temp2))';
                         hEukV(count2,unique(temp2)) = splitapply(@sum , v  , findgroups(temp2))';
                     end
+                    if ~isnan(AttuneTable.Pro_count(attune_ind(count2)))
+                    v = c.volume_cubic_microns(c.class==7); %Pro
+                    hPro(count2,1) = length(v);
+                    hProC(count2,1) = hPro(count2,1)*50/1000; %round from Bertilsson et al. 2003 
+                    hProV(count2,1) = sum(v);
+                    mlPro = mlPro + AttuneTable.VolAnalyzed_ml(attune_ind(count2));
+                    end
                     ml = ml + AttuneTable.VolAnalyzed_ml(attune_ind(count2));
                 else
                     disp([AttuneTable.Filename(attune_ind(count2)) ' NaN bead_value'])
@@ -155,15 +171,22 @@ for clistn = 1:length(clist)
             end
         end
         attuneml(1,count) = ml;
+        attunemlPro(1,count) = mlPro;
         attuneHcount.Syn(count,:) = sum(hSyn,1);
         attuneHcarbon.Syn(count,:) = sum(hSynC,1);
+        attuneHvol.Syn(count,:) = sum(hSynV,1);
         attuneHcount.Euk(count,:) = sum(hEuk,1);
         attuneHcarbon.Euk(count,:) = sum(hEukC,1);
+        attuneHvol.Euk(count,:) = sum(hEukV,1); 
+        attuneHcount.Pro(count,1) = sum(hPro(:,1),1,'omitmissing');
+        attuneHcarbon.Pro(count,:) = sum(hProC,1,'omitmissing');
+        attuneHvol.Pro(count,:) = sum(hProV,1,'omitmissing');
     end
 
     clear ind ifcb_uwind attune_ind
 
     %class2use = ifcbL.class2use;
 
-    save([pout char(alist.name) '_IFCB_Attune_merge_sum'], 'attuneH*', 'attuneml', 'ifcbH*', 'binedges')
+    save([pout char(alist.name) '_IFCB_Attune_merge_sum'], 'attuneH*', 'attuneml*', 'ifcbH*', 'binedges')
+end
 end

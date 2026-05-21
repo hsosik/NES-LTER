@@ -51,13 +51,14 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
     if exist(filename)
     
     load(filename)
-    if ~exist('volume', 'var') %% if we haven't done size calibration yet, function should still run 
-        eval('volume = NaN.*class;'); 
+    if ~exist('volume_cubic_microns', 'var') %% if we haven't done size calibration yet, function should still run 
+        eval('volume_cubic_microns = NaN.*class;'); 
     end
     
-    Num_particles(count) = length(volume); 
+    Num_particles(count) = length(volume_cubic_microns); 
 
-    volume = real(volume); 
+    %volume = real(volume); 
+    volume = volume_cubic_microns;
     carbon = biovol2carbon(volume, 0); % carbon, picograms per cell
     carbon = real(carbon); %having issues with formatting, keeps having valus with + 0i. 
 
@@ -105,7 +106,7 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
         disp(['skipped ', filelist{count}])
     end
     
-    clear volume 
+    clear volume volume_cubic_microns
 end
 
 
@@ -124,6 +125,7 @@ classnames = [classnames; {'ProX'}];
 AttuneTable = [AttuneTable array2table(Count, 'VariableNames', regexprep(classnames, 'X', '_count'))];
 AttuneTable = [AttuneTable array2table(Biovol, 'VariableNames', regexprep(classnames, 'X', '_biovolume'))];
 AttuneTable = [AttuneTable array2table(Carbon, 'VariableNames', regexprep(classnames, 'X', '_carbon'))];
+AttuneTable.Pro_count(~Attune.FCSfileinfo.pro_measured) = NaN;
 
 AttuneTable.Num_particles = Num_particles; 
 AttuneTable.QC_flag = Attune.FCSfileinfo.QC_flag;
