@@ -8,13 +8,13 @@
 
 %% 
 clear all
-cruise_name = 'EN715';
-cruise_name_low = 'en715';
+cruise_name = 'EN727';
+cruise_name_low = 'en727';
 
 
 %% load botttled nitrate data
 options = weboptions('ContentType', 'table', 'Timeout', 30);
-nutrient = webread(['https://nes-lter-data.whoi.edu/api/nut/',cruise_name,'.csv'], options);
+nutrient = webread(['https://nes-lter-api.whoi.edu/api/nut/',cruise_name_low,'.csv'], options);
 % nut_varb_name = nutrient.Properties.VariableNames;
 % sta_ind = find(strcmp('nearest_station', nut_varb_name));
 % sta_name = nutrient(:,sta_ind);
@@ -29,7 +29,7 @@ CTD_bottle.lon  = table2array(nutrient(:,6));
 CTD_bottle.d    = table2array(nutrient(:,7)); 
 CTD_bottle.n    = table2array(nutrient(:,10)); 
 
-save(['/Users/warrbob/Desktop/WHOI/research/sunaQC/',cruise_name,'/SUNA/',cruise_name,'_bottle.mat'],'CTD_bottle')
+save(['C:\data\SUNA_processing\',cruise_name,'\SUNA\',cruise_name,'_bottle.mat'],'CTD_bottle')
 
 
 
