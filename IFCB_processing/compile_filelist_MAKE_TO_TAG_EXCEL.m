@@ -4,14 +4,14 @@
 clear all
 
 %% VARIABLES TO EDIT
-ifcb = 'IFCB115';
+ifcb = 'IFCB218';
 % start = '23 Mar 2018';
-start = '16 Nov 2023';
- stop = '20 Nov 2023';
+start = '08 Aug 2025';
+ stop = '24 Oct 2025';
 %stop = now + + (5/24); %account for UTC time else won't get most recent 4 or 5 hours of data
 
 %% Choose dashboard to use
-dashboards2choose = {'NESLTER_transect'; 'NESLTER_broadscale'; 'SPIROPA'; 'OTZ'; 'WHOI_Dock'; 'EXPORTS'; 'other'}; 
+dashboards2choose = {'NESLTER_transect'; 'NESLTER_broadscale'; 'SPIROPA'; 'OTZ'; 'WHOI_Dock'; 'EXPORTS'; 'Oleander'; 'other'}; 
 for n=1:length(dashboards2choose),fprintf('%2d    %s\n',n,char(dashboards2choose(n))),end
 fprintf('\n')
 pick = input('Pick the dashboard to tag by entering the number of the count listed above:');
@@ -103,7 +103,7 @@ files = {};
 file_size = [];
 for j=1:length(dirlist)
     roidir      = [dirpath cell2mat(dirlist(j))];
-    roifiles    = dir([roidir '\*' ifcb '.roi']);
+    roifiles    = dir([roidir '\*' ifcb '.hdr']);
     temp={roifiles.name}';
     if ~isempty(temp) 
         temp = char(temp);

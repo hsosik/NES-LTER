@@ -33,8 +33,9 @@
 
 % Written July 2022 by Bethany Fowler
 
-function [gate_assignment, polygon_names, polygon_vars, polygon_vals, gate_names, gate_logic_legible, parent_logic] = ApplyAWSgates_hierarchical(awsfilename, fcsdat, fcshdr)
+function [gate_assignment, polygon_names, polygon_vars, polygon_vals, gate_names, gate_logic_legible, parent_logic, time_gate_fraction] = ApplyAWSgates_hierarchical(awsfilename, fcsdat, fcshdr)
 
+time_gate_fraction = 0.8; %omit first 20% of time
 
 A = fopen(awsfilename);
 C = textscan(A, '%s', 'Delimiter', '<'); 
@@ -120,7 +121,7 @@ clear C_polygons
 %% 
 %%% Now we have the information about polygons. Need logic for gates. 
 
-start_index = cellfun(@(x) contains(x,'Gates>'), C, 'UniformOutput', 1);
+start_index = cellfun(@(x) startsWith(x,'Gates>'), C, 'UniformOutput', 1);
 end_index = cellfun(@(x) contains(x,'/Gates>'), C, 'UniformOutput', 1);
 
 C_gates = C(find(start_index):find(end_index));
@@ -237,7 +238,7 @@ for g = 1:length(gates_to_do)
         matdate2 = datenum(matdate2, 'dd-mmm-yyyy HH:MM:SS');
         fulltime = 1000*etime(datevec(matdate2), datevec(matdate1));
 
-    in_poly = fcsdat(:,1)<= fulltime & fcsdat(:,1)>fulltime*.2; % first 20 percent of time is cut out
+    in_poly = fcsdat(:,1)<= fulltime & fcsdat(:,1)>fulltime*(1-time_gate_fraction); % first 20 percent of time is cut out
 
     logic_summary(end, :) = in_poly; 
 

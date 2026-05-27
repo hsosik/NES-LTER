@@ -10,7 +10,7 @@ cmap(4,:)=[ 0.9       0.5       0.1]; %better orange color instead of yellow
 
 timeinterval = 1/24;  %sec (1/24 = 1 hr), resolution for final values
 
-for typenum = 1:size(filetypelist,1),
+for typenum = 1:size(filetypelist,1)
     filelist = dir([datapath filetypelist(typenum,:) '*.mat']);
     %  date = datenum(cat(1,filelist.date));
     %  [temp, fileorder] = sort(date);
@@ -18,22 +18,22 @@ for typenum = 1:size(filetypelist,1),
     if year2do <= 2005
         [~,fileorder] = sort(str2num(char(regexprep(regexprep({filelist.name}, '.mat', ''), filetypelist(typenum,:), ''))));
         filelistmain = filelist(fileorder); %consecutive order
-    end;
+    end
     if year2do == 2008 %special case dealing with day of mixed local and UTC time stamps (22 Oct 2008)
         ii1 = strmatch('FCB1_2008_296_092206', {filelistmain.name});
         ii2 = strmatch('FCB1_2008_296_130826',{filelistmain.name});
         ii3 = strmatch('FCB1_2008_296_114008',{filelistmain.name});
         filelistmain(sort([ii1,ii2,ii3])) = filelistmain([ii1,ii2,ii3])
-    end;
+    end
     clear temp date fileorder
     
     filesections = ceil(length(filelistmain)/setsize);
-    for sectcount = 1:filesections,
-        if sectcount < filesections,
+    for sectcount = 1:filesections
+        if sectcount < filesections
             filelist = filelistmain((sectcount-1)*setsize+1:sectcount*setsize);
         else
             filelist = filelistmain((sectcount-1)*setsize+1:end);
-        end;
+        end
         eval(['load ' timepath filetypelist(typenum,:) 'time_' num2str(sectcount)])  %load file with processed time
         eval(['totaltime = ' filetypelist(typenum,:) 'time; clear ' filetypelist(typenum,:) 'time'])
         
@@ -51,14 +51,14 @@ for typenum = 1:size(filetypelist,1),
         beadresults = NaN(1,33);
         %    for sectionnum = 1:length(timesectionendbin) - 1,
         sectionnum = 1;
-        while sectionnum <= length(timesectionendbin),
+        while sectionnum <= length(timesectionendbin)
             %        disp(['sectionnum: ' num2str(sectionnum)])
             timeendind = timesectionendbin(sectionnum); %new 5/16/03, heidi
             if sectionnum > 1, timestartind = timesectionendbin(sectionnum-1) + 1; end;
             if totaltime(timeendind,6) == beadport & sectionnum ~= length(timesectionendbin), %do a double "section" if one ends in the middle of bead analysis
                 sectionnum = sectionnum + 1;
                 timeendind = timesectionendbin(sectionnum);
-            end;
+            end
             datendind = totaltime(timeendind,1); %this line moved after do a double loop, Feb 2014 - otherwise the loop doesn't actually do anything with more data
             while (partialdatmerged(end,1) < datendind) & filenum <= length(filelist),  %keep adding on files until get full hour
                 %        while totaltime(timesectionendbin(sectionnum),1) > partialdatmerged(end,1),  %get to first file
@@ -68,27 +68,27 @@ for typenum = 1:size(filetypelist,1),
                 partialdatmerged = [partialdatmerged; double(datmerged)]; %may 2006 heidi changed to concatenate instead of replace partialdatmerged, how did this work before??
                 %                partialdatmerged = double(datmerged);
                 filenum = filenum + 1;
-            end;
+            end
             clear datendind
             %timebeadbins = timesectionendbin(sectionnum):timesectionendbin(sectionnum+1); %all
             %timebeadbins = find(totaltime(timesectionendbin(sectionnum):timesectionendbin(sectionnum+1),6) == 1); %syringe port = 1
             timebeadbins = find(totaltime(timestartind:timeendind,6) == beadport); %syringe port = 1, new timestartind...5/16/03 heidi, make sure to change "do a double..." above if port number changes for beads
             timebeadbins = timebeadbins + timestartind - 1;
             datbeadbins = [];
-            for count = 1:length(timebeadbins),
-                if count == 1 & timebeadbins(1) == 1,
+            for count = 1:length(timebeadbins)
+                if count == 1 & timebeadbins(1) == 1
                     datbeadbins = [datbeadbins 1:totaltime(timebeadbins(1),1)];
                 else
                     datbeadbins = [datbeadbins totaltime(timebeadbins(count)-1,1)+1:totaltime(timebeadbins(count),1)];
-                end;
-            end;
+                end
+            end
             %datbeadbins = datbeadbins-double(partialdatmerged(1,1)) + 1;  %index into existing partialdatmerged, new 5/16/03, heidi
-            [junk, junk, datbinstouse] = intersect(datbeadbins, partialdatmerged(:,1));
-            clear junk
+            [~, ~, datbinstouse] = intersect(datbeadbins, partialdatmerged(:,1));
+            %clear junk
             maxvalue = 1e6;  %is this too high?
             %            bins = 10.^(0:log10(maxvalue)/1023:log10(maxvalue));  %make 1024 log spaced bins
             bins = 10.^(0:log10(maxvalue)/63:log10(maxvalue));  %make 1024 log spaced bins
-            if ~isempty(datbinstouse),  %skip cases where no beads in hour
+            if ~isempty(datbinstouse)  %skip cases where no beads in hour
                 [nmergedhist1,x,nbins] = histmulti5(partialdatmerged(datbinstouse,[2,4:5]),[bins' bins' bins']);
                 %add ad hoc criteria to force bead mode to be found, may
                 %need more later like in beadbatch4_field...or maybe this is better and don't need so many?
@@ -98,10 +98,13 @@ for typenum = 1:size(filetypelist,1),
                 mind = find(bins < 2e4); %default
                 if year2do == 2010 & strmatch('FCB2', filetypelist(typenum,1:4))
                     mind = find(bins < 1e4);
-                end;
-                if year2do > 2004,
+                elseif ismember(cellstr(filename(1:13)),strcat('FCB2_2023_0', num2str([35:45]')))
+                    %handle case 4-14 Feb 2023 when SSC drops very low
+                    mind = find(bins < 200);
+                end
+                if year2do > 2004
                     nmergedhist(:,:,mind) = 0; %SSC
-                end;
+                end
                 mind = find(bins < 2e4);
                 nmergedhist(:,mind,:) = 0; %CHL
                 %force PE > 1e2
@@ -148,7 +151,7 @@ for typenum = 1:size(filetypelist,1),
                 beadstocount2 = temp(beadstocount2);
                 %
                 bead1flag = 0;
-                if length(beadstocount) > 10,  %otherwise skip
+                if length(beadstocount) > 10  %otherwise skip
                     bead1flag = 1;
                     %get better resolved mode positions for beads only points
                     numbins = 1024-1;
@@ -169,7 +172,7 @@ for typenum = 1:size(filetypelist,1),
                     %beadresults(sectionnum,20) = NaN; %syringeinterval;
                     beadresults(beadsection,20) = sum(totaltime(timebeadbins,5)); %analyzed volume (ml)
                     bead2flag = 0;
-                    if length(beadstocount2) > 10,
+                    if length(beadstocount2) > 10
                         mergedhist2 = smooth(histc(partialdatmerged(beadstocount2,2:5), bins),4);  %smooth over 2 with 512 ch, and 4 with 1024
                         [junk, modepos2] = max(mergedhist2);
                         
@@ -204,9 +207,7 @@ for typenum = 1:size(filetypelist,1),
                             end
                         end
                     end
-                    beadsection = beadsection + 1;
-                    
-                    
+                    beadsection = beadsection + 1;                 
                 else
                     disp(['Too few beads?:' num2str(length(beadstocount))])
                     %keyboard
@@ -390,20 +391,20 @@ for typenum = 1:size(filetypelist,1),
                     end
                     
                     %  F1(Q) = im2frame(zbuffer_cdata(fig1))
-                end;  %if 0 to plot or not to plot...
+                end  %if 0 to plot or not to plot...
                 
-            end; %if ~isempty(datbinstouse)
+            end %if ~isempty(datbinstouse)
             partialdatmerged = double(datmerged); %reset partialdat with file partly completed
-            sectionnum = sectionnum + 1;
-        end;  %while sectionnum...%sectionnum = 1:length(timesectionendbin) - 1
-        if beadsection > 1,
+            sectionnum = sectionnum + 1
+        end  %while sectionnum...%sectionnum = 1:length(timesectionendbin) - 1
+        if beadsection > 1
             beadtitles = {'start (day)' 'end (day)' 'acq time (sec)' 'bead number' 'beadmodePE' 'beadmodeFLS' 'beadmodeCHL' 'beadmodeSSC' 'beadmodeCHLpk' 'beadmeanPE' 'beadmeanFLS' 'beadmeanCHL' 'beadmeanSSC' 'beadmeanCHLpk' 'beadstdPE' 'beadstdFLS' 'beadstdCHL' 'beadstdSSC' 'beadstdCHLpk' 'analyzed volume (ml)' 'bead2 number' 'bead2modePE' 'bead2modeFLS' 'bead2modeCHL' 'bead2modeSSC' 'bead2meanPE' 'bead2meanFLS' 'bead2meanCHL' 'bead2meanSSC' 'bead2stdPE' 'bead2stdFLS' 'bead2stdCHL' 'bead2stdSSC'};
             eval(['save ' savepath filetypelist(typenum,:) 'beads_' num2str(sectcount) ' beadtitles beadresults'])
-        end;
+        end
         clear beadresults %added April 2007 to fix big with repeating bead results in later short sections
     end %for sectcount
     clear beadresults  %added 10/18/05 to prevent extra rows from previous files, Heidi
-end; %for typenum = 1:length(filelist)
+end %for typenum = 1:length(filelist)
 
 if beadmovieflag
     [temp ii]=sort(bead_date);

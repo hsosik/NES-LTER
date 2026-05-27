@@ -33,7 +33,6 @@ AttuneTable.trigger2_threshhold = Attune.FCSfileinfo.trigger2_threshhold;
 %we want Syn, Euk<=2, Euk<=3, Euk<=5, Euk<=10, Euk<=20, PEeuk<=2, PEeuk<=3,
 %PEeuk<5, PEeuk<10, PEeuk<20
 
-
 EukSizes = [0 2 3 5 10 20];
 %numBins = 1+2*(length(EukSizes)-1);
 numBins = 1+2*(length(EukSizes))-1; %this is brittle, added a column for Pro
@@ -52,18 +51,19 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
     if exist(filename)
     
     load(filename)
-    if ~exist('volume', 'var') %% if we haven't done size calibration yet, function should still run 
-        eval('volume = NaN.*class;'); 
+    if ~exist('volume_cubic_microns', 'var') %% if we haven't done size calibration yet, function should still run 
+        eval('volume_cubic_microns = NaN.*class;'); 
     end
     
-    Num_particles(count) = length(volume); 
+    Num_particles(count) = length(volume_cubic_microns); 
 
-    volume = real(volume); 
+    %volume = real(volume); 
+    volume = volume_cubic_microns;
     carbon = biovol2carbon(volume, 0); % carbon, picograms per cell
     carbon = real(carbon); %having issues with formatting, keeps having valus with + 0i. 
 
     if exist('file_hv', 'var')
-        Scatter_hv(count) = file_hv;
+        Scatter_hv(count) = file_hv.SSC;
     end
     
     eval(['rename_class = class;']) %issues with class as a variable name since its a function in matlab 
@@ -106,7 +106,7 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
         disp(['skipped ', filelist{count}])
     end
     
-    clear volume 
+    clear volume volume_cubic_microns
 end
 
 
@@ -125,6 +125,7 @@ classnames = [classnames; {'ProX'}];
 AttuneTable = [AttuneTable array2table(Count, 'VariableNames', regexprep(classnames, 'X', '_count'))];
 AttuneTable = [AttuneTable array2table(Biovol, 'VariableNames', regexprep(classnames, 'X', '_biovolume'))];
 AttuneTable = [AttuneTable array2table(Carbon, 'VariableNames', regexprep(classnames, 'X', '_carbon'))];
+AttuneTable.Pro_count(~Attune.FCSfileinfo.pro_measured) = NaN;
 
 AttuneTable.Num_particles = Num_particles; 
 AttuneTable.QC_flag = Attune.FCSfileinfo.QC_flag;

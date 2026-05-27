@@ -5,11 +5,10 @@ plot_flag = 0;
 %if startdate > 7.384712500000000e+05 & startdate <7.384722500000000e+05
  %   phase = 2
 %else
-    phase =1;
+ %   phase =1;
 %end
 
-%set whether or not to gate pro
-%pro = 1;
+
 %Initialze class vector
     class = zeros(size(fcsdat,1),1);
     
@@ -23,13 +22,13 @@ plot_flag = 0;
     
     %just for initial gates
     synmaxY = 4e5; 
-    synminX = 10 ; 
+    synminX = 400; %10 ;changed to 400 Feb 12 2025 (it is 400 in EN657) didn't work. How to get Syn gate lower to threshold?
     synXcorners = [7000 30000]; 
 
-    eukminX =  2000;%5000;%5e3; 
-    eukcorner = [10000 600]; %[20000 1200]; 
+    eukminX =  500;%5000;%5e3; 
+    eukcorner = [20000 1200];%[10000 600]; %[20000 1200]; 
     eukmaxY = 4e4; 
-    eukmaxYlower = 600;%300; 
+    eukmaxYlower = 600; %300; 600;
 
     gl2_noise_thresh = 3000;%10000; %basically synminY 
   
@@ -37,7 +36,7 @@ plot_flag = 0;
     synGL1A2GL1Hmax = 4; %PE area to height
     synGL1H2BL3Hslope = 1.1; %PE to CHL, ?1.2 with .8 offset?
     synGL1H2BL3Hoffset = .4; %PE to CHL .4 on RB, .3 on TN, .8?
-    syneukBL3H2SSCHslope = 1.3; %CHL to SSC
+    syneukBL3H2SSCHslope = 1.2;%1.3; %CHL to SSC
     syneukBL3H2SSCHoffset = -2.5; %-.6; %PE to CHL -.8 on TN
     nonsynfactorA = 25; %6
     nonsynfactorB = 6; %2.5
@@ -52,9 +51,7 @@ plot_flag = 0;
     %euk gate 
     geuk_main_gate = [eukminX eukmaxYlower;  eukcorner(1) eukcorner(2); 1100000 eukmaxY; 1100000 1; eukminX 1];
     
-    %if pro =1;
-     %   pro_main_gate = 
-    %pro main gate
+    
     
         
     %find indices of cells within the gates
@@ -66,11 +63,10 @@ plot_flag = 0;
     minX = prctile(fcsdat(in_syn,npar_synX),10)*.3; maxX = prctile(fcsdat(in_syn, npar_synX), 90)*10; 
     minY = prctile(fcsdat(in_syn,npar_synY),10)*.3; maxY = prctile(fcsdat(in_syn,npar_synY),90)*10;
  
-    %eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
-    eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.2;
+    eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
+    %eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.2;
     eukminX = max([eukminX 500]); %Pretty sure its always eukminX
     minY = max([minY 100]); %not below trigger level for this cruise
-
 
     %make new gates with adapted boundaries
     gsyn_main_gate(:,2) = [minY; minY; maxY; maxY]; 
@@ -80,9 +76,10 @@ plot_flag = 0;
     geuk_main_gate(5,1) = eukminX; 
 
 
-    if phase == 1
-        geuk_main_gate = [geuk_main_gate(1,1) 100; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)]; 
-    end
+%     if phase == 1
+%         %geuk_main_gate = [geuk_main_gate(1,1) 100; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)]; 
+%         geuk_main_gate = [geuk_main_gate(1,1) 200; 4000 geuk_main_gate(1,2); geuk_main_gate(2:end,:)]; %changed on Feb 12 2025 trying to raise lowX corner of Euk gate 
+%     end
 
     % assingments for euk and syn 
     in_euk = inpolygon(fcsdatlog(:,npar_eukX),fcsdatlog(:,npar_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));

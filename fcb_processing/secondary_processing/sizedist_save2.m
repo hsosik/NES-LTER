@@ -45,7 +45,7 @@ diambins = [-inf 2.^[-3:.15:4] inf];
 %diambins = [2.^[-3:.25:6]];
 %cellclass = 4;  %cell group to model (1 = syn, 4 = euks)        
 
-for count = (length(filelist)-2):length(filelist)
+for count = 1:length(filelist)
    filename = filelist(count).name;
    disp(['loading...' filename])
    eval(['load ' groupedpath filename])

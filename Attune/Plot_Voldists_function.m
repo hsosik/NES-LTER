@@ -52,7 +52,11 @@ set(gca, 'XLim', ax.XLim)
 
 subplot(4,2,5)
 %plot(AttuneVolTable.StartDate, AttuneVolTable.rad_sw, '.k')
-plot(AttuneVolTable.StartDate, AttuneVolTable.rad1_sw, '.k')
+if ismember('rad1_sw',AttuneVolTable.Properties.VariableNames)
+    plot(AttuneVolTable.StartDate, AttuneVolTable.rad1_sw, '.k')
+else
+    plot(AttuneVolTable.StartDate, AttuneVolTable.rad_sw, '.k')
+end
 ylabel('Rad SW')
 set(gca, 'XLim', ax.XLim)
 

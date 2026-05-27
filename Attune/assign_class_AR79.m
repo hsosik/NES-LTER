@@ -1,4 +1,4 @@
- function [ class , bounds] = assign_class_AR78( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
+ function [ class , bounds] = assign_class_AR79( fcsdat, fcshdr, plot_flag, filename, QC_flag, startdate )
 
 plot_flag = 0; 
 
@@ -8,7 +8,7 @@ plot_flag = 0;
 %Other gates will need to move as well on CHl channel.
 
 %for files that have pro on AR78
-if startdate > datenum('09-Nov-2023 16:07:22') & startdate <datenum('11-Nov-2023 17:19:07')
+if startdate > datenum('09-Nov-2023 16:07:22') && startdate <datenum('11-Nov-2023 17:19:07')
     phase = 2;
 else
 %regular shelf settings

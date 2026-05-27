@@ -234,7 +234,7 @@ if ~isempty(missing_ind)
             %favoring back-in-time speeds
             test=missing_ind(q,1)-a; %a is batch_ind that have speeds assigned
             ii=find(test>0);
-            if length(ii)==1 %closest batch_ind is first roll over..use start of record
+            if isscalar(ii) %closest batch_ind is first roll over..use start of record
                 ii=c(1);
                 batch_avgtime=(totalstartsec(syrchangeinfo(batch_ind(ii),3))-totalstartsec(syrchangeinfo(1,3)))./ (syrchangeinfo(batch_ind(ii),5) - syrchangeinfo(1,5));
             elseif isempty(ii) %missing_ind is the first roll over, use next batch
@@ -242,7 +242,8 @@ if ~isempty(missing_ind)
                 batch_avgtime=(totalstartsec(syrchangeinfo(batch_ind(ii),3))-totalstartsec(syrchangeinfo(missing_ind(q,1)+3,3)))./ (syrchangeinfo(batch_ind(ii),5) - syrchangeinfo(missing_ind(q,1)+3,5));
             elseif ~isempty(ii)
                 ii=c(ii(end)); %min positive
-                if ismember(batch_ind(missing_ind(q,2)-1),gap_syr) && missing_ind(q,1)~=batch_ind(end)
+                if ismember(batch_ind(missing_ind(q,2)-1),gap_syr) && missing_ind(q,1)~=batch_ind(end) || (batch_ind(ii)-batch_ind(ii-1)<4)
+                    %Heidi, Feb 2026: add last case in line above for instances when batch_ind values are too close for the +3 use below (happening in 2025 FCB2)
                     %gap right before this syr, and not the ending syr, use closest in time:
                     [~, ii]=min(abs(totalstartsec(syrchangeinfo(missing_ind(q,1),3))-totalstartsec(syrchangeinfo(a,3))));
                     ii=c(ii);
@@ -484,7 +485,14 @@ for j=1:size(syr_excl,1)
     %must use cellind to check indexes of only cell syringes:
     if any(diff(ismember(syr_excl(j)+1:min(syr_excl(j)+4,length(syrchangeinfo)),syr_excl))==1) %there are missing syringes!
         aa=find(ismember(syr_excl(j)+1:min(syr_excl(j)+4,length(syrchangeinfo)),syr_excl));
-        for i=1:aa
+        %Heidi Feb 2026: something is odd about this indexing (since commit
+        %96f6f35235583c1592fe3e81fe0e3d1b0638e7c0 on 7 Dec 2018; apparently
+        %aa can sometimes be a vector; as of MATLAB2025b this throws an
+        %error when calling 1:aa for next section; earlier versions where
+        %using 1:aa(1)...this code was written by KHC and I'm not fully
+        %sure what it's doing so I'm going to force aa(1) for now... 
+        %for i=1:aa
+        for i=1:aa(1)
             if ~ismember(syr_excl(j)+i,syr_excl)
                 syrind=syrchangeinfo(syr_excl(j)+i,3):syrchangeinfo(syr_excl(j)+i,4);
                 flag(syrind)=62;
