@@ -8,18 +8,18 @@
 
 %% combine CTD files 
 clear all
-cruise_name = 'EN715';
-cruise_name_low = 'en715';
+cruise_name = 'EN727';
+cruise_name_low = 'en727';
 
 %%
-filepath  =  '/Volumes/Lab_data/LTER/20240503_EN715/ctd/proc/time_bin/';  % filepath to all CTD cast data
+filepath  =  'C:\data\SUNA_processing\EN727\CTD\proc_data\';  % filepath to all CTD cast data
 dd0 = dir([filepath '*.asc']);
 mlat = nan(length(dd0),1);
 mlon = nan(length(dd0),1);
 castn = nan(length(dd0),1);
 for i = 1:length(dd0)
     filename  =  dd0(i).name;   % set file name
-    cast      = str2double(filename(7:8));
+    cast      = str2double(filename(8:9));
     filein    =  [filepath filename];
     datain = readtable(filein,'FileType','text');% file to be loaded
     dan = datenum(2024,1,1)-1;  % base time
@@ -83,7 +83,7 @@ for i = 1:length(dd0)
     
     %% save
     fname = ['cast',num2str(cast)];
-    save(['/Users/warrbob/Desktop/WHOI/research/sunaQC/',cruise_name,'/CTD/mat/',fname,'.mat'],'CTD')  % output folder
+    save(['C:\data\SUNA_processing\',cruise_name,'\CTD\mat\',fname,'.mat'],'CTD')  % output folder
     
 end
 
@@ -91,7 +91,7 @@ end
 
 %% combine CTD casts all together and make a CTD structure
 
-dir_root = ['/Users/warrbob/Desktop/WHOI/research/sunaQC/',cruise_name,'/CTD/mat/'];  % filepath to all CTD mat files
+dir_root = ['C:\data\SUNA_processing\',cruise_name,'\CTD\mat\'];  % filepath to all CTD mat files
 dd0 = dir([dir_root '*.mat']);  
 CTDr = cell(size(dd0));
 CTDrall.time = [];
@@ -109,9 +109,9 @@ for i = 1:length(dd0)
     load([dir_root dd0(i).name]);
     CTDr{i} = CTD;
     CTDrall.time = [CTDrall.time; CTD.time];
-    CTDrall.t    = [CTDrall.t; CTD.T_corr];
-    CTDrall.s    = [CTDrall.s; CTD.S_corr];
-    CTDrall.rho  = [CTDrall.rho; CTD.dens_corr];
+    CTDrall.t    = [CTDrall.t; CTD.temp];
+    CTDrall.s    = [CTDrall.s; CTD.sali];
+    CTDrall.rho  = [CTDrall.rho; CTD.dens];
     CTDrall.d    = [CTDrall.d; CTD.depth];
     CTDrall.lat  = [CTDrall.lat; CTD.lat];
     CTDrall.lon  = [CTDrall.lon; CTD.lon];
@@ -121,4 +121,4 @@ for i = 1:length(dd0)
 end
 
 %
-save(['/Users/warrbob/Desktop/WHOI/research/sunaQC/',cruise_name,'/CTD/matall/',cruise_name,'_CTD.mat'],'CTDrall')  % output folder
+save(['C:\data\SUNA_processing\',cruise_name,'\CTD\matall\',cruise_name,'_CTD.mat'],'CTDrall')  % output folder
