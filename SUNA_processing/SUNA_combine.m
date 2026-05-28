@@ -5,10 +5,14 @@
 % zhengbofuzju@gmail.com
 % USE EN715 as an example
 
+%% combine SUNA files 
+clear all
+cruise_name = 'EN720';
+cruise_name_low = 'en720';
+
 
 %% generate a combined SUNA file with raw data
-dir_root = 'C:\data\SUNA_processing\EN727\SUNA\converted_raw_data\';  % path to raw SUNA data
-cruise_name = 'EN727';
+dir_root = '/Volumes/Lab_data/SUNA/data/20240802_EN720/CTD_SUNA_NTR1227/data/converted_raw_data/';  % path to raw SUNA data
 dd0 = dir([dir_root '*.csv']);  % find all .csv files
 n           = [];  % raw nitrate data
 time        = [];
@@ -47,10 +51,20 @@ for i = 1:length(dd0)
     for j = 1:size(data,1)  % for each sample   %%% need more atention!!!!!
         
         yearday = char(table2array(data(j,2)));
-        year = str2num(yearday(end-3:end));
-        day = str2num(yearday(1:2));
-        hour = days(duration(char(table2array(data(j,3)))));
-        danum = datenum(year,1,1)-1+day+hour;
+        % year = yearday(end-3:end);
+        % year = str2num(yearday(end-3:end));
+        % day = day(1:2);
+        % day = str2num(yearday(1:2));
+        hour = char(table2array(data(j,3)));
+        time_str = [yearday, ' ', hour];
+        danum = datenum(time_str,'dd mm yyyy HH:MM:SS');
+        % danum = datenum(year,1,1)-1+day+hour/24;
+
+        % yearday = char(table2array(data(j,2)));
+        % year = str2num(yearday(end-3:end));
+        % day = str2num(yearday(1:2));
+        % hour = days(duration(char(table2array(data(j,3)))));
+        % danum = datenum(year,1,1)-1+day+hour;
         
         time_temp(j) = danum;
         if j>2 & danum == time_temp(j-1)  % if there are two points having the same time stamp...
@@ -83,5 +97,5 @@ SUNA.lamp_temp(ind)    = [];
 SUNA.volt(ind) = [];
 
 %% save
-save(['C:\data\SUNA_processing\',cruise_name,'\SUNA\',cruise_name,'_SUNA.mat'],'SUNA')
+save(['/Users/warrbob/Desktop/WHOI/research/sunaQC/',cruise_name,'/SUNA/',cruise_name,'_SUNA.mat'],'SUNA')
 
