@@ -18,13 +18,13 @@ clear all
 % CTD data
 % for CTD data, users are required to combine all CTD raw data from
 % individual data files into one data structure. 
-load(['/Users/warrbob/Desktop/WHOI/code/SUNA_QC_publish/data/EN657_CTD.mat']);
+load(['/Users/warrbob/Desktop/WHOI/research/sunaQC/EN720/CTD/matall/EN720_CTD.mat']);
 % SUNA data
 % for SUNA data, users are required to combine all SUNA raw data from
 % individual data files into one data structure. 
-load(['/Users/warrbob/Desktop/WHOI/code/SUNA_QC_publish/data/EN657_SUNA.mat']);
+load(['/Users/warrbob/Desktop/WHOI/research/sunaQC/EN720/SUNA/EN720_SUNA.mat']);
 % discrete bottle data
-load(['/Users/warrbob/Desktop/WHOI/code/SUNA_QC_publish/data/EN657_bottle.mat']);
+load(['/Users/warrbob/Desktop/WHOI/research/sunaQC/EN720/SUNA/EN720_bottle.mat']);
 
 
 %% remove outliers in the bottle data
@@ -50,10 +50,10 @@ CTD_bottle_new.n(ind_throw)    = [];
 
 %% apply TSP correction onto SUNA data
 
-spec_fp = '/Users/warrbob/Desktop/WHOI/code/SUNA_QC_publish/data/A0000606-SUNA1227.csv';  % one example raw SUNA file
-spec    = parse_Bofu_SUNA(specs_fp);  % get parameters from raw SUNA file
+spec_fp = '/Volumes/Lab_data/SUNA/data/20240802_EN720/CTD_SUNA_NTR1227/data/converted_raw_data/A0001203-SUNA1227.csv';  % one example raw converted SUNA file
+spec    = parse_Bofu_SUNA(spec_fp);  % get parameters from raw SUNA file
 
-cal_path  = ['/Users/warrbob/Desktop/WHOI/code/SUNA_QC_publish/data//SNA1227V_BZ.CAL'];
+cal_path  = ['/Users/warrbob/Desktop/WHOI/research/sunaQC/EN720/SUNA/SNA1227P_BZ.CAL'];
 ncal = parse_SOSIK_NO3cal(cal_path); % parameters from the calibration file
 
 % update spec with SUNA data
