@@ -1,13 +1,14 @@
 %myreadtable = @(filename)readtable(filename, 'Format', '%s%s%s %f%f%f%f%f %s%s %f%s%f %s%s%s%s%s %f'); %case with 5 tags
 %metaT =  webread('https://ifcb-data.whoi.edu/api/export_metadata/NESLTER_transect', weboptions('Timeout', 60, 'ContentReader', myreadtable));
-opts = delimitedTextImportOptions("NumVariables", 21);
-opts.DataLines = [2 inf];
-%case with 5 tags
-opts.VariableTypes = ["string", "string", "string", "double", "double", "double", "double", "double", "string", "string", "double", "string", "double", "string", "string", "string", "string", "string", "string", "double", "double"];
-opts.VariableNamesLine = 1;
-myreadtable = @(filename)readtable(filename, opts);
-metaT = webread('https://ifcb-data.whoi.edu/api/export_metadata/NESLTER_transect', weboptions('Timeout', 60, 'ContentReader', myreadtable));
-  
+% opts = delimitedTextImportOptions("NumVariables", 21);
+% opts.DataLines = [2 inf];
+% %case with 5 tags
+% opts.VariableTypes = ["string", "string", "string", "double", "double", "double", "double", "double", "string", "string", "double", "string", "double", "string", "string", "string", "string", "string", "string", "double", "double"];
+% opts.VariableNamesLine = 1;
+% myreadtable = @(filename)readtable(filename, opts);
+% metaT = webread('https://ifcb-data.whoi.edu/api/export_metadata/NESLTER_transect', weboptions('Timeout', 60, 'ContentReader', myreadtable));
+metaT = readtable('https://ifcb-data.whoi.edu/api/export_metadata/NESLTER_transect');
+    
 mdate = datenum(metaT.sample_time, 'yyyy-mm-dd HH:MM:ss+00:00');
 ind = find(strcmp(metaT.sample_type, 'underway') | ismissing(metaT.sample_type));
 mdate = mdate(ind);
