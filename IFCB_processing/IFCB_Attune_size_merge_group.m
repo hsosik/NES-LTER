@@ -97,6 +97,7 @@ for clistn = 1:length(clist)
     attuneHcount.Pro = blankH;
     attuneHcarbon = attuneHcount;
     attuneHvol = attuneHcount;
+    attuneHsa = attuneHcount;
     attuneml = nan(1,length(ifcb_uwind));
     attunemlPro = nan(1,length(ifcb_uwind));
     for count = 1:length(ifcb_uwind)
@@ -114,21 +115,26 @@ for clistn = 1:length(clist)
             if ~isempty(temp2)
                 ifcbHcount.(cases2do{casei})(count,:) = histcounts(temp2, 1:nbins+1);
                 ifcbHcarbon.(cases2do{casei})(count,unique(temp2)) = splitapply(@sum , temp.cellC, findgroups(temp2))';
+                ifcbHvol.(cases2do{casei})(count,unique(temp2)) = splitapply(@sum , temp.summedBiovolume, findgroups(temp2))';
+                ifcbHsa.(cases2do{casei})(count,unique(temp2)) = splitapply(@sum , temp.summedSurfaceArea, findgroups(temp2))';                
             end
         end
        % t = datenum(AttuneTable.StartDate);
         attune_ind = find(t_datenum>ifcb_yr.mdate(ifcb_uwind(count))-Twin & t_datenum<ifcb_yr.mdate(ifcb_uwind(count))+Twin);
         ml = 0;
         mlPro = 0;
-        hSyn = NaN(length(attune_ind),nbins);
+        hSyn = zeros(length(attune_ind),nbins);
         hSynC = hSyn;
         hSynV = hSyn;
+        hSynSA = hSyn;
         hEuk = hSyn;
         hEukC = hSyn;
         hEukV = hSyn;
+        hEukSA = hSyn;
         hPro = hSyn;
         hProC = hSyn;
         hProV = hSyn;
+        hProSA = hSyn;
         
         for count2 = 1:length(attune_ind)  %2:length(attune_ind) why was this starting at 2??
             f = char(regexprep(AttuneTable.Filename(attune_ind(count2)), '.fcs', '.mat'));
@@ -140,28 +146,35 @@ for clistn = 1:length(clist)
                     v = real(c.volume_cubic_microns(c.class==2)); %Syn
                     carbon = biovol2carbon(v,0);
                     d = real(biovol2esd(v));
+                    sa = pi*(d/2).^2;
                     temp2 = discretize(d,binedges);
                     if ~isempty(temp2)
                         hSyn(count2,:) = histcounts(temp2,1:nbins+1); %histcounts(d,binedges);
                         hSynC(count2,unique(temp2)) = splitapply(@sum , carbon  , findgroups(temp2))';
                         hSynV(count2,unique(temp2)) = splitapply(@sum , v  , findgroups(temp2))';
+                        hSynSA(count2,unique(temp2)) = splitapply(@sum , sa  , findgroups(temp2))';
                     end
                     %v = real(c.rel_volume(c.class>=1&c.class<=4)); %leave out the large coincident class 5,6
                     v = c.volume_cubic_microns(ismember(c.class, [1,3,4])); %Euk
                     %v = c.volume_cubic_microns(ismember(c.class, [1,4])); %Euk
                     carbon = biovol2carbon(v,0);
                     d = real(biovol2esd(v));
+                    sa = pi*(d/2).^2;
                     temp2 = discretize(d,binedges);
                     if ~isempty(temp2)
                         hEuk(count2,:) = histcounts(temp2,1:nbins+1); %histcounts(d,binedges);
                         hEukC(count2,unique(temp2)) = splitapply(@sum , carbon  , findgroups(temp2))';
                         hEukV(count2,unique(temp2)) = splitapply(@sum , v  , findgroups(temp2))';
+                        hEukSA(count2,unique(temp2)) = splitapply(@sum , sa  , findgroups(temp2))';
                     end
                     if ~isnan(AttuneTable.Pro_count(attune_ind(count2)))
                     v = c.volume_cubic_microns(c.class==7); %Pro
+                    d = real(biovol2esd(v));
+                    sa = pi*(d/2).^2;
                     hPro(count2,1) = length(v);
                     hProC(count2,1) = hPro(count2,1)*50/1000; %round from Bertilsson et al. 2003 
                     hProV(count2,1) = sum(v);
+                    hProSA(count2,1) = sum(sa);
                     mlPro = mlPro + AttuneTable.VolAnalyzed_ml(attune_ind(count2));
                     end
                     ml = ml + AttuneTable.VolAnalyzed_ml(attune_ind(count2));
@@ -175,12 +188,15 @@ for clistn = 1:length(clist)
         attuneHcount.Syn(count,:) = sum(hSyn,1);
         attuneHcarbon.Syn(count,:) = sum(hSynC,1);
         attuneHvol.Syn(count,:) = sum(hSynV,1);
+        attuneHsa.Syn(count,:) = sum(hSynSA,1);
         attuneHcount.Euk(count,:) = sum(hEuk,1);
         attuneHcarbon.Euk(count,:) = sum(hEukC,1);
         attuneHvol.Euk(count,:) = sum(hEukV,1); 
+        attuneHsa.Euk(count,:) = sum(hEukSA,1);
         attuneHcount.Pro(count,1) = sum(hPro(:,1),1,'omitmissing');
         attuneHcarbon.Pro(count,:) = sum(hProC,1,'omitmissing');
         attuneHvol.Pro(count,:) = sum(hProV,1,'omitmissing');
+        attuneHsa.Pro(count,:) = sum(hProSA,1,'omitmissing');
     end
 
     clear ind ifcb_uwind attune_ind
