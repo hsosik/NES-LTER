@@ -146,7 +146,7 @@ for clistn = 1:length(clist)
                     v = real(c.volume_cubic_microns(c.class==2)); %Syn
                     carbon = biovol2carbon(v,0);
                     d = real(biovol2esd(v));
-                    sa = pi*(d/2).^2;
+                    sa = 4*pi*(d/2).^2;
                     temp2 = discretize(d,binedges);
                     if ~isempty(temp2)
                         hSyn(count2,:) = histcounts(temp2,1:nbins+1); %histcounts(d,binedges);
@@ -159,7 +159,7 @@ for clistn = 1:length(clist)
                     %v = c.volume_cubic_microns(ismember(c.class, [1,4])); %Euk
                     carbon = biovol2carbon(v,0);
                     d = real(biovol2esd(v));
-                    sa = pi*(d/2).^2;
+                    sa = 4 * pi*(d/2).^2;
                     temp2 = discretize(d,binedges);
                     if ~isempty(temp2)
                         hEuk(count2,:) = histcounts(temp2,1:nbins+1); %histcounts(d,binedges);
@@ -170,7 +170,7 @@ for clistn = 1:length(clist)
                     if ~isnan(AttuneTable.Pro_count(attune_ind(count2)))
                     v = c.volume_cubic_microns(c.class==7); %Pro
                     d = real(biovol2esd(v));
-                    sa = pi*(d/2).^2;
+                    sa = 4 * pi*(d/2).^2;
                     hPro(count2,1) = length(v);
                     hProC(count2,1) = hPro(count2,1)*50/1000; %round from Bertilsson et al. 2003 
                     hProV(count2,1) = sum(v);
