@@ -3,6 +3,7 @@ pout = 'C:\work\IFCB_products\Attune_IFCB_merge\';
 flist = dir([p '*_IFCB_Attune_merge_sum.mat']);
 flist = {flist.name}';
 flist(contains(flist', 'AR78')) = []; %skip for now (missing IFCB metadata)
+flist = flist(contains(flist', 'AR92') | contains(flist', 'AR99')); %temp for Baumann
 
 outname1 = regexprep(flist, '_IFCB_Attune_merge_sum.mat', '');
 %outname = strcat(outname1, '_IFCB_Attune_merge_byGroup');
@@ -12,7 +13,8 @@ uwlist(contains({uwlist.name}', 'STAINING')) = [];
 
 uwfile = cell(size(flist));
 for count = 1:length(flist)
-    tempStr = outname1{count}(10:end);
+%    tempStr = outname1{count}(10:end);
+    tempStr = regexprep(outname1{count}(10:end), '_IFCB_Attune_merge_sum.mat', '');
     tempind = contains({uwlist.name}', tempStr);
     tempind = find(tempind);
     temp = fullfile(uwlist(tempind(1)).folder,uwlist(tempind(1)).name);
@@ -56,8 +58,15 @@ for count = 1:length(flist)
         %adjust the Syn sums to the equivalent ml run for the Euks so everything can be combined with IFCB in a consistent way
         T{count}.attuneHcarbon.Syn = T{count}.attuneHcarbon.Syn./T{count}.attunemlSyn'.*T{count}.attunemlEuk';
         T{count}.attuneHcount.Syn = T{count}.attuneHcount.Syn./T{count}.attunemlSyn'.*T{count}.attunemlEuk';
+        T{count}.attuneHvol.Syn = T{count}.attuneHvol.Syn./T{count}.attunemlSyn'.*T{count}.attunemlEuk';
+        T{count}.attuneHsa.Syn = T{count}.attuneHsa.Syn./T{count}.attunemlSyn'.*T{count}.attunemlEuk';
     end
-
+    %now adjust the Pro sums to the equivalent ml run for the Euks so everything can be combined with IFCB in a consistent way
+    T{count}.attuneHcarbon.Pro = T{count}.attuneHcarbon.Pro./T{count}.attunemlPro'.*T{count}.attuneml';
+    T{count}.attuneHcount.Pro = T{count}.attuneHcount.Pro./T{count}.attunemlPro'.*T{count}.attuneml';    
+    T{count}.attuneHvol.Pro = T{count}.attuneHvol.Pro./T{count}.attunemlPro'.*T{count}.attuneml';
+    T{count}.attuneHsa.Pro = T{count}.attuneHsa.Pro./T{count}.attunemlPro'.*T{count}.attuneml';
+    
 % trnum = 1:length(tstime);
 % T{count}.ifcbHmeta.transect = floor(interp1(tstime,trnum, T{count}.ifcbHmeta.mdate));
 % clear trnum tstime
@@ -75,6 +84,8 @@ load('\\sosiknas1\Lab_data\Attune\cruise_data\IFCB_Attune_merge\summary_files\cu
 %%
 conc = [];
 Cconc = [];
+Vconc = [];
+SAconc = [];
 meta = table;
 Cconc_taxa = table; 
 conc_taxa = table;
@@ -88,22 +99,45 @@ for count = 1:length(flist)
     attuneml_bybin = bin2use(1,:).*A.attuneml';
     ifcbml_bybin = bin2use(2,:).*A.ifcbHmeta.ml_analyzed;
     totalml_bybin = attuneml_bybin+ifcbml_bybin;
-    totalml_bybin(attuneml_bybin(:,1)==0,:) = NaN; %skip cases with no Attune match up
+    %totalml_bybin(attuneml_bybin(:,1)==0,:) = NaN; %skip cases with no Attune match up
     
    % ifcbHcount = [A.ifcbHcount.diatom+A.ifcbHcount.dino+A.ifcbHcount.nano+A.ifcbHcount.ciliate+A.ifcbHcount.otherPhyto];
    % ifcbHcarbon = [A.ifcbHcarbon.diatom+A.ifcbHcarbon.dino+A.ifcbHcarbon.nano+A.ifcbHcarbon.ciliate+A.ifcbHcarbon.otherPhyto];
     ifcbHcount = A.ifcbHcount.protist_tricho;
     ifcbHcarbon = A.ifcbHcarbon.protist_tricho;
-    attuneHcount = A.attuneHcount.Syn+A.attuneHcount.Euk;
-    attuneHcarbon = A.attuneHcarbon.Syn+A.attuneHcarbon.Euk;
+    ifcbHvol = A.ifcbHvol.protist_tricho;
+    ifcbHsa = A.ifcbHsa.protist_tricho;
+    A.ifcbHmeta.pro_measured = (A.attunemlPro>0)';%~isnan(sum(A.attuneHcarbon.Pro,2));
+    A.ifcbHmeta.attune_ml_analyzed_euk = A.attuneml';
+%    A.attuneHcount.Pro(isnan(A.attuneHcount.Pro)) = 0; %reset NaNs so sums aren't all NaN 
+%    A.attuneHcarbon.Pro(isnan(A.attuneHcarbon.Pro)) = 0; %reset NaNs so sums aren't all NaN 
+%    A.attuneHvol.Pro(isnan(A.attuneHvol.Pro)) = 0; %reset NaNs so sums aren't all NaN 
+%    A.attuneHvol.Pro(isnan(A.attuneHsa.Pro)) = 0; %reset NaNs so sums aren't all NaN 
+
+    %attuneHcount = A.attuneHcount.Syn+A.attuneHcount.Euk+A.attuneHcount.Pro;
+    %attuneHcarbon = A.attuneHcarbon.Syn+A.attuneHcarbon.Euk+A.attuneHcarbon.Pro;
+    %attuneHvol = A.attuneHvol.Syn+A.attuneHvol.Euk+A.attuneHvol.Pro;
+    %attuneHsa = A.attuneHsa.Syn+A.attuneHsa.Euk+A.attuneHsa.Pro;
+    %here's a way to omit nans in the element by element sums
+    %tmp = cat(3,Var1,Var2, Var1); C = sum(tmp,3, 'omitnan')
+    attuneHcount = sum(cat(3,A.attuneHcount.Syn,A.attuneHcount.Euk,A.attuneHcount.Pro),3,'omitnan');
+    attuneHcarbon = sum(cat(3,A.attuneHcarbon.Syn,A.attuneHcarbon.Euk,A.attuneHcarbon.Pro),3,'omitnan');
+    attuneHvol = sum(cat(3,A.attuneHvol.Syn,A.attuneHvol.Euk,A.attuneHvol.Pro),3,'omitnan');
+    attuneHsa = sum(cat(3,A.attuneHsa.Syn,A.attuneHsa.Euk,A.attuneHsa.Pro),3,'omitnan');
     if ~isreal(attuneHcarbon)
         attuneHcarbon = real(attuneHcarbon);
         disp(['imaginary values in ' flist(count)]);
     end
-    totalHcount = attuneHcount.*bin2use(1,:)+ifcbHcount.*bin2use(2,:);
-    totalHcarbon = attuneHcarbon.*bin2use(1,:)+ifcbHcarbon.*bin2use(2,:);
+    totalHcount = sum(cat(3,attuneHcount.*bin2use(1,:),ifcbHcount.*bin2use(2,:)),3,'omitnan');
+    totalHcarbon = sum(cat(3,attuneHcarbon.*bin2use(1,:),ifcbHcarbon.*bin2use(2,:)),3,'omitnan');
+    totalHvol = sum(cat(3,attuneHvol.*bin2use(1,:),ifcbHvol.*bin2use(2,:)),3,'omitnan');
+    totalHsa = sum(cat(3,attuneHsa.*bin2use(1,:),ifcbHsa.*bin2use(2,:)),3,'omitnan');
+    
     conc = [conc; totalHcount./totalml_bybin];
     Cconc = [Cconc; totalHcarbon./totalml_bybin];
+    Vconc = [Vconc; totalHvol./totalml_bybin];
+    SAconc = [SAconc; totalHsa./totalml_bybin];
+    
     %%conc = totalHcount./totalml_bybin;
     %%Cconc = totalHcarbon./totalml_bybin;
     % TT = array2table([sum(A.ifcbHcarbon.diatom,2)./A.ifcbHmeta.ml_analyzed sum(A.ifcbHcarbon.dino,2)./A.ifcbHmeta.ml_analyzed...
@@ -113,35 +147,74 @@ for count = 1:length(flist)
     % sum(A.ifcbHcount.ciliate,2)./A.ifcbHmeta.ml_analyzed A.attuneHcount.Syn(:,1)./A.attuneml'], 'VariableNames',{'diatom' 'dino' 'ciliate' 'Syn'});    
     % conc_taxa = TT;
     sumT = [sumT; A.ifcbHmeta(:,["cast" "cruise" "depth" "dt" "ifcb" "latitude" "longitude" "mdate" "ml_analyzed" ...
-        "niskin" "pid" "sal" "sample_type" "skip" "temp"])];
+        "attune_ml_analyzed_euk" "niskin" "pid" "sal" "sample_type" "skip" "temp" "pro_measured"])];
 end
 labels = regexprep(cellstr(strcat('phytoC_', num2str(binrange(1,:)'), '_', num2str(binrange(2,:)'))), ' ', '');
-sumT = [sumT array2table(Cconc/1000, 'VariableNames', labels)];
-sumT.phytoC_total = sum(sumT{:,find(strncmp('phyto', cellstr(sumT.Properties.VariableNames),5))},2);
-itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_2_3' 'phytoC_3_5' 'phytoC_5_7' 'phytoC_7_10' 'phytoC_10_15' 'phytoC_15_20'});
-sumT.phytoC_2_20 = sum(sumT{:,itemp},2);
-itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_20_30' 'phytoC_30_40' 'phytoC_40_50' 'phytoC_50_100'});
-sumT.phytoC_20_100 = sum(sumT{:,itemp},2);
-itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_0_2' 'phytoC_2_3'});
-sumT.phytoC_0_3 = sum(sumT{:,itemp},2);
-itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_3_5' 'phytoC_5_7' 'phytoC_7_10'});
-sumT.phytoC_3_10 = sum(sumT{:,itemp},2);
-itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_10_15' 'phytoC_15_20' 'phytoC_20_30' 'phytoC_30_40' 'phytoC_40_50' 'phytoC_50_100'});
-sumT.phytoC_10_100 = sum(sumT{:,itemp},2);
+%sumT = [sumT array2table(Cconc/1000, 'VariableNames', labels)];
+%sumT.phytoC_total = sum(sumT{:,find(strncmp('phyto', cellstr(sumT.Properties.VariableNames),5))},2);
+
+sumTtemp = array2table(Cconc/1000, 'VariableNames', labels);
+sumT.carbon_micrograms_per_liter_lt2 = sumTtemp.phytoC_0_2;
+itemp = startsWith(sumTtemp.Properties.VariableNames, {'phytoC_2_3' 'phytoC_3_5' 'phytoC_5_7' 'phytoC_7_10' 'phytoC_10_15' 'phytoC_15_20'});
+sumT.carbon_micrograms_per_liter_2_20 = sum(sumTtemp{:,itemp},2);
+itemp = startsWith(sumTtemp.Properties.VariableNames, {'phytoC_20_30' 'phytoC_30_40' 'phytoC_40_50' 'phytoC_50_100' 'phytoC_100_Inf'});
+sumT.carbon_micrograms_per_liter_gt20 = sum(sumTtemp{:,itemp},2);
+%sumT.carbon_total = sum(sumTtemp{:,startsWith(sumTtemp.Properties.VariableNames,'phyto')},2);
+
+sumTtemp = array2table(Vconc, 'VariableNames', labels);
+sumT.biovolume_cubic_microns_per_milliliter_lt2 = sumTtemp.phytoC_0_2;
+itemp = startsWith(sumTtemp.Properties.VariableNames, {'phytoC_2_3' 'phytoC_3_5' 'phytoC_5_7' 'phytoC_7_10' 'phytoC_10_15' 'phytoC_15_20'});
+sumT.biovolume_cubic_microns_per_milliliter_2_20 = sum(sumTtemp{:,itemp},2);
+itemp = startsWith(sumTtemp.Properties.VariableNames, {'phytoC_20_30' 'phytoC_30_40' 'phytoC_40_50' 'phytoC_50_100' 'phytoC_100_Inf'});
+sumT.biovolume_cubic_microns_per_milliliter_gt20 = sum(sumTtemp{:,itemp},2);
+
+sumTtemp = array2table(SAconc, 'VariableNames', labels);
+sumT.surface_area_square_microns_per_milliliter_lt2 = sumTtemp.phytoC_0_2;
+itemp = startsWith(sumTtemp.Properties.VariableNames, {'phytoC_2_3' 'phytoC_3_5' 'phytoC_5_7' 'phytoC_7_10' 'phytoC_10_15' 'phytoC_15_20'});
+sumT.surface_area_square_microns_per_milliliter_2_20 = sum(sumTtemp{:,itemp},2);
+itemp = startsWith(sumTtemp.Properties.VariableNames, {'phytoC_20_30' 'phytoC_30_40' 'phytoC_40_50' 'phytoC_50_100' 'phytoC_100_Inf'});
+sumT.surface_area_square_microns_per_milliliter_gt20 = sum(sumTtemp{:,itemp},2);
+
+sumTtemp = array2table(conc, 'VariableNames', labels);
+sumT.count_per_milliliter_lt2 = sumTtemp.phytoC_0_2;
+itemp = startsWith(sumTtemp.Properties.VariableNames, {'phytoC_2_3' 'phytoC_3_5' 'phytoC_5_7' 'phytoC_7_10' 'phytoC_10_15' 'phytoC_15_20'});
+sumT.count_per_milliliter_2_20 = sum(sumTtemp{:,itemp},2);
+itemp = startsWith(sumTtemp.Properties.VariableNames, {'phytoC_20_30' 'phytoC_30_40' 'phytoC_40_50' 'phytoC_50_100' 'phytoC_100_Inf'});
+sumT.count_per_milliliter_gt20 = sum(sumTtemp{:,itemp},2);
+
+%itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_20_30' 'phytoC_30_40' 'phytoC_40_50' 'phytoC_50_100'});
+%sumT.phytoC_20_100 = sum(sumT{:,itemp},2);
+%itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_20_30' 'phytoC_30_40' 'phytoC_40_50' 'phytoC_50_100'});
+%sumT.phytoC_20_100 = sum(sumT{:,itemp},2);
+%itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_0_2' 'phytoC_2_3'});
+%sumT.phytoC_0_3 = sum(sumT{:,itemp},2);
+%itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_3_5' 'phytoC_5_7' 'phytoC_7_10'});
+%sumT.phytoC_3_10 = sum(sumT{:,itemp},2);
+%itemp = startsWith(sumT.Properties.VariableNames, {'phytoC_10_15' 'phytoC_15_20' 'phytoC_20_30' 'phytoC_30_40' 'phytoC_40_50' 'phytoC_50_100'});
+%sumT.phytoC_10_100 = sum(sumT{:,itemp},2);
+
 sumT.depth = [];
 sumT.cast = [];
 sumT.niskin = [];
 sumT.skip = [];
+sumT = movevars(sumT, 'sal','After','temp');
+sumT = renamevars(sumT, {'dt' 'pro_measured' 'sal' 'temp' 'ml_analyzed'}, {'datetime' 'prochlorococcus_measured' 'salinity_psu' 'temperature_degC' 'ifcb_ml_analyzed'});
 
-phytoC_all = sumT;
-notes = {'Carbon concentration in micrograms per liter'; "Cell size ranges in micrometers equivalent spherical diameter"};
-save([p 'Attune_IFCB_merge_class_summary_uw_allcruises.mat'], 'phytoC_all', 'notes')
+cells_merge_all = sumT;
+notes = {'Carbon concentration in micrograms per liter'; "Cell size ranges in micrometers equivalent spherical diameter"; "save_groupsTable_byCruise_IFCBattune_merged.m"};
+%save([p 'Attune_IFCB_merge_class_summary_uw_allcruises.mat'], 'phytoC_all', 'notes')
+save([p 'Attune_IFCB_merge_class_summary_uw_AR92_AR99.mat'], 'cells_merge_all', 'notes')
+display('Results saved:')
+display([p 'Attune_IFCB_merge_class_summary_uw_AR92_AR99.mat'])
+display('Results saved:')
+display([p 'Attune_IFCB_merge_class_summary_uw_AR92_AR99.csv'])
+writetable(cells_merge_all,'\\sosiknas1\Lab_data\Attune\cruise_data\IFCB_Attune_merge\summary_files\Attune_IFCB_merge_class_summary_uw_AR92_AR99.csv')
 %save("c:\work\IFCB_products\NESLTER_transect\summary\Attune_IFCB_merge_class_summary_uw_allcruises.mat", 'phytoC_all', 'notes')
 
-phytoC_spiropa = sumT(ismember(sumT.cruise, {'AR29' 'RB1904' 'TN368'}),:);
-notes = {'Carbon concentration in micrograms per liter'; "Cell size ranges in micrometers equivalent spherical diameter"};
-save([p 'Attune_IFCB_merge_class_summary_uw_spiropa'], 'phytoC_spiropa', 'notes')
-%save("c:\work\IFCB_products\NESLTER_transect\summary\Attune_IFCB_merge_class_summary_uw_spiropa", 'phytoC_spiropa', 'notes')
+%phytoC_spiropa = sumT(ismember(sumT.cruise, {'AR29' 'RB1904' 'TN368'}),:);
+%notes = {'Carbon concentration in micrograms per liter'; "Cell size ranges in micrometers equivalent spherical diameter"};
+%save([p 'Attune_IFCB_merge_class_summary_uw_spiropa'], 'phytoC_spiropa', 'notes')
+%%save("c:\work\IFCB_products\NESLTER_transect\summary\Attune_IFCB_merge_class_summary_uw_spiropa", 'phytoC_spiropa', 'notes')
 
 
 return

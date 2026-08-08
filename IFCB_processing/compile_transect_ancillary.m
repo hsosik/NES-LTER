@@ -26,12 +26,12 @@ slist_cast = {'pid' 'cruise' 'lat' 'lon' 't090c' 'sal00' 'depth' 'mdate'};
          orig_var = {'tsg1_temperature' 'tsg1_salinity'};
      elseif strncmp('AE', cruises{count1},2)
          orig_var = {'sbe45pri_temp_c' 'sbe45pri_sal_psu'};
-     elseif strncmp('hrs', cruises{count1},3)
+     elseif strcmp('HRS2303', cruises{count1})
          orig_var = {'water_temperature_degree_c' 'salinity_psu'};
      elseif strncmp('PC', cruises{count1},2)
          orig_var = {'TW' 'SSPS'};
-     elseif strncmp('HRS', cruises{count1},3)
-         orig_var = {'water_temperature_degree_c' 'salinity_psu'};
+     elseif strncmp('HRS2601', cruises{count1},3)
+         orig_var = {'temp_c' 'sal_psu'};
      else
          orig_var = {'sbe48t' 'sbe45s'};
      end
