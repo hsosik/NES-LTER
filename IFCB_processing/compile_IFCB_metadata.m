@@ -6,8 +6,8 @@ cruise = strsplit(f, '_');
 cruise = lower(cruise{3});
 apibase = 'https://nes-lter-api.whoi.edu/api/'; % api2
 %apibase = 'https://nes-lter-data.whoi.edu/api/'; %api1
-%myreadtable = @(filename)readtable(filename,'Delimiter','comma');
-%options = weboptions('ContentReader',myreadtable, 'timeout', 30);
+% myreadtable = @(filename)readtable(filename,'Delimiter','comma');
+% options = weboptions('ContentReader',myreadtable, 'timeout', 30);
 opts = detectImportOptions(ToTag_xlsFile);
 opts = setvartype(opts, {'tag1' 'tag2' 'comments'}, 'char');
 totag = readtable(ToTag_xlsFile, opts);
@@ -21,8 +21,8 @@ totag = addvars(totag,t,t,t,t, 'NewVariableNames', {'lat' 'lon' 'depth' 'niskin'
 %totag = addvars(totag,t, 'NewVariableNames', {'datetime'})
 
 %load the ship's underway data
-%uw = webread([apibase 'underway/' cruise '.csv'], options);
-uw = readtable([apibase 'underway/get/' cruise]); %api2
+uw = webread([apibase 'underway/' cruise '.csv'], options);
+% uw = readtable([apibase 'underway/' cruise '.csv']); %api2
 %https://nes-lter-api.whoi.edu/api/underway/get/ar95
 
 %load the event log
@@ -59,7 +59,7 @@ castind = strmatch('cast', totag.(tagstr));
 if ~isempty(castind)
     %load the ship's CTD btl data
 %    bottle_data = webread([apibase 'ctd/' cruise '/bottles.csv'], options);
-    bottle_data = readtable([apibase 'ctd/bottles/' cruise]);  %api2
+    bottle_data = readtable([apibase 'ctd/bottles/' cruise '.csv']);  %api2
     %https://nes-lter-api.whoi.edu/api/ctd/bottles/ar92
     
     %find and read the cruise-specific IFCB logfile
@@ -115,7 +115,7 @@ if ~isempty(castind)
         %check for casts with no info in bottle file
         ind = find(isnan(totag.lat(castind)));
         if ~isempty(ind)
-            ctd_meta = webread([apibase 'ctd/metadata' cruise], options); %api2
+            ctd_meta = webread([apibase 'ctd/metadata' cruise '.csv'], options); %api2
             % ctd_meta = webread([apibase 'ctd/' cruise '/metadata.csv'], options); %api1
             unqcast = unique(totag.cast(castind(ind)));
             for count = 1:length(unqcast)
