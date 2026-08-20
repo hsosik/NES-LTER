@@ -17,7 +17,8 @@ elseif ismember('matdate', uw.Properties.VariableNames) %case for NESLTER_broads
 else
     %uw_mdate = datenum(uw.date, iso8601format);
     %uw_mdate = datenum(strcat(char(uw.date_gmt), char(uw.time_gmt)),'yyyy/mm/ddHH:MM:ss.FFF'); %api2
-    uw_mdate = datenum(uw.date,'yyyy-mm-dd HH:MM:ss.FFF+00:00'); %api2
+    %uw_mdate = datenum(uw.date,'yyyy-mm-dd HH:MM:ss.FFF+00:00'); %api2
+    uw_mdate = datenum(uw.date,'yyyy-mm-dd HH:MM:ss+00:00'); %api2    
 end
 t = uw.Properties.VariableNames;
 %ilat = find(contains(t, 'latitude'));
@@ -49,7 +50,9 @@ for count = 1:length(IFCB_mdate)
             it2 = round((IFCB_mdate(count)-uw_mdate(it))/(uw_mdate(it+1)-uw_mdate(it))*step); %index of closest interpolated minute
             IFCB_match.lat(count) = lat(it2);
             IFCB_match.lon(count) = lon(it2);
-            IFCB_match(count,2:end-2) = array2table(interp1(uw_mdate(nnind), double(uw{nnind,2:end}), IFCB_mdate(count)));
+            cind = strcmp(uw.Properties.VariableTypes, "double");
+            IFCB_match(count,cind) = array2table(interp1(uw_mdate(nnind), double(uw{nnind,cind}), IFCB_mdate(count)));
+ %           IFCB_match(count,2:end-2) = array2table(interp1(uw_mdate(nnind), double(uw{nnind,2:end}), IFCB_mdate(count)));
             if ismember('latitude_fullres', IFCB_match.Properties.VariableNames)
                 IFCB_match.latitude_fullres(count) = IFCB_match.lat(count);
                 IFCB_match.longitude_fullres(count) = IFCB_match.lon(count);

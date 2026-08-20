@@ -21,8 +21,8 @@ totag = addvars(totag,t,t,t,t, 'NewVariableNames', {'lat' 'lon' 'depth' 'niskin'
 %totag = addvars(totag,t, 'NewVariableNames', {'datetime'})
 
 %load the ship's underway data
-uw = webread([apibase 'underway/' cruise '.csv'], options);
-% uw = readtable([apibase 'underway/' cruise '.csv']); %api2
+% uw = webread([apibase 'underway/' cruise '.csv'], options);
+uw = readtable([apibase 'underway/' cruise '.csv'], 'delimiter', ','); %api2
 %https://nes-lter-api.whoi.edu/api/underway/get/ar95
 
 %load the event log
