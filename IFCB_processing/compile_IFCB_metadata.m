@@ -217,10 +217,11 @@ totag.depth(find(ismember(totag.(tagstr), {'bucket'}))) = 0;
 if strmatch(tagstr, 'tag2') %old case
     totag.cruise = repmat(cellstr(cruise),size(totag,1),1);
 end
-f = strsplit(ToTag_xlsFile, '.xlsx');
-writetable(totag, [f{1} '_meta.csv']);
-disp(['CSV file for dashboard upload: ' f{1} '_meta.csv'])
-[p f] = fileparts(f{1});
+%f = strsplit(ToTag_xlsFile, '.xlsx');
+[p f] = fileparts(ToTag_xlsFile);
+writetable(totag, [p filesep f '_meta.csv']);
+disp('CSV file for dashboard upload: ')
+disp([p filesep f '_meta.csv'])
 p = regexprep(p, 'to_tag', 'match_up\');
 f = regexprep(f, 'to_tag', '');
 if ~exist(p, 'dir'), mkdir(p), end
