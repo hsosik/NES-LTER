@@ -9,7 +9,7 @@ apibase = 'https://nes-lter-api.whoi.edu/api/'; % api2
 % myreadtable = @(filename)readtable(filename,'Delimiter','comma');
 % options = weboptions('ContentReader',myreadtable, 'timeout', 30);
 opts = detectImportOptions(ToTag_xlsFile);
-opts = setvartype(opts, {'tag1' 'tag2' 'comments'}, 'char');
+opts = setvartype(opts, intersect(opts.VariableNames, {'tag1' 'tag2' 'comments'}), 'char');
 totag = readtable(ToTag_xlsFile, opts);
 
 %avoid case mis-matches
