@@ -4,10 +4,10 @@
 clear all
 
 %% VARIABLES TO EDIT
-ifcb = 'IFCB218';
+ifcb = 'IFCB102';
 % start = '23 Mar 2018';
-start = '08 Aug 2025';
- stop = '24 Oct 2025';
+start = '10 Aug 2026';
+ stop = '30 Aug 2026';
 %stop = now + + (5/24); %account for UTC time else won't get most recent 4 or 5 hours of data
 
 %% Choose dashboard to use
@@ -160,7 +160,8 @@ end
 
 %% Make an excel file with the compiled filelist and 
 xlswrite(excelfile2save,A)
-
+disp('Results saved:')
+disp(excelfile2save)
 
 
 %% Give list of sometimes incorrect empty files are made when instr screws up. should skip
