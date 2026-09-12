@@ -4,7 +4,15 @@ function batch_mergedSSC2volume(p)
 %   Detailed explanation goes here
 
 %get the SSC merge stats
-load([p.outpath 'mergeTable'])
+%load([p.outpath 'mergeTable'])
+load([p.outpath 'FCSfileinfo'])
+
+fcslist = dir([p.classpath '*.mat']); %just get the ones in the class folder (not the beads, etc.)
+fcslist = regexprep({fcslist.name}', '.mat', '.fcs');
+mergeT = table;
+mergeT.filename = fcslist;
+[~,ia] = ismember(fcslist, FCSfileinfo.fcslist);
+mergeT.filetime = datetime(FCSfileinfo.matdate_start(ia), 'ConvertFrom', 'datenum');
 
 if exist([p.outpath, 'beadstat_2026.mat'])
     load([p.outpath, 'beadstat_2026.mat'])
@@ -21,24 +29,34 @@ beadGL1mean = groupsummary(beadT,'GL1_hv','mean'); %compute mean grouped by HV
 
 sscstr = strcat("SSC-", p.SSCDIM);
 gl1str = strcat("GL1-", p.SSCDIM);
+
 SSCAmin = 500; %use SSC-H below this value
+GL1_overlap_min = 500; GL1_overlap_max = 1000;
 
 for filecount = 1:height(mergeT)
    if ~rem(filecount,50)
         disp(['volume calculating ' num2str(filecount) ' of ' num2str(height(mergeT))])
    end
-    if ~isnan(mergeT.slope_median(filecount))
+ %   if ~isnan(mergeT.slope_median(filecount))
         filename = [p.fpath, mergeT.filename{filecount}];
         [fcsdat,fcshdr] = fca_readfcs(filename);
         fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
+
+        file_hv = array2table([NaN [fcshdr.par.hv]], 'VariableNames', {fcshdr.par.name});
+        mergeT.SSC_hv(filecount) = file_hv.(sscstr);
+        mergeT.GL1_hv(filecount) = file_hv.(gl1str);
+        %mergeT.filetime(filecount) = datetime([fcshdr.date, ' ', fcshdr.starttime]);
+        
         bdrow = find(mergeT.SSC_hv(filecount)==beadSSCmean.SSC_hv);  %FIX THIS LATER IF KEEPING
         ssc_bdnorm = fcsdat.(sscstr)./beadSSCmean.mean_SSCA_1micron(bdrow); % *.8; %
         gl1_bdnorm = fcsdat.(gl1str)./beadGL1mean.mean_GL1A_1micron(bdrow); % *.4;  %.42;  %HACK FIX!!!
         sscmerge_bdnorm = ssc_bdnorm;
-     itemp = ssc_bdnorm>2 & gl1_bdnorm>0;
+        itemp = fcsdat.(gl1str) > GL1_overlap_max;
+%     itemp = ssc_bdnorm>2 & gl1_bdnorm>0;
      sscmerge_bdnorm(itemp) = gl1_bdnorm(itemp);
      %%%%%itemp = ssc_bdnorm>0.5 & ssc_bdnorm<2 & gl1_bdnorm>0;
-     itemp = ssc_bdnorm>1 & ssc_bdnorm<2 & gl1_bdnorm>0;
+  %   itemp = ssc_bdnorm>1 & ssc_bdnorm<2 & gl1_bdnorm>0;
+     itemp = fcsdat.(gl1str) > GL1_overlap_min &  fcsdat.(gl1str) < GL1_overlap_max;
      sscmerge_bdnorm(itemp) = mean([ssc_bdnorm(itemp) gl1_bdnorm(itemp)],2);
         volume_cubic_micron = NaN(size(sscmerge_bdnorm)); 
         volume_cubic_micronH = volume_cubic_micron;
@@ -67,7 +85,7 @@ for filecount = 1:height(mergeT)
         c.vol_notes = {strcat('calibrated: ', string(datetime())); strcat(' using SSC-', p.SSCDIM); vol_func_string};
         c.ssc_merge_bdnorm = sscmerge_bdnorm; c.beadSSCmean = beadSSCmean; c.beadGL1mean = beadGL1mean; c.file_hv.SSC = mergeT.SSC_hv(filecount); c.file_hv.GL1 = mergeT.GL1_hv(filecount);
         c.volume_cubic_microns = volume_cubic_micron;
-        c.merge_info = array2table([mergeT.slope_median(filecount) gl1min gl1max sscmax SSCAmin], 'variablenames', {'slope' 'GL1min' 'GL1max' 'SSCmax' 'SSCAmin'}); 
+%        c.merge_info = array2table([mergeT.slope_median(filecount) gl1min gl1max sscmax SSCAmin], 'variablenames', {'slope' 'GL1min' 'GL1max' 'SSCmax' 'SSCAmin'}); 
         save([p.classpath regexprep(mergeT.filename{filecount},'.fcs', '.mat')],'-struct', "c")
-    end
+%    end
 end
