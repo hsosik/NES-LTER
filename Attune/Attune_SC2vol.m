@@ -1,18 +1,19 @@
 function [vol_cubic_micron, func_str] = Attune_SC2vol(SCdat_bdnorm,SCpar, prelim_flag)
 %UNTITLED Summary of this function goes here
 %   Detailed explanation goes here
+%11 sep 2026, Heidi update with new coefficients from July2026 cal
 switch SCpar
     case 'SSC-A'
-        p1 = 1.2166;
-        p2 = 1.1717;
+        p1 = 1.106; %2019 v2: p1 = 1.2166;
+        p2 = 1.069;  %2019 v2: p2 = 1.1717;
     case 'SSC-H'
-        p1 = 1.3008;
-        p2 = 1.3240;
-    case 'SSC-W'  %NOT GOOD...
-        p1 = 2.151;
-        p2 = 0.5907;
+        p1 = 1.166; %2019 v2: p1 = 1.3008;
+        p2 = 1.175 %2019 v2: p2 = 1.3240;
+    %case 'SSC-W'  %NOT GOOD...
+    %    p1 = 2.151;
+    %    p2 = 0.5907;
 end
-if prelim_flag == 1
+if prelim_flag == 1 % hack to get rough estimates in 2026 before cal
     p1 = 1.1358;
     p2 = 0.8762;
 end
