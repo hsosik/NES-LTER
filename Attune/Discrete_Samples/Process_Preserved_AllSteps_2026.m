@@ -94,9 +94,9 @@ switch cruise
         %     p.bottlefile = ['https://nes-lter-api.whoi.edu/api/ctd/bottles/' lower(cruise)];
         %     p.elogpath = '\\sosiknas1\Lab_data\LTER\20201013_EN657\eLog\R2R_ELOG_EN657_FINAL_EVENTLOG_20201018_134037.csv';
     otherwise %DEFAULT, NES LTER api
-        p.uw_fullname = ['https://nes-lter-api.whoi.edu/api/underway/' cruise];
-        p.bottlefile = ['https://nes-lter-api.whoi.edu/api/ctd/bottles/' cruise];
-        p.elogpath = ['https://nes-lter-api.whoi.edu//api/events/' cruise];
+        p.uw_fullname = ['https://nes-lter-api.whoi.edu/api/underway/' cruise '.csv'];
+        p.bottlefile = ['https://nes-lter-api.whoi.edu/api/ctd/bottles/' cruise '.csv'];
+        p.elogpath = ['https://nes-lter-api.whoi.edu//api/events/' cruise '.csv'];
 end
 
 % Step 1 - make FCSlist defaults
@@ -251,7 +251,7 @@ if step(3)
     %TN368 - 7 Cast=0 but fcs marked with 'maybe' throwing off matchup, also 'SPIROPA_TN368_Jul2019_preserved(5)_phyto_PE_SSC_15N24(1).fcs'
     %AR38 - B01, also 'NESLTER_AR38_Sep2019_preserved_phyto_CHL_SSC_CxxN07.fcs', 'bucket' in elog comment field
 
-    if sum(gated_table.Cast==0) %|| sum(gated_table.Cast==-9999) %cases for underway or other samples
+    if sum(gated_table.cast==0) %|| sum(gated_table.cast==-9999) %cases for underway or other samples
         elog = readtable(p.elogpath, 'delimiter', ',');
         disp('No cast matches:')
         disp(gated_table.fcslist(gated_table.cast==0))
@@ -310,7 +310,7 @@ if step(4)
 
     classnames = {'Euks == 1'; 'Syn == 2'; 'Bacteria == 3'; 'Pro == 4'; 'LowPE_Euks = 5'; 'HighPE_Euks = 6'};
 
-    class = cell(1,height(gated_table));
+    class_all = cell(1,height(gated_table));
     syn_conc = nan(height(gated_table),1);
     euk_conc = syn_conc;
     bact_incl_pro_conc = syn_conc;
@@ -325,7 +325,7 @@ if step(4)
         a = size(gated_table.gate_assignments{i});
 
         if max(a) == 0
-            class{i} = [];
+            class_all{i} = [];
             continue
         end
 
@@ -417,7 +417,7 @@ if step(4)
 
         %ok now save class assignments
 
-        class{i} = class_i;
+        class_all{i} = class_i;
 
 
         %onto calculating concentrations
@@ -473,7 +473,7 @@ if step(4)
             concent_i(6) = sum(class_i == 6)./gated_table.vol_analyzed_ml(i);
         end
 
-        disp(gated_table(i,:))
+        %disp(gated_table(i,:))
         %disp(concent_i)
 
         %now save concentrations
@@ -484,14 +484,15 @@ if step(4)
         lp_euk_conc(i) = concent_i(5);
         hp_euk_conc(i) = concent_i(6);
 
-        clear gate_num_1 gate_num_2 gate_num_4 gate_num_b gate_assign_i class_i gate_num_5 gate_num_6
+        clear gate_num_1 gate_num_2 gate_num_4 gate_num_b gate_assign_i gate_num_5 gate_num_6
 
         notes = "'Euks == 1'; 'Syn == 2'; 'Bacteria & Pro == 3'; 'Pro == 4'; 'LowPE_Euks = 5'; 'HighPE_Euks - 6'";
+        class = class_i';
         save([p.classpath regexprep(gated_table.fcslist{i}, '.fcs', '')], 'class', 'notes') %I think class files wont have volume yet if we don't have bead statistics to calibrate 
-
+        clear class class_i
     end
 
-    gated_table.class = class';
+    gated_table.class = class_all';
     gated_table.Euk_conc = euk_conc;
     gated_table.LowP_Euk_conc = lp_euk_conc;
     gated_table.HighP_Euk_conc = hp_euk_conc;
@@ -511,12 +512,12 @@ end
 if step(5)
 
    %this part Bethany calls calibration is SSC and GL1 merging
-   %if strcmp(p.OD2setting, 'GL1')  %%%%%%%%DOUBLE check that OD2 setting is always GL1 for discretes
-        get_calibration_stats_linear_2021(p.outpath, p.classpath, 1, p.SSCDIM) %A means ssch_ch_num is ssc-a
+   %if strcmp(p.OD2setting, 'GL1')  %%%%%%%%DOUBLE check that OD2 setting is always GL1 for discret
+     get_calibration_stats_linear_2021(p.outpath, p.classpath, 1, p.SSCDIM) %A means ssch_ch_num is ssc-a
    %end
 
     %%%CHECK WHAT NEEDS TO BE DONE TO UPDATE THIS?? if anything
-    B = load('\\sosiknas1\Lab_data\Attune\cruise_data\beads\FCB_bead_mix_experiment_settings\between_cruises\outputs\beadstat.mat')
+    B = load('\\sosiknas1\Lab_data\Attune\cruise_data\beads\FCB_bead_mix_experiment_settings\between_cruises\outputs\beadstat.mat');
 
     load([p.outpath '\Gated_Table.mat']);
     
@@ -552,12 +553,13 @@ if step(5)
 
         for counti = 1:height(joint_table)
         classfilename = [p.classpath regexprep(joint_table.filename{counti}, '.fcs', '.mat')];
-        class = gated_table.class{counti};
+        %class = gated_table.class{counti};
+        load(classfilename) %this gets class and notes made in Step 4
 
         [fcsdat,fcshdr] = fca_readfcs([p.fpath joint_table.filename{counti}]);
 
-         ssc_ch_num = strmatch(['SSC-' DIM], {fcshdr.par.name});
-         gl1_ch_num = strmatch(['GL1-' DIM], {fcshdr.par.name});
+         ssc_ch_num = strmatch(['SSC-' p.SSCDIM], {fcshdr.par.name});
+         gl1_ch_num = strmatch(['GL1-' p.SSCDIM], {fcshdr.par.name});
         % %bl3_ch_num = strmatch(['BL3-' DIM], {fcshdr.par.name});
         % 
         % file_hv = fcshdr.par(ssc_ch_num).hv; %heidi
@@ -644,7 +646,7 @@ if step(5)
         %use OD2 measurements to project to NoOD2 values
 
         filetime = datetime([fcshdr.date, ' ', fcshdr.starttime]);
-        beadstat = beadstat(beadstat.QC_flag ==0,:);
+        beadstat = B.beadstat(B.beadstat.QC_flag ==0,:);
         [alert,ind1] = min(abs(datenum(beadstat.time)-datenum(filetime)));
         if alert > 30
             disp('more than a month between bead run and file run. Update beadstat.')
@@ -672,6 +674,7 @@ if step(5)
         new_ssc_vals = ssc_value;
         intercept = joint_table.intercept(counti); slope = joint_table.slope(counti);
         r_bound = joint_table.rightbound(counti);
+        filename = joint_table.filename(counti);
         if ~contains(filename, 'hbac') & ~contains(filename, 'pro')
             new_ssc_vals(gl1_vals>r_bound) = [intercept + slope.*(gl1_vals(gl1_vals>r_bound))];
 
@@ -696,30 +699,29 @@ if step(5)
         volume(negA_ind) = 10.^(1.4225*log10(scatter_value(negA_ind)./bead_value) + 1.1432);
         volume = real(volume);
 
-        vol_notes = {strcat('calibrated: ', string(datetime())); strcat('using SSC-', DIM, ' and GL1 Linear Scale Fit: right bound ', num2str(r_bound), 'intercept ', num2str(intercept), 'slope ', num2str(slope));
+        vol_notes = {strcat('calibrated: ', string(datetime())); strcat('using SSC-', p.SSCDIM, ' and GL1 Linear Scale Fit: right bound ', num2str(r_bound), 'intercept ', num2str(intercept), 'slope ', num2str(slope));
             volumestring};
-
+        
         save([classfilename], 'class', 'notes', 'volume', 'ssc_value', 'vol_notes', 'bead_file', 'bead_value', 'negA_ind', 'file_hv')
 
-
-        for c = 1:6
+        for c = 1:max(class) %  6
             median_volumes(counti, c) = nanmedian(volume(class == c));
         end
 
-    end
+        end
 
-    save([saverpath '/table.mat'], 'joint_table')
+    save([[p.classpath 'calibration'] '/table.mat'], 'joint_table')
+
+%%%%FIX if we want these values !!! gated_table and joint_table don't match
+    % gated_table.median_volumes_euk = median_volumes(:,1);
+    % gated_table.median_volumes_syn = median_volumes(:,2);
+    % gated_table.median_volumes_bact = median_volumes(:,3);
+    % gated_table.median_volumes_pro = median_volumes(:,4);
+    % gated_table.median_volumes_low_pe_euk = median_volumes(:,5);
+    % gated_table.median_volumes_high_pe_euk = median_volumes(:,6);
 
 
-    gated_table.median_volumes_euk = median_volumes(:,1);
-    gated_table.median_volumes_syn = median_volumes(:,2);
-    gated_table.median_volumes_bact = median_volumes(:,3);
-    gated_table.median_volumes_pro = median_volumes(:,4);
-    gated_table.median_volumes_low_pe_euk = median_volumes(:,5);
-    gated_table.median_volumes_high_pe_euk = median_volumes(:,6);
-
-
-    save([p.outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'cut_off_pro_pop');
+  %  save([p.outpath '\Gated_Table.mat'], 'gated_table', 'no_aws_files', 'cut_off_pro_pop');
 
     clearvars -except cruise step p
 
@@ -779,14 +781,14 @@ if step(6)
 
         temp = gated_table(G == g, :);
 
-        CNTable.latitude(g) = temp.Latitude(1);
-        CNTable.longitude(g) = temp.Longitude(1);
+        CNTable.latitude(g) = temp.latitude(1);
+        CNTable.longitude(g) = temp.longitude(1);
         CNTable.nearest_station(g) = temp.nearest_station(1);
         CNTable.salinity(g) = temp.salinity(1);
         CNTable.potemp090c(g) = temp.potemp090c(1);
         CNTable.depth_m(g) = temp.depth_m(1);
         CNTable.date_sampled(g) = temp.date_sampled(1);
-        CNTable.date_processed(g) = temp.Date_processed(1);
+        CNTable.date_processed(g) = temp.date_processed(1);
         if ismember('r2r_event', temp.Properties.VariableNames)
             CNTable.r2r_event(g) = temp.r2r_event(1);
         end
@@ -821,16 +823,16 @@ if step(6)
             if use_euk_for_syn
                 CNTable.Synfile(g) = temp.fcslist(ind);
                 syncol(g) = temp.Syn_conc(ind);
-                vols(g, 2) = temp.median_volumes_syn(ind);
+                %vols(g, 2) = temp.median_volumes_syn(ind);
 
             end
             CNTable.Eukfile(g) = temp.fcslist(ind);
             eukcol(g) = temp.Euk_conc(ind);
             lp_eukcol(g) = temp.LowP_Euk_conc(ind);
             hp_eukcol(g) = temp.HighP_Euk_conc(ind);
-            vols(g, 1) = temp.median_volumes_euk(ind);
-            vols(g, 5) = temp.median_volumes_low_pe_euk(ind);
-            vols(g, 6) = temp.median_volumes_high_pe_euk(ind);
+            %vols(g, 1) = temp.median_volumes_euk(ind);
+            %vols(g, 5) = temp.median_volumes_low_pe_euk(ind);
+            %vols(g, 6) = temp.median_volumes_high_pe_euk(ind);
         elseif ~isempty(ind) %if more than 1, get most recent
             timesince = [];
             for f = 1:length(ind)
@@ -901,7 +903,7 @@ if step(6)
             %we want to add prochloro
             baccol(g) = temp.Bact_incl_pro_conc(ind);
 
-            vols(g, 3) = temp.median_volumes_bact(ind);
+            %vols(g, 3) = temp.median_volumes_bact(ind);
 
         elseif ~isempty(ind) %if more than 1, get most recent
             timesince = [];
@@ -942,7 +944,7 @@ if step(6)
 
     save([p.outpath 'SummaryTable.mat'], 'CNTable')
 
-    clearvars -except cruise step
+    clearvars -except cruise step p
 
 end
 
@@ -966,7 +968,7 @@ if step(7)
     end
 
     EDI_table = table(CNTable.cruise, CNTable.cast, CNTable.niskin, CNTable.latitude, CNTable.longitude, CNTable.depth_m, CNTable.salinity, CNTable.potemp090c); %, CNTable.r2r_event);
-    EDI_table.Properties.VariableNames = {'cruise'; 'cast'; 'niskin'; 'latitude'; 'longitude'; 'depth_m'; 'salinity'; 'potential_temperature_c'; 'r2r_event'};
+    EDI_table.Properties.VariableNames = {'cruise'; 'cast'; 'niskin'; 'latitude'; 'longitude'; 'depth_m'; 'salinity'; 'potential_temperature_c'}; %'r2r_event'};
 
     EDI_table.cruise = string(EDI_table.cruise); %helpful for merging tables when cruises are different lengtths
 
@@ -980,8 +982,8 @@ if step(7)
     end
 
 
-    dates2 = cell2mat(CNTable.date_processed);
-    EDI_table.date_processed = datetime(dates2, 'Format', 'yyyy-MM-dd');
+    %dates2 = cell2mat(CNTable.date_processed);
+    EDI_table.date_processed = datetime(CNTable.date_processed, 'Format', 'yyyy-MM-dd');
 
 
     % Go back to class files using Gated_table
@@ -1013,10 +1015,10 @@ if step(7)
             gind = find(strcmp(gated_table.fcslist, filename));
 
 
-            EDI_table.syn_cells_per_ml(i) = sum(C.class==2)./gated_table.Vol_analyzed_ml(gind);
-            EDI_table.syn_biovolume_concentration(i) = nansum(volume(C.class==2))./gated_table.Vol_analyzed_ml(gind);
-            EDI_table.syn_carbon_concentration(i) = nansum(carbon(C.class==2))./gated_table.Vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
-            EDI_table.syn_volume_analyzed_ml(i) = gated_table.Vol_analyzed_ml(gind);
+            EDI_table.syn_cells_per_ml(i) = sum(C.class==2)./gated_table.vol_analyzed_ml(gind);
+            EDI_table.syn_biovolume_concentration(i) = nansum(volume(C.class==2))./gated_table.vol_analyzed_ml(gind);
+            EDI_table.syn_carbon_concentration(i) = nansum(carbon(C.class==2))./gated_table.vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
+            EDI_table.syn_volume_analyzed_ml(i) = gated_table.vol_analyzed_ml(gind);
             EDI_table.syn_filename(i) = CNTable.Synfile(i);
 
         else
@@ -1074,38 +1076,38 @@ if step(7)
             diam = (volume*3/4/pi).^(1/3)*2; %equivalent spherical diam, micrometers
 
             %first < 2
-            bin_particle_ind = find(diam'<=2 & C.class==1)';
+            bin_particle_ind = find(diam<=2 & C.class==1)';
 
-            EDI_table.redeuk_leq_2um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.Vol_analyzed_ml(gind); %counts over volume
-            EDI_table.redeuk_leq_2um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind);
-            EDI_table.redeuk_leq_2um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
+            EDI_table.redeuk_leq_2um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.vol_analyzed_ml(gind); %counts over volume
+            EDI_table.redeuk_leq_2um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.vol_analyzed_ml(gind);
+            EDI_table.redeuk_leq_2um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
 
             % <= 3
-            bin_particle_ind = find(diam'<=3 & C.class==1)';
-            EDI_table.redeuk_leq_3um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.Vol_analyzed_ml(gind); %counts over volume
-            EDI_table.redeuk_leq_3um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind);
-            EDI_table.redeuk_leq_3um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
+            bin_particle_ind = find(diam<=3 & C.class==1)';
+            EDI_table.redeuk_leq_3um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.vol_analyzed_ml(gind); %counts over volume
+            EDI_table.redeuk_leq_3um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.vol_analyzed_ml(gind);
+            EDI_table.redeuk_leq_3um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
 
             % <= 5
-            bin_particle_ind = find(diam'<=5 & C.class==1)';
-            EDI_table.redeuk_leq_5um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.Vol_analyzed_ml(gind); %counts over volume
-            EDI_table.redeuk_leq_5um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind);
-            EDI_table.redeuk_leq_5um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
+            bin_particle_ind = find(diam<=5 & C.class==1)';
+            EDI_table.redeuk_leq_5um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.vol_analyzed_ml(gind); %counts over volume
+            EDI_table.redeuk_leq_5um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.vol_analyzed_ml(gind);
+            EDI_table.redeuk_leq_5um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
 
             % <= 10
-            bin_particle_ind = find(diam'<=10 & C.class==1)';
-            EDI_table.redeuk_leq_10um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.Vol_analyzed_ml(gind); %counts over volume
-            EDI_table.redeuk_leq_10um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind);
-            EDI_table.redeuk_leq_10um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
+            bin_particle_ind = find(diam<=10 & C.class==1)';
+            EDI_table.redeuk_leq_10um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.vol_analyzed_ml(gind); %counts over volume
+            EDI_table.redeuk_leq_10um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.vol_analyzed_ml(gind);
+            EDI_table.redeuk_leq_10um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
 
             % <= 20
-            bin_particle_ind = find(diam'<=20 & C.class==1)';
-            EDI_table.redeuk_leq_20um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.Vol_analyzed_ml(gind); %counts over volume
-            EDI_table.redeuk_leq_20um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind);
-            EDI_table.redeuk_leq_20um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.Vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
+            bin_particle_ind = find(diam<=20 & C.class==1)';
+            EDI_table.redeuk_leq_20um_cells_per_ml(i) = length(bin_particle_ind)./gated_table.vol_analyzed_ml(gind); %counts over volume
+            EDI_table.redeuk_leq_20um_biovolume_concentration(i) = nansum(volume(bin_particle_ind))./gated_table.vol_analyzed_ml(gind);
+            EDI_table.redeuk_leq_20um_carbon_concentration(i) = nansum(carbon(bin_particle_ind))./gated_table.vol_analyzed_ml(gind)./1000; %divide by 1000 to get micrograms per Liter
 
 
-            EDI_table.redeuk_volume_analyzed_ml(i) = gated_table.Vol_analyzed_ml(gind);
+            EDI_table.redeuk_volume_analyzed_ml(i) = gated_table.vol_analyzed_ml(gind);
             EDI_table.redeuk_filename(i) = CNTable.Eukfile(i);
 
         else
@@ -1166,7 +1168,7 @@ if step(7)
             %doing carbon concentration per cell conversion based on Lee & Furhman 1987
             EDI_table.hetprok_carbon_concentration(i) = EDI_table.hetprok_cells_per_ml(i).* 20  * 1e-6; %to convert to micrograms per liter
 
-            EDI_table.hetprok_volume_analyzed_ml(i) = gated_table.Vol_analyzed_ml(gind);
+            EDI_table.hetprok_volume_analyzed_ml(i) = gated_table.vol_analyzed_ml(gind);
             EDI_table.hetprok_filename(i) = CNTable.BacteriaFile(i);
 
         else

@@ -133,7 +133,7 @@ switch cruise
     case 'AR43' 
         p.uw_fullname = '\\sosiknas1\Lab_data\OTZ\20200311_AR43\underway\proc\ar43_underway.csv';  
     otherwise %DEFAULT, NES LTER api
-        p.uw_fullname = ['https://nes-lter-data.whoi.edu/api/underway/' lower(cruise) '.csv'];
+        p.uw_fullname = ['https://nes-lter-api.whoi.edu/api/underway/' lower(cruise) '.csv'];
 end
 
 %% Nothing below this section should change between cruises!

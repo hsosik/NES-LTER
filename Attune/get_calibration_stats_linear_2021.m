@@ -41,8 +41,8 @@ end
          qc_warning = 0; 
 
         %load corresponding fcs file
-         filename = [fpath, regexprep(classlist(counti).name, '.mat', '.fcs')];
-         [fcsdat,fcshdr] = fca_readfcs(filename);
+         filename = regexprep(classlist(counti).name, '.mat', '.fcs');
+         [fcsdat,fcshdr] = fca_readfcs([fpath filename]);
          
                   
         ssc_ch_num = strmatch(['SSC-' DIM], {fcshdr.par.name});
@@ -86,7 +86,7 @@ end
     new_ssc_vals(t(1:2:end)) = 10.^[intercept + slope.*(gl1_vals(t(1:2:end)))];
     
     calibrate_info = table; 
-    calibrate_info.filename = classlist(counti).name;
+    calibrate_info.filename = {filename}; %{classlist(counti).name};
     calibrate_info.ssc_ch_num = ssc_ch_num; 
     calibrate_info.qc = qc_warning; 
     calibrate_info.intercept = intercept; 
@@ -94,7 +94,6 @@ end
     calibrate_info.rsquared = LM.Rsquared.Adjusted; 
     calibrate_info.numpoints = length(ind_to_fit); 
     calibrate_info.rightbound = r_bound; 
-    
     joint_table = [joint_table; calibrate_info];
 
         figure(98), clf
