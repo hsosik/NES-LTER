@@ -58,8 +58,11 @@ for filecount = 1:height(mergeT)
   %   itemp = ssc_bdnorm>1 & ssc_bdnorm<2 & gl1_bdnorm>0;
      itemp = fcsdat.(gl1str) > GL1_overlap_min &  fcsdat.(gl1str) < GL1_overlap_max;
      sscmerge_bdnorm(itemp) = mean([ssc_bdnorm(itemp) gl1_bdnorm(itemp)],2);
-     c.merge_info = array2table([GL1_overlap_min GL1_overlap_max mean(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp)) median(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp))], 'variablenames', {'GL1min' 'GL1max' 'mean_SSC-to-GL1_overlap' 'mode_SSC-to-GL1_overlap'});
-        volume_cubic_micron = NaN(size(sscmerge_bdnorm)); 
+     %c.merge_info = array2table([GL1_overlap_min GL1_overlap_max mean(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp)) median(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp))], 'variablenames', {'GL1min' 'GL1max' 'mean_SSC-to-GL1_overlap' 'median_SSC-to-GL1_overlap'});
+     mergeT.mean_SSC2GL1_overlap(filecount) = mean(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp));
+     mergeT.median_SSC2GL1_overlap(filecount) = median(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp));
+     mergeT.n_overlap(filecount) = numel(itemp);
+     volume_cubic_micron = NaN(size(sscmerge_bdnorm)); 
         volume_cubic_micronH = volume_cubic_micron;
         ii = sscmerge_bdnorm>0;
         prelim_flag = 0;
@@ -90,3 +93,4 @@ for filecount = 1:height(mergeT)
         save([p.classpath regexprep(mergeT.filename{filecount},'.fcs', '.mat')],'-struct', "c")
 %    end
 end
+save([p.classpath 'mergeTable'], "mergeT", "GL1_overlap_min", "GL1_overlap_max")
