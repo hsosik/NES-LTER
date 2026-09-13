@@ -93,4 +93,4 @@ for filecount = 1:height(mergeT)
         save([p.classpath regexprep(mergeT.filename{filecount},'.fcs', '.mat')],'-struct', "c")
 %    end
 end
-save([p.classpath 'mergeTable'], "mergeT", "GL1_overlap_min", "GL1_overlap_max")
+save([p.outpath 'mergeTable'], "mergeT", "GL1_overlap_min", "GL1_overlap_max")
