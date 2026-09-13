@@ -59,6 +59,7 @@ for filecount = 1:height(mergeT)
      itemp = fcsdat.(gl1str) > GL1_overlap_min &  fcsdat.(gl1str) < GL1_overlap_max;
      sscmerge_bdnorm(itemp) = mean([ssc_bdnorm(itemp) gl1_bdnorm(itemp)],2);
      %c.merge_info = array2table([GL1_overlap_min GL1_overlap_max mean(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp)) median(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp))], 'variablenames', {'GL1min' 'GL1max' 'mean_SSC-to-GL1_overlap' 'median_SSC-to-GL1_overlap'});
+     itemp = itemp & fcsdat.("SSC-H")./fcsdat.("BL3-H")<100; %get stats without non-chl triggers with odd SSC-GL1 relationship
      mergeT.mean_SSC2GL1_overlap(filecount) = mean(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp));
      mergeT.median_SSC2GL1_overlap(filecount) = median(fcsdat.(sscstr)(itemp)./fcsdat.(gl1str)(itemp));
      mergeT.n_overlap(filecount) = numel(itemp);
