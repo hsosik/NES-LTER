@@ -88,7 +88,7 @@ for count = 1:stepsize:length(filelist)
     fcsdat(fcsdat(:,ssc_ch)<0, ssc_ch) = cf*fcsdat(fcsdat(:,ssc_ch)<0, ssch);
     
     % call the function to make the plots and getframe     
-    eval(['Frame = ', framemaker, '(fcsdat, fcshdr, class, channels, QC_flags(count))']);
+    eval(['Frame = ', framemaker, '(fcsdat, fcshdr, class, channels, QC_flags(count));']);
             
     % add to movie
     writeVideo(v, Frame);
