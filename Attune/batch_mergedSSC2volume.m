@@ -48,8 +48,13 @@ for filecount = 1:height(mergeT)
         %mergeT.filetime(filecount) = datetime([fcshdr.date, ' ', fcshdr.starttime]);
         
         bdrow = find(mergeT.SSC_hv(filecount)==beadSSCmean.SSC_hv);  %FIX THIS LATER IF KEEPING
-        ssc_bdnorm = fcsdat.(sscstr)./beadSSCmean.mean_SSCA_1micron(bdrow); % *.8; %
-        gl1_bdnorm = fcsdat.(gl1str)./beadGL1mean.mean_GL1A_1micron(bdrow); % *.4;  %.42;  %HACK FIX!!!
+        if p.SSCDIM=='A'
+            ssc_bdnorm = fcsdat.(sscstr)./beadSSCmean.mean_SSCA_1micron(bdrow); % *.8; %
+            gl1_bdnorm = fcsdat.(gl1str)./beadGL1mean.mean_GL1A_1micron(bdrow); % *.4;  %.42;  %HACK FIX!!!
+        else
+            ssc_bdnorm = fcsdat.(sscstr)./beadSSCmean.mean_SSCH_1micron(bdrow); % *.8; %
+            gl1_bdnorm = fcsdat.(gl1str)./beadGL1mean.mean_GL1H_1micron(bdrow); % *.4;  %.42;  %HACK FIX!!!
+        end
         sscmerge_bdnorm = ssc_bdnorm;
         itemp = fcsdat.(gl1str) > GL1_overlap_max;
 %     itemp = ssc_bdnorm>2 & gl1_bdnorm>0;
@@ -76,8 +81,10 @@ for filecount = 1:height(mergeT)
         ii = sscmerge_bdnorm>0;
         prelim_flag = 0;
         [volume_cubic_micron(ii) vol_func_string] = Attune_SC2vol(sscmerge_bdnorm(ii),strcat('SSC-',p.SSCDIM), prelim_flag);
-        ii = fcsdat.(sscstr)<SSCAmin; %for small signals use SSC-H instead (A goes negative)
-        volume_cubic_micron(ii) = Attune_SC2vol(fcsdat.("SSC-H")(ii)./beadSSCmean.mean_SSCH_1micron(bdrow),strcat('SSC-H'),0);
+        if p.SSCDIM=='A'
+            ii = fcsdat.(sscstr)<SSCAmin; %for small signals use SSC-H instead (A goes negative)
+            volume_cubic_micron(ii) = Attune_SC2vol(fcsdat.("SSC-H")(ii)./beadSSCmean.mean_SSCH_1micron(bdrow),strcat('SSC-H'),0);
+        end
         % sscmerge = fcsdat.(sscstr);
         % itemp = fcsdat.(gl1str)>gl1max | fcsdat.(sscstr)>sscmax; %use merged GL1 for large signals
         % sscmerge(itemp) = fcsdat.(gl1str)(itemp)*mergeT.slope_median(filecount); 
