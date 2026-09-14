@@ -86,7 +86,7 @@ end
     %check OD2setting above in step 2 settings
     
 %step(4) = 0; %set up calibration, only if OD2setting is 'GL1'
-    p.SSCDIM = 'A'; %needed for Step 4 & 5, SSCDIM = 'A' or 'H'
+    p.SSCDIM = 'H'; %needed for Step 4 & 5, SSCDIM = 'A' or 'H'
     
 %step(5) = 0; %apply calibration to add volume to class files 
     %Check SSCDIM above anpd OD2setting
@@ -249,6 +249,8 @@ end
 %% STEP 8 
 % make a movie 
 if step(8)
+    figure('WindowState','maximized')
+    warning off
     attune_lter_moviemaker(p.fpath, p.classpath, p.OD2setting, p.framemaker, p.moviechannels, p.stepsize)
 end
 
