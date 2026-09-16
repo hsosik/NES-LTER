@@ -196,7 +196,7 @@ end
 
 %% STEP 2
 if step(2)
-    test_class_assignments(p)
+    test_class_assignments(p, FCSfileinfo)
 end
 
 %% STEP 3
@@ -327,7 +327,7 @@ end
         disp(filename)
         [fcsdat,fcshdr] = fca_readfcs(filename);
         [~,fname] = fileparts(filename);
-        class = eval([p.assign_class_function '( fcsdat, fcshdr, 0, fname, FCSfileinfo.QC_flag(count), FCSfileinfo.matdate_start(count) );']); 
+        class = eval([p.assign_class_function '( fcsdat, fcshdr, 0, fname, FCSfileinfo.QC_flag(count), FCSfileinfo.matdate_start(count), FCSfileinfo.pro_measured(count) );']); 
         clear fname
         notes = ['Class 1 = Euk, Class 2 = Syn, Class 3 = lowPEeuks, Class 4 = hiPEeuks, Class 5 = Syn_euk_coincident1, Class 7 = Pro, Class 0 = junk; Cell volume in cubic microns;',  p.assign_class_function, string(datetime)];
         

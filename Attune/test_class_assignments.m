@@ -1,4 +1,4 @@
-function [] = test_class_assignments(p)
+function [] = test_class_assignments(p, FCSfileinfo)
 %test class assignments for a cruise WITHOUT overwriting class data 
 
 % basepath = '\\sosiknas1\Lab_data\Attune\cruise_data\20230807_EN706'; 
@@ -72,7 +72,7 @@ end
         disp(filename)
         [fcsdat,fcshdr] = fca_readfcs(filename);
         [~,fname] = fileparts(filename);
-        [class, bounds] = eval([p.assign_class_function '( fcsdat, fcshdr, 0, fname, FCSfileinfo.QC_flag(count), FCSfileinfo.matdate_start(count) );']); 
+        [class, bounds] = eval([p.assign_class_function '( fcsdat, fcshdr, 0, fname, FCSfileinfo.QC_flag(count), FCSfileinfo.matdate_start(count), FCSfileinfo.pro_measured(count) );']); 
         clear fname
    
         
@@ -80,15 +80,15 @@ end
             ssc_ch = strmatch([ssc_name '-A'], {fcshdr.par.name});
             ssch = strmatch([ssc_name '-H'], {fcshdr.par.name});
             
-            % correct for negative SSC-A values
+            % correct for negative SSC-A values////
             cf = fitlm(fcsdat(fcsdat(:,ssch)<1000,ssch), fcsdat(fcsdat(:,ssch)<1000, ssc_ch), 'Intercept', false);
             cf = cf.Coefficients.Estimate;
             fcsdat(fcsdat(:,ssc_ch)<0, ssc_ch) = cf*fcsdat(fcsdat(:,ssc_ch)<0, ssch);
             
             % call the function to make the plots and getframe
-            eval(['Frame = ', p.framemaker, '(fcsdat, fcshdr, class, p.moviechannels, QC_flags(count), bounds)']);
-     
+            eval(['Frame = ', p.framemaker, '(fcsdat, fcshdr, class, p.moviechannels, QC_flags(count), bounds);']);
 
-            set(gcf, 'position', [2.1483e+03 -187 905.3333 590.6667])
+            %set(gcf, 'position', [2.1483e+03 -187 905.3333 590.6667])
+            set(gcf, 'WindowState', 'maximized')   
     end
 end
