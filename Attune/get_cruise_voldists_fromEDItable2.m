@@ -32,8 +32,12 @@ fname = fname.name;
     end
     
   % Get cruise name from first filename
-    cruisename =  split(T.Filename{1}, '_'); 
+  cruisename =  split(T.Filename{1}, '_'); 
+  if startsWith(T.Filename{1}, 'NES')  
     cruisename = cruisename{2}; 
+  else
+    cruisename = cruisename{1}; %case for HRS2609 missing leading NESLTER_
+  end
 
     %First case where attune tables are old, set quality flag to 0 if bad, 1 if good 
 %     Exist_Column = strcmp('QC_flowrate_median',T.Properties.VariableNames); 
@@ -82,9 +86,13 @@ fname = fname.name;
         end
     
      elseif startsWith(cruisename, 'HRS')
+         if ismember('latitude_deg', T.Properties.VariableNames)
             lat = T.latitude_deg; 
             lon = T.longitude_deg; 
-
+         else
+             lat = T.dec_lat;
+             lon = T.dec_lon;
+         end
     else %other cruises
         Exist_Column1 = strcmp('gps_furuno_latitude', T.Properties.VariableNames); %use gps-furuno if quality flag is not 0
         Exist_Column2 = strcmp('dec_lat',T.Properties.VariableNames); 
@@ -216,7 +224,10 @@ fname = fname.name;
         end
 
         if startsWith(cruisename, 'HRS')
+         if ismember('qsr_s_n_10367', T.Properties.VariableNames)
             rad_sw = T.qsr_s_n_10367; %pretty sure this sunlight data, not sure what units
+         else
+            rad_sw = T. par_umol_m2_s; 
         end
 
         T.rad_sw = rad_sw; 
@@ -238,14 +249,14 @@ parfor i = 1:height(T)
 
    S = load([classpath regexprep(T.Filename{i}, 'fcs', 'mat')]);
 
-   if ~isfield(S, 'volume')
+   if ~isfield(S, 'volume_cubic_microns')
        continue
    end
 
-   Svol = real(S.volume); %having some issues with imaginary numbers
+   Svol = real(S.volume_cubic_microns); %having some issues with imaginary numbers
    %Svol(S.negA_ind) = NaN; % don't include converted volumes, they aren't great. 
    eukdist = histcounts(Svol(S.class == 1), euk_volbins); 
-   syndist = histcounts(Svol(S.class == 2), syn_volbins); 
+   syndist = histcounts(Svol(S.class == 2), syn_volbins);    
    
    tempeuk(i, :) = eukdist; 
    tempsyn(i,:) = syndist; 
