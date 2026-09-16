@@ -52,6 +52,7 @@ for filecount = 1:height(mergeT)
             ssc_bdnorm = fcsdat.(sscstr)./beadSSCmean.mean_SSCA_1micron(bdrow); % *.8; %
             gl1_bdnorm = fcsdat.(gl1str)./beadGL1mean.mean_GL1A_1micron(bdrow); % *.4;  %.42;  %HACK FIX!!!
         else
+            fcsdat.(sscstr)(fcsdat.(sscstr)==0) = 1;
             ssc_bdnorm = fcsdat.(sscstr)./beadSSCmean.mean_SSCH_1micron(bdrow); % *.8; %
             gl1_bdnorm = fcsdat.(gl1str)./beadGL1mean.mean_GL1H_1micron(bdrow); % *.4;  %.42;  %HACK FIX!!!
         end
