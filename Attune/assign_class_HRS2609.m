@@ -110,15 +110,16 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
         prominY = 15;
         promaxY = 400;
         pro_main_gate = [prominX promaxY;  prominX prominY; promaxX prominY; promaxX promaxY]; %gates Pro on GL2/BL3 plot
-        prominX = 200;
-        promaxX = 4000;
-        prominY = 0;
-        promaxY = minY; %bottom on syn on PE % 400; 
-        pro_main_gate_PEvsSSC = [prominX promaxY;  prominX prominY; promaxX prominY; promaxX promaxY]; %gates Pro on GL2/BL3 plot
+        prominX2 = 200;
+        promaxX2 = 4000;
+        prominY2 = 0;
+        promaxY2 = minY; %bottom on syn on PE % 400; 
+        pro_main_gate_PEvsSSC = [prominX2 promaxY2;  prominX2 prominY2; promaxX2 prominY2; promaxX2 promaxY2]; %gates Pro on GL2/BL3 plot
         pro_2nd_gate = [400 0; 400 800; 8000 8000; 8000 0]; %gates Pro on GL2/SSC plot
 
         in_pro_chl =inpolygon(fcsdatlog.(par_eukX),fcsdatlog.(par_eukY),log10(pro_main_gate(:,1)),log10(pro_main_gate(:,2)));
-        in_pro_ssc = inpolygon(fcsdatlog.(par_synX),fcsdatlog.(par_synY),log10(pro_main_gate_PEvsSSC(:,1)),log10(pro_main_gate_PEvsSSC(:,2)));
+        %in_pro_ssc = inpolygon(fcsdatlog.(par_synX),fcsdatlog.(par_synY),log10(pro_main_gate_PEvsSSC(:,1)),log10(pro_main_gate_PEvsSSC(:,2)));
+        in_pro_ssc = fcsdatlog.(par_synX)>prominX2 & fcsdatlog.(par_synX)>prominX2 & fcsdatlog.(par_synY)>prominY2 & fcsdatlog.(par_synY)>promaxY2;
         in_pro = in_pro_chl & in_pro_ssc;
         %in_pro = single(in_pro);
         %disregard pro gating if it is spread out along the scatter channel,
