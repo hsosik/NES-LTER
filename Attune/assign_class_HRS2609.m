@@ -119,7 +119,7 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
 
         in_pro_chl =inpolygon(fcsdatlog.(par_eukX),fcsdatlog.(par_eukY),log10(pro_main_gate(:,1)),log10(pro_main_gate(:,2)));
         %in_pro_ssc = inpolygon(fcsdatlog.(par_synX),fcsdatlog.(par_synY),log10(pro_main_gate_PEvsSSC(:,1)),log10(pro_main_gate_PEvsSSC(:,2)));
-        in_pro_ssc = fcsdatlog.(par_synX)>prominX2 & fcsdatlog.(par_synX)>prominX2 & fcsdatlog.(par_synY)>prominY2 & fcsdatlog.(par_synY)>promaxY2;
+        in_pro_ssc = fcsdat.(par_synX)>prominX2 & fcsdat.(par_synX)<promaxX2 & fcsdat.(par_synY)>prominY2 & fcsdat.(par_synY)<promaxY2;
         in_pro = in_pro_chl & in_pro_ssc;
         %in_pro = single(in_pro);
         %disregard pro gating if it is spread out along the scatter channel,
