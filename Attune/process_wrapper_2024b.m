@@ -1,4 +1,4 @@
-function process_wrapper_2024(cruise, steps2do)
+function process_wrapper_2024(cruise, steps2do, assign_class_function)
 % function process_wrapper_2024(cruise, steps2do)
 % e.g., 
 %   process_wrapper_2024('EN661', [1 3]) %for just steps 1 and 3
@@ -70,7 +70,11 @@ end
 
 %step(2) = 0; %make new class files
     p.dont_overwrite_volumes = 0; %change classes without changing volume estimates
-    p.assign_class_function = ['assign_class_' cruise]; %'assign_class_AR43'; 
+    if exist('assign_class_function', 'var')
+        p.assign_class_function = assign_class_function;
+    else
+        p.assign_class_function = ['assign_class_' cruise]; %'assign_class_AR43'; 
+    end
     p.filetype2exclude = {'fcb_bead'; 'FCB_bead'; 'bead';  'Cast'; '(lab test)'; 'Dockwater'; 'discrete'; 'Rinses'; "Filter config"; "Cultures"; "cast"; "test"; "08Aug2023"}; % "Dilution";'test'; needed for Step2
 %    OD2setting = 'GL1'; %where was the OD2 filter on this cruise? 'SSC', 'GL1', or 'None'    
     p.appendonly = 0; %set to 1 if we don't want to change any existing class files.
