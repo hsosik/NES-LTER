@@ -52,29 +52,18 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
 
     if pro_measured %phase == 2
     eukminX =  3000;%2000;%5000;%5e3; 
-    eukcorner = [10000 900]; %[20000 1200]; 
+    eukcorner = [30000 900]; %EP had at 10000...but needs to go up instead [20000 1200]; 
     eukmaxY = 4e4; 
     eukmaxYlower = 400;%300; 
     gl2_noise_thresh = 1000;%10000; %basically synminY 
     synGL1H2BL3Hoffset = -.2; %PE to CHL .4 on RB, .3 on TN, .8?
     end
   
-     %syn main gate
+    %syn main gate
     gsyn_main_gate = [synminX gl2_noise_thresh ; synXcorners(1) gl2_noise_thresh; synXcorners(2) synmaxY; synminX synmaxY]; %[Xmin Ymin; Xmax Ymax]
     %euk gate 
     geuk_main_gate = [eukminX eukmaxYlower;  eukcorner(1) eukcorner(2); 1100000 eukmaxY; 1100000 1; eukminX 1];
-    
-    %pro main gates
-    % if pro_measured % phase == 2
-    %        % next 4 lines added for case with Pro.
-    % prominX = 200;  
-    % promaxX = 4000;
-    % prominY = 15;
-    % promaxY = 400;
-    % 
-    % pro_main_gate = [prominX promaxY;  prominX prominY; promaxX prominY; promaxX promaxY]; %gates Pro on GL2/BL3 plot
-    % pro_2nd_gate = [400 0; 400 800; 8000 8000; 8000 0]; %gates Pro on GL2/SSC plot
-    % end
+
     % 
     %find indices of cells within the gates
     fcsdatlog = log10(fcsdat); %use log10 to make sure inpolygon corresponds to view of polygon on log-log plots
@@ -88,8 +77,12 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
     minY = prctile(fcsdat{in_syn,par_synY},5)*.3; maxY = prctile(fcsdat{in_syn,par_synY},90)*10;
  
     %eukminX = prctile(fcsdat(in_euk,npar_eukX),10)*.3;
-    eukminX = prctile(fcsdat{in_euk,par_eukX},10)*.3;
-    eukminX = max([eukminX 500]); %Pretty sure its always eukminX
+    %eukminX = prctile(fcsdat{in_euk,par_eukX},10)*.3;
+    %eukminX = max([eukminX 500]); %Pretty sure its always eukminX
+    b = 3:.2:4.5; %log bin edges
+    [m f] = mode(discretize(log10(fcsdat.(par_eukX)(in_euk)), b,(b(1:end-1))+.05)); %log mode
+    eukminX = prctile(fcsdat{in_euk&fcsdatlog.(par_eukX)>(m-.5),par_eukX},2)/2;
+
     minY = max([minY 100]); %not below trigger level for this cruise
 
     %make new gates with adapted boundaries
