@@ -68,6 +68,8 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
     %find indices of cells within the gates
     fcsdatlog = log10(fcsdat); %use log10 to make sure inpolygon corresponds to view of polygon on log-log plots
     fcsdatlog{:,:} = real(fcsdatlog{:,:});
+    a = fcsdatlog{:,:}; a(isinf(a)) = log10(1); %get rid of the -inf from raw = 0
+    fcsdatlog{:,:} = a;
     in_euk = inpolygon(fcsdatlog.(par_eukX),fcsdatlog.(par_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog.(par_synX),fcsdatlog.(par_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
     
@@ -98,11 +100,20 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
     in_euk = inpolygon(fcsdatlog.(par_eukX),fcsdatlog.(par_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog.(par_synX),fcsdatlog.(par_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
     
-    eukdist = mahal(fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}},fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}});
     in_euk = find(in_euk); 
-    yt = prctile(fcsdatlog.('BL3-H')(in_euk & eukdist<10),50);
-    xt = prctile(fcsdatlog.('SSC-H')(in_euk & eukdist<10),50);
-    in_euk(eukdist>8 & fcsdatlog.('BL3-H')(in_euk)<yt & fcsdatlog.('SSC-H')(in_euk)<xt) = []; %not euks 
+    eukdist = mahal(fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}},fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}});
+    %ind = eukdist<10;
+    %ind_tight = eukdist<8 & fcsdatlog.('BL3-H')(in_euk)<yt & fcsdatlog.('SSC-H')(in_euk)<xt;
+    yt = prctile(fcsdatlog.('BL3-H')(in_euk(eukdist<10)),10);
+    xt = prctile(fcsdatlog.('SSC-H')(in_euk(eukdist<10)),10);
+    ind = fcsdatlog.('BL3-H')(in_euk)<yt+1 & fcsdatlog.('SSC-H')(in_euk)<xt+1; %bottom decades
+    eukdist = mahal(fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}},fcsdatlog{in_euk(ind),{'SSC-H' 'BL3-A'}});
+    ind = eukdist<3 & fcsdatlog.('BL3-H')(in_euk)<yt+1 & fcsdatlog.('SSC-H')(in_euk)<xt+1; %bottom decades
+    eukdist = mahal(fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}},fcsdatlog{in_euk(ind),{'SSC-H' 'BL3-A'}});
+    yt = prctile(fcsdatlog.('BL3-H')(in_euk(eukdist<10)),80);
+    xt = prctile(fcsdatlog.('SSC-H')(in_euk(eukdist<10)),80);
+   
+    in_euk(eukdist>15 & fcsdatlog.('BL3-H')(in_euk)<yt ); %& fcsdatlog.('SSC-H')(in_euk)<xt) = []; %not euks 
 
     if pro_measured %exist("pro_main_gate", "var")
 
@@ -133,7 +144,8 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
         else
            %one more step to clean up pro cluster
            prodist = mahal(fcsdatlog{in_pro,{'SSC-H' 'BL3-A'}},fcsdatlog{in_pro,{'SSC-H' 'BL3-A'}});
-            in_pro = find(in_pro); in_pro = in_pro(prodist<12); 
+           prodist = mahal(fcsdatlog{in_pro,{'SSC-H' 'BL3-A'}},fcsdatlog{in_pro(prodist<3),{'SSC-H' 'BL3-A'}});
+           in_pro = find(in_pro); in_pro = in_pro(prodist<8); 
         end
     else
         in_pro(1:length(class), :) =logical(0);
