@@ -51,7 +51,7 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
     nonsynfactorB = 6; %2.5
 
     if pro_measured %phase == 2
-    eukminX =  3000;%2000;%5000;%5e3; 
+    eukminX =  8000;%2000;%5000;%5e3; 
     eukcorner = [30000 900]; %EP had at 10000...but needs to go up instead [20000 1200]; 
     eukmaxY = 4e4; 
     eukmaxYlower = 400;%300; 
@@ -67,6 +67,7 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
     % 
     %find indices of cells within the gates
     fcsdatlog = log10(fcsdat); %use log10 to make sure inpolygon corresponds to view of polygon on log-log plots
+    fcsdatlog{:,:} = real(fcsdatlog{:,:});
     in_euk = inpolygon(fcsdatlog.(par_eukX),fcsdatlog.(par_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog.(par_synX),fcsdatlog.(par_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
     
@@ -81,7 +82,8 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
     %eukminX = max([eukminX 500]); %Pretty sure its always eukminX
     b = 3:.2:4.5; %log bin edges
     [m f] = mode(discretize(log10(fcsdat.(par_eukX)(in_euk)), b,(b(1:end-1))+.05)); %log mode
-    eukminX = prctile(fcsdat{in_euk&fcsdatlog.(par_eukX)>(m-.5),par_eukX},2)/2;
+%    eukminX = prctile(fcsdat{in_euk&fcsdatlog.(par_eukX)>(m-.5),par_eukX},2)/2;
+    eukminX = prctile(fcsdat{in_euk&fcsdatlog.(par_eukX)>(m-.5),par_eukX},2)/5;  %get too much then refine with mahal below
 
     minY = max([minY 100]); %not below trigger level for this cruise
 
@@ -95,10 +97,17 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
     % assingments for euk, syn and pro 
     in_euk = inpolygon(fcsdatlog.(par_eukX),fcsdatlog.(par_eukY),log10(geuk_main_gate(:,1)),log10(geuk_main_gate(:,2)));
     in_syn = (inpolygon(fcsdatlog.(par_synX),fcsdatlog.(par_synY),log10(gsyn_main_gate(:,1)),log10(gsyn_main_gate(:,2))));
+    
+    eukdist = mahal(fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}},fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}});
+    in_euk = find(in_euk); 
+    yt = prctile(fcsdatlog.('BL3-H')(in_euk & eukdist<10),50);
+    xt = prctile(fcsdatlog.('SSC-H')(in_euk & eukdist<10),50);
+    in_euk(eukdist>8 & fcsdatlog.('BL3-H')(in_euk)<yt & fcsdatlog.('SSC-H')(in_euk)<xt) = []; %not euks 
+
     if pro_measured %exist("pro_main_gate", "var")
 
         prominX = 200;
-        promaxX = eukminX/2; %not higher than 2x bottom of Euks on chl %4000;
+        promaxX = eukminX; %/2; %not higher than 2x bottom of Euks on chl %4000;
         prominY = 0;
         promaxY = 400;
         pro_main_gate = [prominX promaxY;  prominX prominY; promaxX prominY; promaxX promaxY]; %gates Pro on GL2/BL3 plot
@@ -114,12 +123,17 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
         in_pro_chl = fcsdat.(par_eukX)>prominX & fcsdat.(par_eukX)<promaxX & fcsdat.(par_eukY)>prominY & fcsdat.(par_eukY)<promaxY ;
         in_pro_ssc = fcsdat.(par_synX)>prominX2 & fcsdat.(par_synX)<promaxX2 & fcsdat.(par_synY)>prominY2 & fcsdat.(par_synY)<promaxY2;
         in_pro = in_pro_chl & in_pro_ssc;
+      
         %in_pro = single(in_pro);
         %disregard pro gating if it is spread out along the scatter channel,
         %probably mostly detritus
         if sum(in_pro)/sum(in_pro_chl) < .8
             %in_pro = ~logical(fcsdatlog(:,npar_synX));
             in_pro(1:length(class), :) = logical(0);
+        else
+           %one more step to clean up pro cluster
+           prodist = mahal(fcsdatlog{in_pro,{'SSC-H' 'BL3-A'}},fcsdatlog{in_pro,{'SSC-H' 'BL3-A'}});
+            in_pro = find(in_pro); in_pro = in_pro(prodist<12); 
         end
     else
         in_pro(1:length(class), :) =logical(0);
