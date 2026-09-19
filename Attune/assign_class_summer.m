@@ -110,10 +110,10 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
     eukdist = mahal(fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}},fcsdatlog{in_euk(ind),{'SSC-H' 'BL3-A'}});
     ind = eukdist<3 & fcsdatlog.('BL3-H')(in_euk)<yt+1 & fcsdatlog.('SSC-H')(in_euk)<xt+1; %bottom decades
     eukdist = mahal(fcsdatlog{in_euk,{'SSC-H' 'BL3-A'}},fcsdatlog{in_euk(ind),{'SSC-H' 'BL3-A'}});
-    yt = prctile(fcsdatlog.('BL3-H')(in_euk(eukdist<10)),80);
-    xt = prctile(fcsdatlog.('SSC-H')(in_euk(eukdist<10)),80);
+    yt = prctile(fcsdatlog.('BL3-H')(in_euk(eukdist<10)),50);
+    xt = prctile(fcsdatlog.('SSC-H')(in_euk(eukdist<10)),50);
    
-    in_euk(eukdist>15 & fcsdatlog.('BL3-H')(in_euk)<yt ); %& fcsdatlog.('SSC-H')(in_euk)<xt) = []; %not euks 
+    in_euk(eukdist>20 & fcsdatlog.('BL3-H')(in_euk)<yt ) = []; %& fcsdatlog.('SSC-H')(in_euk)<xt) = []; %not euks 
 
     if pro_measured %exist("pro_main_gate", "var")
 
@@ -144,8 +144,8 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
         else
            %one more step to clean up pro cluster
            prodist = mahal(fcsdatlog{in_pro,{'SSC-H' 'BL3-A'}},fcsdatlog{in_pro,{'SSC-H' 'BL3-A'}});
-           prodist = mahal(fcsdatlog{in_pro,{'SSC-H' 'BL3-A'}},fcsdatlog{in_pro(prodist<3),{'SSC-H' 'BL3-A'}});
-           in_pro = find(in_pro); in_pro = in_pro(prodist<8); 
+           prodist = mahal(fcsdatlog{in_pro,{'SSC-H' 'BL3-A'}},fcsdatlog{in_pro(prodist<2),{'SSC-H' 'BL3-A'}});
+           in_pro = find(in_pro); in_pro = in_pro(prodist<12); %3 and 8
         end
     else
         in_pro(1:length(class), :) =logical(0);
