@@ -8,6 +8,16 @@ function [tsg] = compile_tsg_oleander %(year2do)
 basepath = '\\sosiknas1\Lab_data\Oleander\tsg_csv\';
 flist = dir([basepath '*.csv']);
 
+disp('checking for new files to copy from vast...')
+vastpath = '\\vast\proj\scirocs-shipsdata\neptune\oleander\data\archive\';
+flist2 = dir([vastpath '\**\ol26*.csv']);
+[~,ia] = setdiff({flist2.name}, {flist.name});
+
+for ii = 1:length(ia)
+    copyfile(fullfile(flist2(ia(ii)).folder,flist2(ia(ii)).name), basepath)
+    flist = dir([basepath '*.csv']); %get the updated list
+end
+
 outfile = [basepath '\compiled_underway\'];
 if ~exist(outfile, 'dir')
     mkdir(outfile)
@@ -16,13 +26,14 @@ outfile = [outfile 'uw_compiled'];
 
 uw = readtable([basepath flist(1).name]);
 uw.Properties.VariableNames = lower(uw.Properties.VariableNames);
-for ii = 2:length(flist)
+for ii = 2:length(flist) %already read first file
     disp(ii)
     %uw = [uw; readtable([basepath flist(ii).name])];
     temp = readtable([basepath flist(ii).name], 'MissingRule','fill', 'TreatAsMissing',"NODATA");
     temp.Properties.VariableNames = lower(temp.Properties.VariableNames);
     uw = outerjoin(uw, temp, 'MergeKeys', true);
 end
+uw(isnan(uw.time_gmt),:) = [];  %somehow getting a blank row starting mid-2026
 uw.Properties.VariableNames = lower(uw.Properties.VariableNames);
 uw.datetime = datetime(uw.date_gmt, 'InputFormat', 'uuuu/MM/dd')+uw.time_gmt;
 uw.matdate = datenum(uw.datetime); %for input to IFCB_match_uw
