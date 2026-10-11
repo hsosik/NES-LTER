@@ -33,9 +33,9 @@
 
 % Written July 2022 by Bethany Fowler
 
-function [gate_assignment, polygon_names, polygon_vars, polygon_vals, gate_names, gate_logic_legible, parent_logic, time_gate_fraction] = ApplyAWSgates_hierarchical(awsfilename, fcsdat, fcshdr)
+function [gate_assignment, polygon_names, polygon_vars, polygon_vals, gate_names, gate_logic_legible, parent_logic] = ApplyAWSgates_hierarchical(awsfilename, fcsdat, fcshdr, time_gate_fraction)
 
-time_gate_fraction = 0.8; %omit first 20% of time
+%time_gate_fraction = 0.8; %omit first 20% of time
 
 A = fopen(awsfilename);
 C = textscan(A, '%s', 'Delimiter', '<'); 

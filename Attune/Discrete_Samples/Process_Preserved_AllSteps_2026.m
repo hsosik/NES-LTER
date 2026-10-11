@@ -27,6 +27,7 @@ step = zeros(1,7);
 step(steps2do) = 1;
 
 basepath_temp =  '\\sosiknas1\Lab_data\Attune\cruise_data\';
+basepath_temp = '\\sosiknas1\Lab_data\Attune\2026_settings_evaluation\'
 temp = dir([basepath_temp '*' cruise]);
 if ~isempty(temp)
     p.basepath = [basepath_temp temp.name filesep 'preserved'];
@@ -54,6 +55,7 @@ p.fpath = [p.basepath filesep 'FCS' filesep];
 p.outpath = [p.basepath filesep 'outputs' filesep];
 p.classpath = [p.outpath 'class' filesep];
 p.awspath = [p.basepath filesep 'aws\'];
+p.time_gate_fraction = 0.8;
 
 if ~exist(p.outpath, 'dir')
     mkdir(p.outpath)
@@ -179,7 +181,7 @@ if step(2)
         if ~ismissing(gated_table.awsfilename(i))
             %if we have an aws file proceed with gating
             [fcsdat, fcshdr]  = fca_readfcs([p.fpath gated_table.fcslist{i}]);
-            [gate_assignments, polygon_names, polygon_vars, polygon_vals, gate_names, gate_logic_legible, parent_logic, time_gate_fraction] = ApplyAWSgates_hierarchical(strcat(p.awspath, gated_table.awsfilename{i}), fcsdat, fcshdr);
+            [gate_assignments, polygon_names, polygon_vars, polygon_vals, gate_names, gate_logic_legible, parent_logic] = ApplyAWSgates_hierarchical(strcat(p.awspath, gated_table.awsfilename{i}), fcsdat, fcshdr, p.time_gate_fraction);
 
             gated_table.gate_names{i} = gate_names;
             gated_table.gate_assignments{i} = gate_assignments;
@@ -190,7 +192,7 @@ if step(2)
             make_figure_aws(fcsdat, fcshdr, gate_assignments, polygon_vars, polygon_vals, gate_names, figpath);
         end
     end
-    gated_table.vol_analyzed_ml = gated_table.vol_run*time_gate_fraction; %account for time gate
+    gated_table.vol_analyzed_ml = gated_table.vol_run*p.time_gate_fraction; %account for time gate
 
     save([p.outpath 'Gated_Table.mat'], 'gated_table', 'no_aws_files')
 
