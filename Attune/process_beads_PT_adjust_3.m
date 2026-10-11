@@ -35,9 +35,10 @@ end
 %now cut down to just focus on beads in our include list
 t = [];
 for iii = 1:length(beadfiles2include)
-    t = [t strmatch(beadfiles2include{iii}, FCSfileinfo.fcslist)];
+    %t = [t strmatch(beadfiles2include{iii}, FCSfileinfo.fcslist)];
+    t = [t contains(FCSfileinfo.fcslist, beadfiles2include{iii})];
 end
-beadlist = FCSfileinfo.fcslist(t);
+beadlist = FCSfileinfo.fcslist(find(t));
 fpath = [outpath filesep '..' filesep 'FCS' filesep];
 
 %initialize bead table
