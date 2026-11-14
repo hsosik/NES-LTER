@@ -1,0 +1,503 @@
+# Classifier redesign: exploration
+
+Goal: replace the per-cruise `assign_class_<cruise>.m` functions with one classifier that works across cruises, seasons and instrument settings.
+
+## Scripts
+
+| script | what it does |
+|---|---|
+| `collect_bead_runs.m` | all QC'd FCB bead runs from every cruise (voltage + log10 peak position per channel) → `output/bead_runs.mat` |
+| `extract_cluster_centers.m` | for a time-spread sample of files per cruise: median position of existing Syn/Euk/Pro classes, detector voltages, nearest bead run, lat/lon/temperature → `output/cluster_centers.mat` |
+| `fit_gain_curves.m` | fits signal ∝ voltage^k per detector from bead runs |
+| `analyze_normalization.m` | compares raw, voltage-corrected and bead-relative cluster positions; writes `output/normalization_spread.csv` and figures |
+
+Run from this folder, e.g. `extract_cluster_centers(16, {}, 'output/cluster_centers.mat')` then `analyze_normalization`.
+
+## Test 1 (Nov 2026): can normalization put all cruises on one scale?
+
+Data: 648 files from 39 cruises (2019–2026), 332 bead runs. Labels are the existing class files.
+
+1. **Detector response is a power law, signal ∝ hv^8.5.** Beads give k = 8.5 (BL2, GL2). Syn in Pro/standard alternating samples gives k = 8.4 ± 0.6 (BL3), measured on the same water at different voltages. A 10% voltage change shifts a cluster ~2.2×.
+   - Bead checks at two settings (`2026_settings_evaluation`, Sep 2026) confirm k ≈ 8.5 for SSC, GL1, BL2, BL3 and GL4. FSC is the exception: k ≈ 2.1.
+   - An SSC/GL1 bead sweep from 150 to 270 V (2019/20) shows the response is not a pure power law. The local k rises from about 6.5 at 150 V to 8.5–9 above 200 V, so a single k holds only near the voltages used at sea.
+   - An earlier SSC k of 7.1 came from Syn in only 4 off-voltage files and has been replaced with 8.5.
+2. **Voltage correction removes the settings effect.** The Pro-setting vs standard offset in Syn BL3 drops from 0.56 to 0.09 log10; for Euk it drops from 0.71 to 0.06.
+3. **Scattering becomes cruise-independent once bead-relative.** Between-cruise SD of Syn position:
+   - SSC: 0.39 → 0.07 log10
+   - GL1 (SSC through the OD2 filter): 0.74 → 0.06 log10
+4. **Fluorescence brightness does not become cruise-independent.** Between-cruise SD stays at 0.4–0.5 log10, a ~1.5 decade range. That is biology, not instrument: Syn GL2 (bead-normalized) vs temperature gives r = −0.84. Cold-water Syn are brighter and larger.
+5. **Spectral ratios are nearly invariant.** Syn falls on one line in chl–PE space across all cruises and seasons (`output/syn_euk_chl_pe.png`). Between-cruise SD:
+   - PE/chl (GL2−BL3): 0.12
+   - GL2/GL3: 0.03
+   - pigment per scatter (BL3−SSC, GL2−SSC): 0.36–0.46, varying with temperature
+
+### Design implications
+
+- **Population identity** comes from spectral shape (log ratios GL2/BL3, GL2/GL3, BL1, …). These ratios are universal across cruises and seasons, so they can be fixed in a shared config.
+- **Size** comes from bead-relative SSC/GL1. It is instrument-invariant, so remaining variation is real cell size.
+- **Brightness and size position** change with season and water mass. Clusters must be located per file (mixture model or density peaks seeded from neighbouring files), not with fixed thresholds.
+- Correct to a reference voltage first using the header `hv`, so Pro/standard alternating settings and future setting changes need no special cases.
+
+## Prototype classifier (Nov 2026)
+
+`assign_class_v2(fcsdat, fcshdr, ref, cfg, pro_measured)` with `ref = bead_reference(beadstat, time, cfg)` and `cfg = classifier_config()`. There are no cruise- or date-specific settings. Steps:
+
+1. **Common scale:** all channels go onto the bead-relative scale (`attune_features`), using voltages and trigger levels from the FCS header.
+2. **Pigment check:** keep events whose chlorophyll is above the BL3 trigger edge, or whose PE is clearly detected (dim summer Syn trigger on GL2 only).
+3. **Size:** SSC, switching to GL1 (scatter through the OD2 filter) above 1000 raw GL1-H counts and averaging the two between 500 and 1000, as in `batch_mergedSSC2volume`. SSC and GL1 are each relative to their own 1 µm bead peak and taken as equivalent, with no fitted offset.
+4. **Per-file clusters:** a Gaussian mixture in [size, BL3, PE:chl, GL2:GL3], with the number of components chosen by BIC. Components are named by pigment signature rules in `cfg.sig`.
+5. **Event-level checks, relative to each file's own clusters:**
+   - too little chlorophyll for the particle size → 0
+   - Syn must sit near the file's Syn PE:chl and size
+   - Euks must sit near the file's Euk chlorophyll per size
+   - PE-containing euks are picked cell by cell: PE present, larger than Syn, and less PE per chl than Syn or a cryptophyte-type spectrum
+
+`compare_v2` and `plot_compare_counts` compare against the existing class files. `plot_v2_vs_old` draws side-by-side cytograms.
+
+### Agreement with existing classes, 40 files each
+
+| | Syn | Euk (no PE) | PE euk | Pro |
+|---|---|---|---|---|
+| AR92 (Aug, warm): files within 10% | 39/40 | 39/40 | 4/35 | 10/11 |
+| AR92 median v2/old | 0.97 | 0.99 | 0.66 | 0.97 |
+| EN727 (Jan, cold): files within 10% | 40/40 | 40/40 | 8/40 | – |
+| EN727 median v2/old | 1.00 | 1.02 | 0.86 | – |
+
+Syn here excludes the new particle-associated Syn class (code 8, see the winter Syn smear section): 2% of v2 Syn-like events in AR92, 8% in EN727. Before that class and the tighter Syn check, EN727 Syn was 26/40 within 10% (median 1.07).
+
+Euk minimum size rule: no known Euks are much smaller than Syn (*Ostreococcus* only slightly), so Euks must be within 0.5 log10 of the file's Syn size (`euk_min_size_below_syn`).
+- This removed the tiny winter particles at the trigger edge (scatter ~10× below Syn).
+- Pro is not an alternative for them in cold water.
+- Winter Euks went from 16/40 to 40/40 files within 10%.
+
+Open questions:
+- ~~**Winter Syn excess (+7%)**~~: resolved by the particle-associated Syn class and the tighter Syn check (see the winter Syn smear section).
+- **Unassigned class:** class 0 mixes electronic noise, non-phytoplankton particles (detritus, bacteria) and below-detection events. Splitting it would make the exclusions inspectable.
+- **PE euks:** they are rare, and the old and new definitions differ near the Syn line.
+- **Pro near the chlorophyll trigger edge:** ~3% of old Pro events are unassigned.
+
+### Noise vs small Euks using all parameters (EN727, 25 files)
+
+`examine_disputed`, `discriminate_noise` and `check_disputed_ratios` analyse events in the small/dim region where the classifiers overlap.
+
+- **Agreed Euks and agreed noise separate almost perfectly using parameters neither classifier uses** (bagged trees, cross-validated by file):
+  - AUC 0.998, from BL1, BL2, GL4, GL1, pulse area/height ratios and FSC-W.
+  - The most informative are GL4, BL2, GL1, BL3 A/H, SSC A/H and FSC-W.
+  - Noise has broadband fluorescence (BL2−BL3 −1.3 vs −2.6 for Euks) and flatter pulses (BL3 A/H 0.009 vs 0.087).
+  - **These are good candidates for an explicit noise-rejection step.**
+- **Disputed events** (old 0, v2 Euk; ~12% of v2 Euks in winter):
+  - They are tiny: scatter ~10× below Syn.
+  - They sit on the BL3 trigger edge, with PE and BL1 at the detection floor.
+  - Their FSC pulses are the shortest of any group.
+  - Their concentration tracks Syn and Euks (Spearman r = 0.88 and 0.83) and moves opposite to agreed noise (r = −0.50). Trigger settings were constant for the whole cruise.
+  - A model trained on agreed classes scores 81–96% of them as noise, but they lie outside both training distributions, so that is extrapolation.
+  - The GL4/BL3 chlorophyll ratio does not discriminate near the detection floor.
+  - Conclusion: probably the bright tail of a population mostly below detection. They can't be identified reliably, and their counts depend on distance to the trigger.
+
+### Winter Syn smear (`examine_syn_smear`, EN727, 25 files)
+
+Events v2 calls Syn but the old classifier left as 0 (8% of v2 Syn, 1–24% per file). Offsets are relative to each file's agreed Syn (`output/syn_smear_EN727.png`). The smear has two parts:
+
+1. **Large-scatter tail (~70% of the smear): Syn pigment on a bigger particle.**
+   - Spectrum identical to core Syn: PE:chl +0.03, GL2/GL3 −0.01, GL4/BL3 +0.08, BL2/BL3 0.00, BL1/BL3 +0.04.
+   - Pulse shapes (A/H) are identical.
+   - Pigment amount only +0.1–0.2 log10 (1.3–1.5×), while SSC is +0.5–1.1 (3–12×). FSC and GL1 rise too, so these are really larger particles, not an SSC artefact.
+   - Not doublets, which would show +0.3 in both pigment and scatter. FSC-W is only slightly longer (+0.1–0.2).
+   - Most consistent with one Syn cell on, or alongside, a non-fluorescent particle (aggregate or detritus).
+   - **Not a separate cluster:** Syn-spectrum events form a continuous tail out to +2.2 in scatter (~1000 per 0.25 log bin, slowly declining). The v2 cut at `syn_size_tol` = 1 is arbitrary; about 3000 more such events lie beyond it.
+   - The smear count barely tracks Syn concentration (Spearman r = 0.02) and only weakly tracks non-phyto particles of the same size (r = 0.25).
+2. **Small dim events (~30% of the smear): not Syn.**
+   - Scatter 10–100× below Syn, chl −1.1, and a different PE spectrum (GL2/GL3 −0.23, PE:chl +0.34, BL1/BL3 +0.74).
+   - They enter through the PE-detected path and pass the Syn checks because those have no lower size bound or GL2/GL3 tolerance.
+
+**Implemented:**
+- **Class 8, particle-associated Syn.** Picked event by event after clustering:
+  - PE:chl within 0.3 and GL2/GL3 within 0.15 of the file's Syn.
+  - Chl between 3× below and 4× above the file's Syn, allowing for partly digested Syn and several Syn per particle.
+  - Scatter above the file's Syn by more than 0.4 log10 and more than 3.5 robust SDs of the file's Syn size, with no upper limit and no chl:size detritus rule.
+  - The particle may be an aggregate, detritus, or a grazer such as a nanoflagellate that has eaten Syn. These can't be told apart with these measurements.
+  - Each event holds roughly one Syn, so it could count toward Syn abundance, but its scatter doesn't describe Syn size or carbon. Not yet used by `generate_attune_table`.
+- **Tighter Syn check:** no more than 0.5 log10 smaller than the file's Syn (`syn_size_tol_below`), and GL2/GL3 within 0.15 of the file's Syn (`syn_GL2GL3_tol`).
+  - The GL2/GL3 check applies only where GL3 is more than 2 decades above its floor (`ratio_min_above_floor`).
+  - Dim summer Syn sit only 1–1.5 decades above the floor, where the ratio is noisy. Applying the check there removed 22% of AR92 Syn.
+- **Result (40 files each):**
+  - EN727 Syn: 40/40 files within 10% of old (median 1.00), up from 26/40.
+  - Class 8 holds 9,400 events (8% of Syn-like events); 87% of them were unassigned by the old classifier.
+  - AR92: 1.9% of old Syn moved to class 8 and 1.6% became unassigned; Syn median v2/old is 0.97.
+
+**Summer check (`examine_synpart`, AR92 and EN727, 25 files each, `output/synpart_*.png`).** Is class 8 a separate group or just the large end of the Syn cluster? Two tests:
+1. Within Syn, chl rises with scatter (slope 0.84 in AR92, 0.62 in EN727). If class 8 were big Syn, its chl would continue that trend.
+2. The Gaussian shape of the file's Syn scatter predicts how many Syn should fall beyond the class-8 cut.
+
+With the original fixed cut (+0.4 above the file's Syn):
+- **AR92:** 82% of class 8 sat at +0.3–0.7, with chl near the Syn trend, FSC barely raised, and counts matching the Gaussian Syn tail (observed/expected 1.1). These were big Syn, not particle-associated. Summer Syn scatter is broader (robust SD 0.20 vs 0.14 in winter).
+- **EN727:** 67× more events than the Syn tail predicts, with flat chl (+0.15) and FSC rising with SSC from the start. This is a genuinely separate group.
+
+**Fix:** the class-8 cut is now the file's Syn size + max(0.4, 3.5 robust SD of Syn size) (`synpart_size_sd`). After the fix:
+
+| | AR92 | EN727 |
+|---|---|---|
+| class 8 / Syn (median per file) | 0.4% | 7% |
+| class 8 vs Gaussian Syn tail | 17× | 330× |
+| class 8 chl offset (vs Syn trend) | +0.21 (trend +0.86) | +0.18 (trend +0.61) |
+| Syn files within 10% of old (median v2/old) | 39/40 (0.99) | 37/40 (1.00) |
+
+- In both seasons class 8 now has about one Syn's chl, while FSC and GL1 rise with SSC (real larger particles).
+- In AR92 a subset has FSC-W 30–100× longer than Syn, consistent with elongated particles such as aggregates or chains.
+- Highest class-8 fraction: one low-Syn EN727 file (345 class 8 vs 744 Syn).
+
+### Pro robustness (`check_pro`, 45 Pro-setting files from AR92, AR95, HRS2609)
+
+- **Warm water (>22 °C):** v2 is within ~5% of the old counts.
+  - Pro is separable from broadband-fluorescing particles: those form their own BL2/GL4 diagonal.
+  - **But 20–43% of Pro events sit within 0.2 log10 of the BL3 trigger edge** (median only ~0.25 above it), so the population is truncated by the detection limit.
+  - At the edge every other channel is at its floor, so dim Pro cannot be told from edge pile-up by any parameter.
+- **AR95 (October, 15–17 °C):** in 7 files v2 counts 400–2400 Pro where the old classifier found none.
+  - These "Pro" are larger and brighter than summer Pro, overlapping Syn in size and reaching Syn-level chlorophyll.
+  - A subset has an unusual BL3 pulse shape (A/H ~0.35–0.4). Probably not Pro.
+  - The Pro rule uses fixed thresholds, not limits relative to the file's Syn.
+- **HRS2609 "less sensitive" setting (21 °C):** 361 v2 Pro where the old classifier found 0, with 76% within 0.2 of the edge, so likely edge pile-up.
+
+Candidate fixes:
+1. Pro must be smaller and dimmer in chlorophyll than the file's own Syn (event level, like the Euk rule).
+2. Report a per-file Pro detection-quality metric (fraction of Pro near the trigger edge), and flag files where Pro isn't resolved from the edge instead of counting the pile-up.
+3. Optionally, a QC flag for Pro reported in cold water using underway temperature.
+
+
+### SSC bead reference: 1 µm instead of 0.5 µm (Nov 2026)
+
+`cfg.bead_pop.SSC` is now the 1 µm FCB bead.
+- In all QC'd bead runs (213 with SSC medians), the 0.5 and 1 µm peaks are equally repeatable in SSC: within-cruise run-to-run SD 0.005 log10 for both.
+- The two peaks sit a constant 0.84 ± 0.01 log10 apart across 20 cruises.
+- So the switch is a constant shift. The four absolute thresholds on the SSC scale moved by 0.84: `detritus_max_chlSSC`, `syn_size_default`, `pro_max_SSC`, and the GL1-merge SSC threshold in `assign_class_v2`. The Syn-relative rules don't change.
+- Rerun of the 40-file comparisons: all counts within 0.5% of the 0.5 µm run (AR92 Syn 39/40 within 10% of old, median 0.99; EN727 37/40, median 1.00). The previous outputs are kept as `output/compare_v2_*_bead05.mat`.
+
+
+### Per-sample cytograms and agreement range (Nov 2026)
+
+- `plot_class_cytograms`: three rows (existing classes, v2 classes, disagreements only) × six views. The views are size–chl, chl–PE, GL3–PE, size–PE:chl, chl–BL2 (broadband fluorescence) and size–FSC-W, with trigger edges dashed.
+- `score_agreement` measures per-event agreement: events with the same class / events either method calls phytoplankton.
+- `show_agreement_examples` draws samples evenly spaced from highest to lowest agreement into `output/examples/`.
+- **Agreement over 60 files** (15 each from AR92, AR95, EN727, HRS2609): median 0.955, range 0.81–0.99.
+
+**Bug found from the plots:** the lowest-agreement AR92 file (0.78) lost 2,600 dim Syn just above the GL2 trigger edge. The mixture model put them in their own component, whose GL2/GL3 (0.08) read as cryptophyte PE because GL3 sits near its floor. The component was named PE euk, then rejected cell by cell as too small.
+- **Fix:** component naming ignores GL2/GL3 when the component's GL3 is less than `ratio_min_above_floor` above its floor. The file is now at 0.954.
+- The pre-fix figure is `output/examples/before_fix_lowest_AR92.png`.
+
+**Where the remaining disagreements sit:**
+1. **By definition:** class 8 (particle-associated Syn) and the Syn smear. These dominate the lowest-agreement winter files. Hand labels can't settle them; they need a decision about what the class should be.
+2. **Boundaries through continuous clouds at a detection edge:** Pro vs noise at the SSC/BL3 trigger (e.g. 1,100 Pro → none and 560 none → Pro in an AR92 Pro-setting file), dim Syn at the GL2 edge, small dim Euks at the BL3 edge. There's no gap, so a human would draw a line as arbitrary as either rule.
+3. **Rare groups that are separated in some view:** PE euks along the cryptophyte line, Euks vs detritus at large size. A labeller with all six views could do well here, and the methods disagree most here in relative terms.
+4. **Scatter ceiling (fixed):** large events piled up at size ≈ +1 in EN727 and AR95. See *SSC roll-off and the GL1 merge* below.
+
+### Gaps found
+
+- Bead peak medians are missing for 19 older cruises: those with only `beadstat_2021`, plus AR34B, AR63 and RB1904, which have no usable bead table. Re-running bead processing (wrapper step 4) on them would extend bead normalization to the full archive. This matters most for early cruises with OD2 on SSC, where voltage correction alone can't fix the scatter scale.
+- Euk median GL2 sits near the noise floor (~100), so Euk PE ratios are noise-dominated. Noise handling must account for the trigger/detection floor in each channel.
+
+## SSC roll-off and the GL1 merge
+
+- The pile-up at size ≈ +1 was not SSC clipping. Raw SSC-H peaks at 5–9×10⁵ and only one event per file is at the top.
+- SSC-H rolls off gradually from about 3–10× the 1 µm bead, while GL1 (OD2 scatter) stays linear to +2.7. Overlap slope of SSC on GL1 is 0.67–0.87 (`examine_ceiling.m`, `output/ceiling_*.png`).
+- The old prototype merge only replaced events within 0.05 of the SSC maximum, so it almost never switched. Its fitted offset was also biased by the compressed part of the overlap.
+- Now the merge follows `batch_mergedSSC2volume`: GL1 on its own 1 µm bead scale (`cfg.bead_pop.GL1 = 2`), used above 1000 raw counts and averaged with SSC between 500 and 1000. In the linear range, SSC minus GL1 (both 1 µm-normalized) is −0.02 to −0.11, so the bead equivalence holds.
+- The GL1 switch assumes OD2 is on GL1 (`cfg.gl1_is_od2_scatter`). It needs a per-cruise setting for cruises with OD2 on SSC or no OD2.
+- Rescored 60 files: agreement median 0.958 (was 0.955). v2/old Euk counts are within 10% in all 60 files (median 0.99–1.01 by cruise). The detritus chl:size rule didn't remove large Euks.
+
+## Syn pigment types and the GL2:GL3 check
+
+- In example 1 (AR92 15Aug(3) Sample(18)), about 50 bright Syn were dropped by the Syn spectrum check (GL2:GL3 more than 0.15 from the file's Syn median, 0.30). Their PE:chl and scatter were Syn-like. Pulse area/height was about 15% longer than equally bright kept Syn, consistent with elongated, dividing or paired cells (`debug_example1.m`).
+- GL2:GL3 rises with chl across this file's Syn (0.25 to 0.40). The mixture components show why: two groups, about 0.26 and 0.34–0.43, i.e. a mixture of Syn pigment types, not one population with a trend.
+- A brightness-trend line was tried first. It recovered about half and changed Syn counts by at most 0.5%, but it still assumes one population.
+- Now the check accepts GL2:GL3 within ±0.15 of the range spanned by the file's Syn components (Syn-type spectrum, weight ≥ 0.01, mean GL3 ≥ 1 decade above its floor; `syn_ratio_range` in `assign_class_v2`). It falls back to the Syn median when no component qualifies. Class 8 uses the same range.
+- The component floor margin is looser than the event-level one (2 decades) because component means are much less noisy. In this summer file Syn GL3 sits only ~1.4 decades above its floor, and with the 2-decade margin no component qualified.
+- Example 1: dropped bright Syn 50 → 4; range 0.26–0.40.
+- 60 files: agreement unchanged or up by ≤0.002; Syn counts up 0–0.4% per file (one EN727 file +2.4%); PE euk counts unchanged, so cryptophyte-type PE is still excluded.
+- `assign_class_v2` now also returns `info.trace` (class after each step) and `info.floor` for debugging.
+
+## Trigger margin set to 0
+
+- v2 used to require BL3 (and GL2, for PE triggering) more than 0.05 log10 above the trigger edge before considering an event. In example 4 (AR92 15Aug(23) Pro(5), trigger SSC AND BL3) that margin alone removed 1,716 of the 1,740 Pro dropped by v2. Those were the dim end of the Pro population (BL3 −1.43 to −1.39, edge −1.44), with SSC like kept Pro (`debug_example4.m`).
+- `cfg.sig.trigger_margin` is now 0, so events count down to the trigger edge as in the old method. In that file, Pro dropped by v2 fell from 1,740 to 34; v2 Pro is now about 1.5% above the old count, mainly from low-PE:chl Pro the old gate excluded.
+- 60 files: median agreement AR92 0.971 → 0.980 (min 0.905 → 0.956), AR95 0.951 → 0.952, EN727 0.922 → 0.920, HRS2609 0.971 → 0.972.
+- EN727 24Jan(1) Sample(1) Syn is now 936 vs 785 in the old classes (+19%; it was +10% with the margin). The extra events are dim Syn near the chl trigger edge. EN727 27Jan(7) Sample(11) is +11%. Not yet examined.
+- Counts near the trigger edge are detection-limited either way. A per-file flag for the fraction of each class within ~0.1 log10 of the edge would make that visible in the data product.
+
+## Pro rules and fit reproducibility
+
+- **Reproducible fits.** The mixture fit depends on its random start. `rng(1)` gave a different generator on parallel workers than in serial runs, so scores (parallel) and plots (serial) disagreed. `assign_class_v2` now uses `rng(seed, 'twister')` (`cfg.seed`, default 1).
+- **Pro have no PE.** Pro events must have GL2 no more than 0.3 above the file's median Euk GL2 (`pro_GL2_above_euk`), or 1.5 above the GL2 floor when there are fewer than 20 Euks. In AR95 18Oct AltPro(6) Pro(5) this removed half of 257 spurious Pro; in AR92 Pro files it removes <0.6%.
+- **Pro need a compact cluster.** A component in the Pro size/chl window is named Pro only if its chl SD ≤ 0.4 (`pro_max_sd_BL3`); otherwise it is left unassigned. Real Pro components in 14 Pro-setting files: chl SD 0.09–0.29; the spurious AR95 18Oct component: 0.50, and its Pro count swung 0–172 across starts. Now 0 Pro for all starts there, real Pro counts unchanged (`examine_pro_components.m`). Calibrated on one spurious case.
+  - Refitting with the chosen K from other starts did not separate it (CV 0.14 vs 0.13 for a real file); the instability came from BIC picking different K, and redoing that triples run time.
+- **AR95 21Oct AltPro(24) Pro(10):** v2 finds a stable, compact Pro cluster (~1,000 events, chl 0.9 below Syn, smaller, no PE) that the old classes do not have.
+- **Pro tail in Euk-setting files.** In files run without Pro settings, the bright tail of Pro piles up on the chl trigger edge. No-PE events within 0.4 of the BL3 edge and no larger than the file's Syn (+0.1) are left unassigned (`edge_pro_band`, `edge_pro_size_above_syn`). AR95 19Oct AltPro(19) Euk(20): v2 Euk 6,147 → 5,390 (old 5,422); HRS2609 17Aug(6) Euk(8): 2,347 → 1,839 (old 1,815). The band of 0.4 removes none of the old-class Euks in the AR95 file.
+- 60 files after these: median agreement AR92 0.979, AR95 0.952, EN727 0.924, HRS2609 0.971.
+
+## Low-PE (3) and high-PE (4) euks
+
+- PE euks form two groups in all four cruises (`examine_peeuk.m`): a diffuse low-PE group with a Syn-like PE spectrum (GL2:GL3 ~ Syn, PE:chl −2 to −1) and compact cryptophyte-type groups (GL2:GL3 0.15–0.35 below Syn, PE:chl −0.8 to −0.4).
+- GL2 saturates for 51–65% of PE euks in EN727/AR95 (5–14% in summer). BL2 (blue-laser PE) stays on scale for 84–94% of those, and BL2:GL3 separates cryptophyte-type PE (0.45–1.0 below Syn) without using GL2 (`examine_bl2.m`, `examine_peeuk_split.m`).
+- `assign_class_v2` now splits PE euks: 4 if BL2:GL3 is more than 0.3 below the file's Syn (GL2:GL3 more than 0.15 below where BL2/GL3 are unusable; GL2-saturated with no usable BL2/GL3 → 4), else 3. The old scripts' 3 (`in_nonsyn_lowPE`) / 4 (`in_nonsyn_hiPE`) were split mainly by PE amount.
+- Against the old 3/4 (PE euks both methods call): old 4 → new 4 for 96–99%. Old 3 → new 4: AR92 83 of 418, AR95 390 of 682, EN727 863 of 962, HRS2609 280 of 669.
+  - EN727/AR95: a tight cluster on the cryptophyte line (BL2:GL3 ~1.0 below Syn) with moderate PE (PE:chl ~ −0.8); old method called it low PE by amount.
+  - Summer: dim events (PE:chl ~ −1.4) whose BL2:GL3 is ~0.5 below Syn; low PE, so the spectral ratio may be noisy there.
+- Agreement with 3/4 merged is unchanged (AR92 0.979, AR95 0.952, EN727 0.924, HRS2609 0.971); strict 3/4 lowers EN727 to 0.908.
+- Decision (Nov 2026): keep the split spectral only, with no PE:chl or PE-amount requirement. Class 4 means cryptophyte-type PE, including the moderate-PE winter cluster and dim summer events; class 3 means Syn-like PE spectrum.
+
+## Large Euks absorbed by a detritus component
+
+- In HRS2609 16Aug(13) Euk(9), 54 large bright Euks (size ~1, chl ~2) were in a broad mixture component whose mean has little chl for its scatter (chl:size −0.06), so the component was named detritus (`debug_euk.m`).
+- Events in detritus-named components (not outliers) now return to Euk if they sit in the file's Euk chl:size band, have no PE, and are ≥0.5 larger than the file's Syn (`euk_rescue_size_above_syn`). That file: 50 of 54 restored; the other 4 are below its Euk chl:size cut.
+- 60 files: Euk counts change 0–0.3% except HRS2609 (up to +6.5%); HRS2609 Euk v2/old median 0.994 → 1.005; agreement unchanged or up.
+- Plot colours: low-PE euk (3) cyan, high-PE euk (4) magenta.
+
+## Pro PE cutoff relative to the Pro cluster
+
+- The Pro PE rule (GL2 ≤ Euk median + 0.3) drew a horizontal line through the top of the Pro cloud in AR92 18Aug ProAlt(2) Pro(13), dropping 123 Pro whose GL2 just continued the cluster's distribution.
+- Now a Pro event is dropped only if GL2 is also more than 4 robust SDs above the Pro cluster's median GL2 (`pro_GL2_sd`). That file: old Pro dropped 237 → 115; the rest are larger events the fit put in a detritus component.
+- Low-PE euks (3): in the 60 scored files v2 calls at most ~100 per sample, as a diffuse group, not a tight cluster (`output/examples/lowPE*.png`).
+
+## Dim crypto (3), bright crypto (4), Euk with Syn (5)
+
+Replaces the low-/high-PE split above. The old scripts intended 3 = dim cryptos (possibly with Syn grazers) and 4 = bright cryptos.
+- **5 = Euk with Syn:** Syn-like PE spectrum, PE ~1–1.6 Syn equivalents, chl normal for Euks of that size (`examine_lowpe.m`). Not chance coincidences (low-PE per Euk does not scale with Syn abundance across files). Possible grazers with ingested Syn, or Syn attached; cytometry cannot tell which. Counts as Euk.
+  - Events more than 0.5 log10 below the file's Euk chl-size line go to 8 (Syn on a particle): two groups in EN727 (1.2 and 0.24 below) and AR92 (0.8 below, 22%) (`examine_euksyn_en727.m`).
+- **3 = dim crypto, 4 = bright crypto:** cryptophyte-type spectrum (BL2:GL3 > 0.3 below Syn). In EN727/AR95 two compact groups: dim (PE ~0.25–0.75 above Syn, BL2:GL3 ~0.85–1.0 below Syn, side scatter ~0) and bright (PE 1.2–2.2, BL2:GL3 ~0.6 below, side scatter 0.2–1.2) (`output/crypto_groups.png`).
+  - Per-file 2-group fit on [PE in Syn equivalents, BL2:GL3 − Syn], accepted only if each group ≥15 events, compact (PE SD ≤ 0.4, BL2:GL3 SD ≤ 0.2), ≥3 pooled SDs apart, and the dimmer group more red-shifted. Accepted in all 3 crypto-rich EN727 test files and AR95 22Oct(10); not in summer.
+  - Without an accepted split: crypto-type events with PE > 0.5 log10 (~3 Syn) above Syn are 4; dimmer ones are Euks (1).
+- 60 files (old 3/4 → v2 3/4/5): AR92 785/91 → 0/142/353; AR95 791/2712 → 208/2291/274; EN727 1054/2334 → 848/1637/110; HRS2609 1111/193 → 0/264/396. Strict agreement EN727 0.907 → 0.918; others unchanged.
+- Plot colours: dim crypto cyan, bright crypto magenta, Euk with Syn olive.
+
+## Pro and the detritus chl:size cut
+
+- The fixed detritus cut (chl:size < 0.04) sliced the lower-right edge of the Pro cloud, where the largest Pro sit at the chl trigger edge: in AR92 15Aug(18) Pro(7) it dropped 466 of 477 lost Pro (size ~−1.31 vs −1.53 for kept Pro).
+- Pro now fail it only if also more than 4 robust SDs below the Pro cluster's median chl:size (`pro_chlSSC_sd`). That file: old Pro dropped 477 → 12; v2 Pro 27,621 vs old 26,944.
+
+## Large Euks, bright cryptos near GL2 saturation, and the dim/bright PE floor
+
+- **Large Euks in a PE-euk component** (AR95 22Oct(5) Sample(24)): a broad large-particle component held bright cryptos and large Euks and was named PE euk; the Euks (no PE) failed the PE-euk test and became 0. Events in a PE-euk component without PE are now Euks. Lost large Euks 63 → 3.
+- **Euk chl:size cut** is now the looser of (Euk median − 0.7) and the midpoint between the Euk median and the median of the file's large non-phyto particles (`nonphyto_min_n` ≥ 50), so variable Euks only need to be closer to the Euks than to the non-phyto cloud.
+- **Bright cryptos near GL2 saturation** (AR95 18Oct AltPro(16) Euk(12)): GL2 ~1.4–1.5 gives a Syn-like PE:chl and GL2:GL3 just above 0.1, so 101 old bright cryptos failed the PE-euk test. The test now also accepts BL2:GL3 > 0.3 below Syn. v2 bright crypto 287 → 382 of 393 old.
+- **Dim/bright fallback**: when the per-file 2-group split is not accepted, crypto-type events with PE < 1 log10 (~10 Syn) above Syn are dim (3), brighter are bright (4) (`crypto_min_PE_above_syn`). (An earlier version wrongly sent these dim events to Euk.)
+- 60 files, old dim/bright → v2 dim/bright/Euk+Syn: AR92 785/91 → 268/127/353; AR95 791/2712 → 1039/2910/274; EN727 1054/2334 → 1119/1703/113; HRS2609 1111/193 → 821/229/396.
+- Median agreement AR92 0.981, AR95 0.953, EN727 0.908 (was 0.918; lowest file 0.783, more v2 adds), HRS2609 0.970. Euk v2/old median 1.007–1.029.
+
+## Dim-chl Syn: Syn checks relative to the Syn cluster
+
+- Dim-chl Syn near the chl trigger edge, or detected by PE alone in OR_GL2 files, were dropped by fixed-width checks: HRS2609 SummerSyn(5) Pro(21) lost 90 old Syn (48 detritus cut, 16 PE:chl, 13 too small); HRS2609 16Aug(7) Euk(19) lost 282 (118 PE:chl — chl ~5x below the main Syn with normal PE, PE:chl +0.14 vs −0.56 — 56 too small, 52 detritus cut).
+- Now: Syn fail the detritus chl:size cut only if also >4 robust SDs below the Syn cluster's median chl:size; Syn may have up to max(0.35, 5 robust SDs) more PE:chl than the file's Syn (the limit below, which keeps PE euks out, stays fixed at 0.35); the lower size limit is max(0.5, 4 robust SDs) below the Syn median (`syn_PEchl_sd`, `syn_size_sd`).
+- Old Syn lost: 90 → 19 and 282 → 63 in those files.
+- 60 files after the Syn change: median agreement AR92 0.985, AR95 0.952, EN727 0.908, HRS2609 0.974; median events dropped per file AR92 215 → 83, HRS2609 275 → 93.
+
+## Single crypto group
+
+- AR95 18Oct AltPro(16) Euk(12): the crypto-type events form one compact group (2-group split rejected, groups 1.0 SD apart), and the per-event PE floor cut it into "dim" and "bright" halves.
+- Now, without an accepted split: if the crypto-type events form one compact group (robust SD of PE ≤ 0.4 and of BL2:GL3 ≤ 0.2), the whole group is labelled by its median PE (≥ 1 log10 above Syn → bright); only diffuse groups (summer) are split by the PE floor event by event. That file: all bright, 382 of 393 old bright cryptos.
+- Single-group outliers (Nov 2026): within a single compact crypto group, events more than 4 robust SDs below (above) the group's median PE are dim (bright) (`crypto_outlier_sd`). AR95 21Oct AltPro(5) Pro(2): 5 low-PE events (PE ~0 vs bright median ~1.35) that had been called bright are now dim; all 80 old bright cryptos stay bright.
+- Decision (Nov 2026): option (a). Dim events with a Syn-like PE spectrum are Euk with Syn (5) or, with much less chl than Euks, Syn on particle (8); dim crypto (3) requires a cryptophyte spectrum. Many v1 dim cryptos therefore become 5 (e.g. 14 of 26 in AR95 21Oct AltPro(5)).
+- Two-sided single-group fix, 60 files: AR95 dim 437 → 505, bright 3512 → 3444; other cruises within ±10; agreement unchanged.
+
+## Syn-check rejects re-checked as Euks
+
+- AR95 21Oct AltPro(5) Pro(2): 4 v1 dim cryptos were unassigned. The mixture put them in a Syn component, the Syn check rejected them (PE:chl −2.2 to −1.1 vs Syn −0.29), and nothing re-examined them; three were just under the PE-euk size minimum (Syn + 0.6) and one just under the has-PE PE:chl cutoff. They have Euk-level chl for their size, ~0.1–1 Syn's PE and a Syn-like GL2:GL3, like the file's Euk-with-Syn events.
+- Events rejected by the Syn check are now re-checked as Euks: chl within 0.5 of the Euk chl-size line, not smaller than Syn − 0.5, above the detritus cut → Euk with Syn (5) if PE is detected, PE:chl > Euk median + 1 (`euksyn_min_PEchl_above_euk`) and the spectrum is Syn-like (or GL3 too low to tell); otherwise Euk (1). That file: all 4 → 5; 42 rejects → 5 and 8 → 1 overall.
+
+## Catch-all for cell-like events
+
+- Principle (Nov 2026): events with PE like a cell and/or chl like a cell for their size should not end up unassigned.
+- Final step in `assign_class_v2`: unassigned events with cell-like PE (GL2 no more than 0.5 below the file's median Syn GL2, ~1/3 of a Syn; `cell_PE_below_syn`) or cell-like chl (above the detritus cut and, for particles well larger than Syn, above the file's Euk chl:size cut) take the majority class of their 10 nearest assigned neighbours (standardized size, chl, GL2, BL2, GL3), only if they meet that class's own rules: Euk/Euk-with-Syn no more than 0.5 smaller than Syn; Syn inside the Syn size window; cryptos larger than Syn + 0.6; Pro only in Pro files; Syn-on-particle above its size cut. Otherwise they stay unassigned. The Pro tail at the chl trigger in non-Pro files stays unassigned.
+- First version counted any detected PE as cell-like and ignored the class rules: in EN727 it added ~500 faint-PE non-phyto particles per file and ~2,300 tiny signals (size −3 to −2) as Euk/Syn; EN727 median agreement fell 0.908 → 0.822.
+- Syn size window now capped at 0.8 below the Syn median (`syn_size_max_below`): the mixture had put tiny PE signals in a Syn component, widening the robust-SD window. EN727 26Jan(13) Syn: 1,811 → 1,135 (old 1,093).
+- Open: EN727 24Jan(1) Sample(1) Syn 1,172 vs old 785 (winter Syn smear file).
+- 60 files with the constrained catch-all: median agreement AR92 0.982, AR95 0.951, EN727 0.902, HRS2609 0.977 (before the catch-all 0.985 / 0.952 / 0.908 / 0.974). Median old-phyto events dropped per file: AR92 83 → 22, AR95 96 → 8, EN727 74 → 19, HRS2609 93 → 17. Euk v2/old 1.020–1.060; Syn v2/old 1.000–1.017.
+
+## Syn far from the cluster
+
+- AR95 18Oct AltPro(6) Pro(5): the catch-all called 71 events Syn with chl at the trigger edge and PE at noise level (the former spurious Pro); its Syn test only checked size. EN727 24Jan(1): the main rules kept ~450 winter-smear events as Syn. Feedback: upward-widened Syn checks kept smear in Syn, which inflated the Syn size spread (robust SD 0.37 vs 0.13) and moved the Syn-on-particle cut up to +0.35.
+- Now: Syn must have GL2 ≥ Syn median − max(0.5, 4 low-side SDs) (`syn_PE_tol_below`, `syn_PE_sd`); the Syn-on-particle cut uses the core Syn centre and spread from the low side of the Syn size distribution (p15.9 + SD, SD = p15.9 − p2.3); Syn larger than that cut that are not Syn on a particle become unassigned; catch-all Syn also need Syn-level PE and a Syn-like PE:chl.
+- AR95 18Oct(6): Syn added 91 → 0. EN727 24Jan(1): Syn 1,172 → 702 (old 785), Syn on particle 604.
+
+## Syn on particle vs large Syn, and the Syn centre
+
+- AR95 21Oct AltPro(29) Euk(15): Syn on particle extended up the main chl-vs-size diagonal; 164 large Syn on the upper end of the Syn cluster, whose chl rises with scatter at the Syn slope, were relabelled Syn → Syn on particle.
+- Syn on particle (8) now also requires chl more than 0.3 below the core Syn chl-vs-size trend extended to the event's size (`synpart_below_trend`; robust fit on core Syn within 2 SD of the size peak). Large Syn on the trend stay Syn; only large events below the trend that fail the class-8 test become unassigned. That file: Syn → Syn on particle 164 → 45, agreement 0.957 → 0.966.
+- The Syn centre (and spread) for the Syn size checks and the class-8 cut is now the peak of a kernel density of Syn size (spread = narrower half-width at half maximum / 1.1774; `peak_centre`). The median is pulled up by the winter smear (EN727 24Jan(1): small core Syn rejected as "too small" and re-checked into Euk with Syn); a low-side estimate is pulled down by tiny PE signals (EN727 26Jan(13): Syn 531 vs old 1,093, Euk 3,610 vs 2,017).
+- Test files (v2 Syn vs old): EN727 24Jan(1) 848/785, EN727 26Jan(13) 1,120/1,093, AR95 21Oct(5) 8,629/8,693, HRS2609 16Aug(7) 16,396/16,432, AR92 15Aug(3) 37,127/37,133.
+- 60 files after these two changes: median agreement AR92 0.983, AR95 0.951, EN727 0.902, HRS2609 0.977; Syn within 10% of old in all 60 files; Syn v2/old median 0.993–1.025; Euk v2/old 1.020–1.062; Syn on particle AR92 1,655, AR95 1,905, EN727 3,096, HRS2609 2,603; median old-phyto events dropped per file 20–60.
+
+### Catch-all Euks held to the main-rule chl floor (Nov 2026)
+
+The catch-all was adding small, low-chl events to Euk. In AR95 18Oct AltPro(6) Pro(5) it added 118 Euks, about 1.3 log units below the Euk chl-size line, near the chl trigger. These events passed because for particles near Syn size only the detritus chl:scatter cut was applied. Now no catch-all Euk (or Euk with Syn) may have less chl than the Euks the main rules accepted. At any size its chl must be above the `catchall_euk_chl_prc` (1st) percentile of the main-rule Euks' residuals about their chl-size line, and it must also pass the Euk chl:scatter cut. In that file, v2 Euk additions fell from 132 to 34.
+
+Effect on the 60 files:
+
+| Cruise | Median agreement | Euk v2/old median |
+|---|---|---|
+| AR92 | 0.983 → 0.984 | 1.020 → 1.012 |
+| AR95 | 0.951 → 0.953 | 1.041 → 1.033 |
+| EN727 | 0.902 → 0.907 | 1.062 → 1.055 |
+| HRS2609 | 0.977 → 0.977 | 1.024 → 1.022 |
+
+Syn counts are unchanged. The largest Euk overshoot (v2/old maximum) in AR95 is now 1.16 (was 1.27).
+
+### Syn-level PE events no longer re-checked into plain Euk (Nov 2026)
+
+Some Syn-sized events had Syn-like PE per chl but a PE spectrum (GL2:GL3) outside the file's Syn range by more than `syn_GL2GL3_tol`. Some sat around 0.5 (Syn are about 0.3–0.4) and some around 0.0–0.15. The Syn check rejected them on spectrum alone. Because their spectrum also failed the Euk-with-Syn test, the re-check of rejected Syn made them plain Euk. Euks have about 1000x less PE per chl, so these were plain Euks with Syn-level PE: 286 across the 60 files, almost all called Syn in the old classes.
+
+Now, re-checked events with PE per chl within `syn_PEchl_tol` of Syn are not made plain Euk. They stay unassigned for the following steps. In the 60 files, 482 events were held back this way:
+
+| Final class | Events |
+|---|---|
+| Syn (catch-all) | 218 |
+| Crypto (PE-euk step; larger events with crypto spectrum, called PE euk in the old classes too) | 238 |
+| Unassigned | 25 |
+| Euk with Syn | 1 |
+
+About 35 plain Euks with Syn-level PE remain. They come straight from GMM Euk components, not from this re-check.
+
+Agreement and Euk and Syn counts change by less than 0.003 in every cruise. EN727 median Syn v2/old goes from 1.025 to 1.028.
+
+### Syn PE floor at a PE gap (Nov 2026)
+
+In OR-trigger files (BL3 or GL2), faint events that clear only the GL2 trigger pile up at its edge. In AR92 14Aug(1) Sample(1) the initial clustering put this pile in Syn. The Syn check removed most of it as too small, but its Syn-sized part (about 170 events at GL2 −1.8 to −1.3, chl below the chl trigger) stayed in Syn. Once the pile has been cut down, those leftovers look like a flat tail with no trough, and the statistical floor (4 low-side SDs, at −2.33 here) removed none of them.
+
+Two alternatives were tried and rejected:
+
+- **Euk no-PE noise floor:** a percentile of Euk GL2. Using all Euks, it wiped out Syn in summer files: at that step the Euks still hold cryptos, and large Euks show PE-channel signal from chl spillover. Using only small Euks, the noise level (about −2.1) sits below the pile, so it removed none of it, and in 3–4 files the percentile was inflated enough to cut real Syn.
+- **Gap found after the Syn check:** never fired.
+
+The rule now finds the gap in the Syn PE distribution before the Syn check, while the pile is intact. It looks for a local minimum below the Syn peak with density under `syn_PE_gap_frac` (0.1) of the peak, rising again below it by `syn_PE_gap_rise` (2) into a pile of at least `syn_PE_gap_min_pile` (10) events. Bandwidth is 0.08. The Syn PE floor is the higher of the statistical floor and the gap. Euks are not involved; the gap is found from events the initial clustering called Syn.
+
+In AR92 14Aug(1) the gap sits at −1.26. Syn goes from 7,333 to 7,151, and agreement from 0.960 to 0.963. The old classes had 71 Syn below −1.26 (their own faint tail).
+
+Across the 60 files the gap is found in 24. In most of these it lies below all Syn and has no effect. Elsewhere it removes 1–35 Syn, and 104 in HRS2609 less_sensitive(1). Cruise medians of agreement, Euk and Syn are unchanged; AR92 minimum agreement goes from 0.960 to 0.963. In several AR95 and EN727 files the gap lies only 0.6–1 log units below the Syn median, but it removes at most 9 events there.
+
+### Crypto spectrum relative to the Syn spread; no PE-euk entry on spectrum alone (Nov 2026)
+
+- **Problem:** in your old classes, dim crypto (3) look the same in every file: PE:chl 1.3–1.5 log below Syn, PE about one Syn's worth, size 1.1–1.6 above Syn. Their spectrum is crypto-shifted only in EN727 (BL2:GL3 median 0.88 below Syn). In AR92, AR95 and HRS2609 it sits only 0.05–0.27 below Syn.
+- **Why the fixed cut failed:** the v2 crypto cut (BL2:GL3 0.3 below Syn) is 3.7 Syn SDs in EN727 but only 1–1.8 SDs in the AR92 and HRS2609 summer files, where Syn pigment types mix. There v2 sent the old dim crypto to Euk with Syn or Euk. It also pulled Syn-like events (PE:chl at Syn level, about 1 log larger than Syn) into dim crypto: in HRS2609 17Aug(11), 182 of v2's 233 dim crypto were old Syn or unassigned.
+- **Changes:**
+  - **Relative cut:** the crypto-type spectrum must be below Syn by at least the larger of 0.3 and `crypto_dB_sd` (2) robust SDs of the file's Syn BL2:GL3. The same applies to the GL2:GL3 fallback. At 3 SDs, half of AR92's bright cryptos would have failed.
+  - **No entry on spectrum alone:** events entering the PE-euk step on spectrum alone need PE:chl below the Syn median (`peeuk_spec_PEchl_below_syn` = 0), unless GL2 saturates (bright cryptos).
+  - **Your decision:** summer and fall low-PE:chl euks with a Syn-like spectrum are Euk with Syn (5).
+- **Effect over the 60 files:**
+
+  | Cruise | v2 dim crypto | v2 bright crypto | Euk with Syn |
+  |---|---|---|---|
+  | AR92 | 287 → 32 | 128 → 129 | 609 → 672 |
+  | AR95 | 510 → 466 | 3,637 → 3,635 | 656 → 665 |
+  | EN727 | 1,094 → 932 | 1,766 → 1,880 | 244 → 247 |
+  | HRS2609 | 995 → 247 | 229 → 211 | 759 → 881 |
+
+  Agreement medians are unchanged (HRS2609 0.977 → 0.978).
+- **Still open:** many old dim crypto in summer files are plain Euk in v2. They fail the absolute PE thresholds `pe_min_PEchl` (−2.2) and `peeuk_min_GL2` (−1.0), sitting at PE:chl about −2.4 and GL2 −0.8 to −1.2. That is about 10x more PE per chl than plain Euks (about −3.5).
+
+### PE euks: chl-spillover floor, saturated GL2 = bright crypto, spectrum vs every Syn type (Nov 2026)
+
+The old dim crypto class is known to be a mixture, so agreement with it is not a target.
+
+**Changes:**
+
+- **PE present on large particles.** PE:chl must be at least `peeuk_spill_sd` (3) robust SDs above the large Euks' PE:chl-vs-chl trend. Large Euks show PE-channel signal only from chl spillover, and their PE:chl falls with chl (about −3 at chl 0.5, −4 at chl 2.5). This replaces the fixed `pe_min_PEchl` (−2.2) and `peeuk_min_GL2` (−1.0) cuts, which ran through a separate PE band 1–1.5 log above the Euk cloud in summer files (`output/examples/pe_spillover.png`). The fixed cuts remain the fallback when a file has fewer than 50 large Euks.
+- **Saturated GL2 means bright crypto.** PE euks at or near GL2 saturation are bright crypto regardless of spectrum. No other class carries that much PE, and saturation compresses PE:chl and GL2:GL3 toward Syn-like values. The dim/bright two-group fit still uses only events with a crypto-type spectrum, so the EN727 split is still accepted.
+- **Spectrum vs every Syn type.** Syn can be a mix of pigment types. HRS2609 17Aug(11) has a second type about 0.7 below the main one in BL2:GL3, and v2's dim crypto there had exactly that spectrum (`output/examples/dim_crypto_spectra.png`). An unsaturated PE euk is crypto-type only if its spectrum is below the 1st percentile of the file's Syn spectrum minus 0.1 (`crypto_syn_low_prc`, `crypto_syn_low_margin`). Otherwise it is Euk with Syn. The exception is events with more than 10 Syn's worth of PE (`crypto_min_PE_above_syn`): they keep the median-relative cut, because unsaturated bright cryptos in HRS2609 sit within the Syn spectral spread (without this, HRS2609 bright crypto fell from 211 to 58).
+
+**Results, 60 files:**
+
+| Cruise | Dim crypto (v2) | Bright crypto (v2) | Euk with Syn | Euk v2/old (median) | Agreement (median) |
+|---|---|---|---|---|---|
+| AR92 | 32 → 5 | 129 → 140 | 672 → 1,181 | 1.009 → 0.994 | 0.984 → 0.983 |
+| AR95 | 466 → 425 | 3,635 → 3,676 | 665 → 1,065 | 1.033 → 1.021 | 0.953 → 0.945 |
+| EN727 | 932 → 947 | 1,880 → 1,879 | 247 → 362 | 1.053 → 1.048 | 0.907 → 0.904 |
+| HRS2609 | 247 → 26 | 211 → 217 | 881 → 1,711 | 1.022 → 1.001 | 0.978 → 0.974 |
+
+- In summer files, the low-PE:chl euks with a Syn-type spectrum are now Euk with Syn, as decided.
+- The small agreement drops come from the old dim crypto class, which mixes groups v2 now separates.
+
+## Syn spectral types across cruises (`syn_spectral_types.m`, Nov 2026)
+
+- **Method.** 148 files from 20 cruises (all those with `beadstat_2026`, up to 8 standard files each) were classified with v2. Syn with usable BL2, GL2 and GL3 (not saturated, at least 1 log above floor) were described by bead-normalized ratios:
+  - BL2 − GL2: PE excited at 488 vs 532 nm, a proxy for PUB:PEB excitation
+  - GL2 − GL3: PE emission ratio
+  - GL4 − GL2
+  - PE:chl
+- **Outputs.** Per-file 1–3 component mixtures are in `output/syn_spectral_types.mat` (C = groups, P = 1000 events per file); the figure is `output/syn_spectral_types.png`.
+- **Result.** BL2 − GL2 has three sharp modes that recur across cruises and years, at about **−0.23, 0.00 and +0.45**. Within-group SD is about 0.07, and the emission ratio GL2 − GL3 is about 0.35 for all three.
+- **Season.** Winter and spring cruises (SST about 8–12 °C) have only the −0.23 and 0.00 modes. Summer and fall cruises (SST over 20 °C) add the +0.45 mode, a higher PUB:PEB type consistent with 3c-like or offshore Syn. The −0.23 mode also has higher GL4:GL2.
+- **Lower-emission group.** A smaller group with lower emission ratio (GL2 − GL3 about 0.1–0.2) appears in some warm-water files.
+- **Caveats:**
+  - The per-file mixture nearly always picks K = 3, so it over-splits; the pooled event histogram shows the same modes independently.
+  - Naming the modes as pigment types (3a, 3b, 3c, 3d) needs reference cultures run with beads.
+  - Bead-lot differences in the beads' own spectra could shift a cruise slightly, but the modes line up across 2020–2026.
+
+### Syn subtype label in v2 (Nov 2026)
+
+- **Labels.** `assign_class_v2` returns `info.syn_type`, one label per event, for Syn (2), Euk with Syn (5) and Syn on particle (8):
+  - 1 = type A, 2 = B, 3 = C
+  - 9 = spectrum not usable (BL2, GL2 or GL3 saturated or within `syn_type_min_above_floor` = 1 of the floor)
+  - 0 = other classes
+- **Boundaries.** The types are fixed windows on the bead-normalized BL2 − GL2: A < −0.10 ≤ B < +0.19 ≤ C (`syn_type_edges`). These are the troughs between the pooled modes at −0.23, 0.00 and +0.45. The class codes are unchanged; the subtype is a separate label, so class 2 counts and downstream code are not affected.
+- **Outputs.** `score_agreement` adds `new_synA`, `new_synB`, `new_synC` and `new_syn_untyped`, counted for class 2. `plot_class_cytograms` adds a GL2 vs BL2 panel, with v2 Syn coloured by type and dashed lines at the boundaries.
+- **60 files.** Classes are identical to the previous run.
+
+  | Cruise | A (median share per file) | B | C | Untyped | Files with more than 5% C |
+  |---|---|---|---|---|---|
+  | AR92 (Aug) | 0.40 | 0.06 | 0.38 | 0.08 | 14 of 15 |
+  | AR95 (Oct) | 0.16 | 0.69 | 0.04 | 0 | 6 of 15 |
+  | EN727 (Jan) | 0.55 | 0.44 | 0.002 | 0 | 0 of 15 |
+  | HRS2609 (Aug) | 0.27 | 0.05 | 0.47 | 0.08 | 13 of 15 |
+
+  Untyped Syn (about 8% in the summer files) are mostly dim Syn near the GL3 or BL2 floor.
+
+### Chl gap at the bottom of the Euks (Nov 2026)
+
+- **Problem.** In AR92 14Aug(1) Sample(1), v2 added 226 Euks that sat on the pile of faint events at the chl trigger: median 0.24 above the edge, below every agreed Euk in chl:scatter. The chl histogram of small no-PE particles there shows a pile at the edge, a trough about 0.35 above it, then the Euk cluster.
+- **Rule.** Same approach as the Syn PE gap. Take small no-PE particles (Euks and unassigned, smaller than Syn + 1) and find a deep minimum in their chl (BL3) between the Euk peak (at least 0.2 above the edge) and a pile below it:
+  - minimum density under 0.1 of the peak (`euk_gap_frac`)
+  - density rising again below it by at least 1.5x (`euk_gap_rise`)
+  - at least 20 events below the minimum (`euk_gap_min_pile`)
+  - KDE bandwidth 0.05
+
+  Where the gap is found, small no-PE Euks below it are left unassigned, and the catch-all may not re-add them. Files without a gap keep the existing rules.
+- **AR92 14Aug(1).** The gap sits 0.33 above the edge. Euks added relative to the old classes drop from 226 to 91; the remaining ones are larger (about Syn + 0.9) with low chl:scatter.
+- **60 files.** The gap is found in 43 of 60 files.
+
+  | Cruise | Agreement median | Agreement min | Euk v2/old median |
+  |---|---|---|---|
+  | AR92 | 0.983 → 0.983 | 0.957 → 0.960 | 0.994 → 0.991 |
+  | AR95 | 0.945 → 0.951 | 0.818 → 0.848 | 1.021 → 0.989 |
+  | EN727 | 0.904 → 0.920 | 0.780 → 0.787 | 1.048 → 1.023 |
+  | HRS2609 | 0.974 → 0.976 | 0.958 → 0.958 | 1.001 → 0.996 |
+
+  Euk v2/old across all files now ranges 0.96–1.19 (was up to 1.25).
+- **To check.** In Pro-setting files (AR92 and AR95 `Pro` files) the gap is 1.1–1.7 above the chl edge, because the pile there is the faint Pro tail. Euk counts in those files stay within a few percent of the old counts, for example AR95 19Oct AltPro(30) Pro(10) at 3,046 vs 3,123.
+
+### Euk with Syn / Syn on particle side paths fixed; low-chl Euk with Syn unassigned and flagged (Nov 2026)
+
+- **Bug: side paths bypassed the class rules.** Two later steps could assign Euk with Syn or Syn on particle without checking the class's own rules. In HRS2609 17Aug(11), 61 of 286 Euk with Syn and 159 of 553 Syn on particle came in this way.
+  - **Syn-reject re-check.** It assigned Euk with Syn using only the Euk minimum size (Syn − 0.5) and a Syn-type spectrum. It now also requires the PE-euk rules: size larger than Syn + 0.6 and PE:chl at least 0.5 below Syn. Events that fail stay unassigned for later steps.
+  - **Catch-all, Euk with Syn.** It now requires the PE-euk size and PE:chl rules and chl within `euksyn_max_chl_below_euk` of the Euk line.
+  - **Catch-all, Syn on particle.** It checked only the size cut, and every event it added failed at least one Syn-on-particle rule. It now requires the full main rule (`synpart_rule`).
+- **Low-chl Euk with Syn.** These sit more than 0.5 below the Euk chl-size line.
+  - Their PE:chl is 0.5–2 below Syn and their chl is 1–2 log above one Syn's, so they fit neither Euk with Syn nor Syn on particle. They are likely detritus or grazers with partly degraded Syn and/or Euks.
+  - They are now left unassigned (`euksyn_low_chl_class` = 0; it was 8). The main Syn-on-particle rule can still take those that fit it, and the catch-all may not re-add them.
+  - Plot: `output/examples/euksyn_lowchl_unassigned.png`.
+- **Effect over the 60 files.** Euk, Syn and crypto counts are essentially unchanged.
+
+  | Cruise | Euk with Syn | Syn on particle | Agreement median | Agreement min |
+  |---|---|---|---|---|
+  | AR92 | 1,167 → 947 | 1,948 → 1,097 | 0.983 → 0.985 | 0.960 → 0.966 |
+  | AR95 | 1,030 → 758 | 2,378 → 1,490 | 0.951 → 0.955 | 0.848 → 0.849 |
+  | EN727 | 363 → 249 | 3,457 → 2,506 | 0.920 → 0.929 | 0.787 → 0.807 |
+  | HRS2609 | 1,679 → 1,372 | 3,222 → 2,025 | 0.976 → 0.978 | 0.958 → 0.963 |
+
+- **New flag variable.** `info.flag` marks why some unassigned events were left out; class stays 0:
+
+  | Flag | Meaning | 60-file total | Median per file |
+  |---|---|---|---|
+  | 1 | Syn-pigment particle with low chl | 1,660 | 8–29 |
+  | 2 | Faint particle below the Euk chl gap | 20,102 | 0–402 |
+  | 3 | Pro tail at the chl trigger (non-Pro files) | 376 | 0–4 |
+
+  `score_agreement` reports per-file counts as `flag_synpig`, `flag_below_gap` and `flag_pro_tail`.
+- **Planned for integration.** The per-sample class files would carry `syn_type` and `flag` as extra per-event variables next to `class`, with `notes` describing the codes. Code that reads only `class` is unaffected.
