@@ -1,0 +1,41 @@
+function ref = bead_reference(beadstat, t, cfg)
+% function ref = bead_reference(beadstat, t, cfg)
+% Bead peak positions to normalize a sample against: for each channel, the
+% median over bead runs within cfg.bead_window_days of time t (datenum) in
+% which that channel's bead population passed QC; falls back to the nearest
+% such run. Each channel uses the bead population that is on scale there
+% (cfg.bead_pop: 1 = 0.5, 2 = 1, 3 = 6 um) and that channel's voltage
+% exponent (cfg.k); runs are brought to the first run's voltage before the
+% median.
+%
+% beadstat - table from load_beadstat (process_beads_PT_adjust_3): per
+%            population P = 05, 1, 6, QCP and peakP (KDE mode per channel,
+%            linear units), and hv per channel
+%
+% Nov 2026, classifier redesign prototype; bead stats redesign
+
+P = {'05' '1' '6'};
+bt = datenum(beadstat.time);
+ref.chans = cfg.chans;
+ref.floor_raw = cfg.floor_raw;
+ref.ntimes = struct();
+for c = cfg.chans
+    ch = c{1};
+    b = P{cfg.bead_pop.(ch)};
+    v = beadstat.(['peak' b]).([ch '_H']);
+    hv = beadstat.hv.(ch);
+    good = beadstat.(['QC' b]) & v > 0 & hv > 0;
+    use = good & abs(bt - t) <= cfg.bead_window_days;
+    if ~any(use) && any(good)
+        q = find(good);
+        [~, i] = min(abs(bt(q) - t)); use(q(i)) = true;
+    end
+    if ~any(use), error('bead_reference:noQC', 'no QC''d bead runs for %s', ch), end
+    v = v(use); hv = hv(use);
+    hv0 = hv(1);
+    ref.bead_log.(ch) = median(log10(v) - cfg.k.(ch) * log10(hv / hv0));
+    ref.bead_hv.(ch) = hv0;
+    ref.k.(ch) = cfg.k.(ch);
+    ref.ntimes.(ch) = sum(use);
+end
+end

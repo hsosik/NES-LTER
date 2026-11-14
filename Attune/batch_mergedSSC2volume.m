@@ -14,17 +14,16 @@ mergeT.filename = fcslist;
 [~,ia] = ismember(fcslist, FCSfileinfo.fcslist);
 mergeT.filetime = datetime(FCSfileinfo.matdate_start(ia), 'ConvertFrom', 'datenum');
 
-if exist([p.outpath, 'beadstat_2026.mat'])
-    load([p.outpath, 'beadstat_2026.mat'])
-else
-    beadtype = 'PT only'; 
-end
+addpath(fullfile(fileparts(mfilename('fullpath')), 'classifier_dev'))
+beadstat = load_beadstat(p.outpath); % from process_beads_PT_adjust_3
 
-%get the 1 micron bead means for SSC-A and SSC-H for cases starting on cruise day and later
-ind = beadstat_2026.time>dateshift(min(mergeT.filetime),'start', 'day');
-beadT = array2table([beadstat_2026.NoOD2centersA(ind,2) beadstat_2026.NoOD2centersH(ind,2) beadstat_2026.NoOD2_hv(ind)], 'VariableName',{'SSCA_1micron' 'SSCH_1micron' 'SSC_hv'});
+%get the 1 micron bead peaks (KDE mode; was centend2) for SSC and GL1, QC'd runs
+%starting on cruise day and later
+ind = beadstat.QC1 & beadstat.time>dateshift(min(mergeT.filetime),'start', 'day');
+B1 = beadstat.peak1(ind, :);
+beadT = table(B1.SSC_A, B1.SSC_H, beadstat.hv.SSC(ind), 'VariableNames', {'SSCA_1micron' 'SSCH_1micron' 'SSC_hv'});
 beadSSCmean = groupsummary(beadT,'SSC_hv','mean'); %compute mean grouped by HV
-beadT = array2table([beadstat_2026.OD2centersA(ind,2) beadstat_2026.OD2centersH(ind,2) beadstat_2026.OD2_hv(ind)], 'VariableName',{'GL1A_1micron' 'GL1H_1micron' 'GL1_hv'});
+beadT = table(B1.GL1_A, B1.GL1_H, beadstat.hv.GL1(ind), 'VariableNames', {'GL1A_1micron' 'GL1H_1micron' 'GL1_hv'});
 beadGL1mean = groupsummary(beadT,'GL1_hv','mean'); %compute mean grouped by HV
 
 sscstr = strcat("SSC-", p.SSCDIM);
