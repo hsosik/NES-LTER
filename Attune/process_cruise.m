@@ -19,7 +19,11 @@ function p = process_cruise(cruise, steps, opts)
 %               - no FCB beads (EN608 to EN627): pt_transfer\make_perf_beadstat.
 %                 EN627 keeps its PT conversion unless opts.force.
 %   3 classify  assign_class_v2 on every sample file -> bead_calibrated\class\<file>.mat
-%               holding class, syn_type, flag, notes, class_meta (see below)
+%               holding class, syn_type, flag, notes, class_meta (see below), and the
+%               classification review in bead_calibrated\review\ (unless opts.review is
+%               false): one cytogram frame per file, per-file QC and index.html, a viewer
+%               that steps through the cruise, flags unusual files and saves review
+%               decisions to bead_calibrated\review_decisions.csv (classifier_dev\review)
 %   4 volume    batch_mergedSSC2volume: adds volume_cubic_microns etc. to the class files
 %   5 table     generate_attune_table -> bead_calibrated\AttuneTable.mat
 %   6 underway  match_Attune_underway_LTER -> bead_calibrated\AttuneTable_uw_match.mat
@@ -35,6 +39,8 @@ function p = process_cruise(cruise, steps, opts)
 %   .append    true: skip files that already have a class file (default false)
 %   .parallel  true: parfor over files in step 3 (default true when a pool can start)
 %   .force     passed to the bead step (default false)
+%   .review    true (default): build the classification review during step 3. A run on
+%              some files (.files, .append) updates their frames and keeps the rest.
 %
 % Class file variables written by step 3 (step 4 loads and re-saves the file, keeping them)
 %   class      per event, double: 0 unassigned, 1 Euk, 2 Syn, 3 dim crypto, 4 bright crypto,
@@ -55,12 +61,12 @@ function p = process_cruise(cruise, steps, opts)
 
 if nargin < 2 || isempty(steps), steps = 1:6; end
 if nargin < 3, opts = struct(); end
-def = struct('root', '', 'outpath', '', 'files', [], 'append', false, 'parallel', [], 'force', false);
+def = struct('root', '', 'outpath', '', 'files', [], 'append', false, 'parallel', [], 'force', false, 'review', true);
 f = fieldnames(def);
 for i = 1:numel(f), if ~isfield(opts, f{i}), opts.(f{i}) = def.(f{i}); end, end
 
 here = fileparts(mfilename('fullpath'));
-addpath(here, fullfile(here, 'classifier_dev'), fullfile(here, 'classifier_dev', 'pt_transfer'))
+addpath(here, fullfile(here, 'classifier_dev'), fullfile(here, 'classifier_dev', 'pt_transfer'), fullfile(here, 'classifier_dev', 'review'))
 
 %% settings
 s = attune_cruise_settings(cruise, opts.root);
@@ -200,8 +206,14 @@ if isfield(bmeta, 'source'), src = string(bmeta.source); end
 
 codes = class_codes();
 fcsfile = strcat(p.fpath, Fi.fcslist);
-t = Fi.matdate_start; pro = Fi.pro_measured;
+names = Fi.fcslist; t = Fi.matdate_start; pro = Fi.pro_measured;
 nev = nan(n, 1); ncomp = nan(n, 1); counts = nan(n, 9); err = strings(n, 1);
+% classification review: frame and QC per file in the loop, viewer after it
+do_review = opts.review; revdir = fullfile(p.outpath, 'review'); R = []; Q = cell(n, 1);
+if do_review
+    if ~exist(fullfile(revdir, 'frames'), 'dir'), mkdir(fullfile(revdir, 'frames')); end
+    R = review_config();
+end
 use_par = opts.parallel;
 if isempty(use_par), use_par = license('test', 'Distrib_Computing_Toolbox') && n > 4; end
 if use_par && isempty(gcp('nocreate')), parpool; end
@@ -221,6 +233,14 @@ parfor (k = 1:n, M)
             'pro_measured', pro(k), 'ncomp', info.ncomp, 'comp', info.comp, ...
             'trigger_edges', field_or(info, 'trigger_edges', struct()));
         save_classfile(classfile{k}, o)
+        if do_review
+            try
+                warning('off', 'stats:statrobustfit:IterationLimit')
+                Q{k} = review_sample(fcsdat, fcshdr, cls, info, [], revdir, names{k}, t(k), pro(k), R);
+            catch ME
+                warning('process_cruise:review', '%s: review frame failed: %s', names{k}, ME.message)
+            end
+        end
         nev(k) = numel(cls); ncomp(k) = info.ncomp;
         counts(k, :) = [sum(cls == 0) sum(cls == 1) sum(cls == 2) sum(cls == 3) sum(cls == 4) ...
             sum(cls == 5) sum(cls == 7) sum(cls == 8) sum(o.flag > 0)];
@@ -234,6 +254,34 @@ L = [table(string(Fi.fcslist), t, pro, nev, ncomp, 'VariableNames', {'file' 'tim
     table(err, 'VariableNames', {'error'})];
 save([p.outpath 'class_log.mat'], 'L')
 fprintf('step 3: %d files classified, %d failed; log in %sclass_log.mat\n', sum(err == ""), sum(err ~= ""), p.outpath)
+if do_review
+    review_step(revdir, Q, R, p, version)
+end
+end
+
+
+function review_step(revdir, Q, R, p, version)
+% merge this run's review QC into the cruise's (files classified earlier keep theirs if
+% their frame is still there) and rewrite the viewer
+Q = Q(~cellfun(@isempty, Q));
+qf = fullfile(revdir, 'review_qc.mat');
+if exist(qf, 'file')
+    o = load(qf, 'Q');
+    if isfield(o, 'Q') && ~isempty(o.Q)
+        oldQ = o.Q(:);
+        newf = cellfun(@(q) q.file, Q, 'UniformOutput', false);
+        keep = ~ismember(cellfun(@(q) q.file, oldQ, 'UniformOutput', false), newf) ...
+            & cellfun(@(q) exist(fullfile(revdir, q.frame), 'file') == 2, oldQ);
+        Q = [oldQ(keep); Q(:)];
+    end
+end
+if isempty(Q), return, end
+build = [char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm')) ' (' version ')'];
+decfile = fullfile(p.outpath, 'review_decisions.csv');
+err = strings(0, 1); %#ok<NASGU> same variables as review_cruise writes
+save(qf, 'Q', 'err', 'build', 'decfile')
+review_viewer(revdir, Q, R, p.cruise, decfile, build);
+fprintf('step 3: review of %d files: %s\n', numel(Q), fullfile(revdir, 'index.html'))
 end
 
 

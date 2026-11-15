@@ -1,0 +1,589 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attune class review</title>
+<script src="review_data.js?v=__STAMP__"></script>
+<style>
+:root { --fg:#1d1f23; --mut:#6b7078; --line:#d9dce1; --bg:#f6f7f9; --card:#fff; --hi:#c0392b; --acc:#1f6feb; }
+* { box-sizing:border-box; }
+body { margin:0; font:13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; color:var(--fg); background:var(--bg); }
+header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line); padding:8px 14px; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; }
+header h1 { font-size:15px; margin:0; }
+#fname { font-weight:600; font-family:ui-monospace, Consolas, monospace; font-size:12.5px; }
+#ftime, #fidx { color:var(--mut); }
+button, select, input[type=number] { font:inherit; padding:3px 8px; border:1px solid var(--line); border-radius:5px; background:#fff; cursor:pointer; }
+button:hover { border-color:var(--acc); }
+#slider { flex:1 1 300px; min-width:200px; }
+.badge { background:var(--hi); color:#fff; border-radius:9px; padding:1px 8px; font-size:12px; }
+.badge.ok { background:#2e8b57; }
+main { padding:10px 14px; display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:12px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 10px; }
+.strip { grid-column:1 / -1; }
+.striphead { display:flex; gap:14px; align-items:center; flex-wrap:wrap; margin-bottom:4px; color:var(--mut); }
+.striphead label { cursor:pointer; user-select:none; }
+canvas { width:100%; display:block; cursor:crosshair; }
+#frame svg { width:100%; height:auto; display:block; }
+#side h3 { font-size:13px; margin:10px 0 4px; }
+#side h3:first-child { margin-top:0; }
+table { border-collapse:collapse; width:100%; font-variant-numeric:tabular-nums; }
+td, th { padding:1px 4px; text-align:right; border-bottom:1px solid #eef0f3; }
+td:first-child, th:first-child { text-align:left; }
+.sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
+.why { color:var(--hi); margin:2px 0; }
+#legend { display:flex; flex-wrap:wrap; gap:4px 14px; margin-top:6px; color:var(--mut); }
+#list { grid-column:1 / -1; }
+#list table td { cursor:pointer; }
+#list tr:hover td { background:#eef4ff; }
+#list tr.cur td { background:#ffeedd; }
+.mut { color:var(--mut); }
+#tip { position:fixed; pointer-events:none; background:#222; color:#fff; padding:3px 6px; border-radius:4px; font-size:11.5px; display:none; z-index:10; }
+kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:3px; padding:0 4px; font-size:11px; background:#fff; }
+#rev { border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:8px; }
+#stbtns { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:5px; }
+#stbtns button { padding:2px 7px; }
+#stbtns button.on { color:#fff; border-color:transparent; }
+#note { width:100%; font:inherit; border:1px solid var(--line); border-radius:5px; padding:3px 6px; resize:vertical; }
+#reviewer { font:inherit; padding:1px 5px; border:1px solid var(--line); border-radius:5px; width:110px; }
+#savestate { margin-top:5px; font-size:12px; overflow-wrap:anywhere; }
+#savestate button { font-size:12px; padding:1px 6px; }
+#savestate .err { color:var(--hi); }
+#savestate code, #list code { font-size:11.5px; }
+.pill { color:#fff; border-radius:9px; padding:1px 8px; font-size:12px; }
+.old { color:#a05a00; }
+@media (max-width: 900px) { main { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">Attune class review</h1>
+  <button id="prev" title="previous (←)">◀</button>
+  <button id="next" title="next (→)">▶</button>
+  <button id="pflag" title="previous unusual (p)">◀ unusual</button>
+  <button id="nflag" title="next unusual (n)">unusual ▶</button>
+  <input id="slider" type="range" min="0" value="0">
+  <span id="fidx"></span>
+  <span id="fname"></span>
+  <span id="ftime"></span>
+  <span id="fbadge"></span>
+  <label title="n / p skip unusual files that already have a review status"><input id="skiprev" type="checkbox" checked> skip reviewed</label>
+</header>
+<main>
+  <section class="card strip">
+    <div class="striphead">
+      <b style="color:var(--fg)">Class counts</b> <span>log scale; red ticks mark unusual files, ticks above them review status; click to jump</span>
+      <span id="cls_toggles"></span>
+      <span style="margin-left:auto">x axis <select id="xmode"><option value="idx">sample order</option><option value="time">time</option></select></span>
+    </div>
+    <canvas id="ts1" height="150"></canvas>
+    <div class="striphead" style="margin-top:6px">
+      <b style="color:var(--fg)">QC metric</b> <select id="metric"></select>
+      <span>shaded band: running median ± z·scale of neighbouring files</span>
+      <label style="margin-left:auto" title="Euk chl gap / Syn PE gap found, missing or moved compared with neighbouring files. Off: listed as notes only (on EN727 both gaps switch on and off between neighbouring files; Syn and Euk counts barely change, but the below-gap and Pro-tail flag counts follow the Euk gap)"><input id="gapflag" type="checkbox"> count gap changes (and below-gap / Pro-tail flags) as unusual</label>
+      <span>flag at |z| &gt; <input id="zthr" type="number" value="4" min="1" max="20" step="0.5" style="width:60px"></span>
+    </div>
+    <canvas id="ts2" height="90"></canvas>
+  </section>
+  <section class="card" id="frame"><svg id="fsvg"></svg><div id="legend"></div></section>
+  <aside class="card" id="side">
+    <div id="rev">
+      <h3>Review</h3>
+      <div id="stbtns"></div>
+      <textarea id="note" rows="2" placeholder="note for this file (saved as you type)"></textarea>
+      <div id="revmeta" class="mut"></div>
+      <div class="mut" style="margin-top:3px">reviewer <input id="reviewer" placeholder="your name"></div>
+      <div id="savestate"></div>
+    </div>
+    <div id="sideinfo"></div>
+  </aside>
+  <section class="card" id="list"></section>
+</main>
+<div id="tip"></div>
+<script>
+'use strict';
+const D = REVIEW, R = D.R, F = D.files, N = F.length;
+const $ = id => document.getElementById(id);
+const rgb = c => `rgb(${c.map(v => Math.round(v * 255)).join(',')})`;
+const colOf = k => R.cols[R.codes.indexOf(k)];
+const nameOf = k => k === 0 ? 'unassigned' : R.names[R.codes.indexOf(k)];
+const fmt = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v)) ? '–' : (typeof v === 'number' ? (Number.isInteger(v) ? v.toLocaleString() : v.toFixed(d)) : v);
+F.forEach(f => { f.t = new Date(f.time).getTime(); f.src = f.frame + '?v=' + encodeURIComponent(D.made); }); // stamp: no stale frames after a rerun
+$('title').textContent = `${D.cruise} class review`;
+document.title = `${D.cruise} review`;
+
+// ---------- QC metrics and unusual-file detection ----------
+const lg = v => Math.log10((v || 0) + 1);
+const METRICS = [
+  { key: 'euk', label: 'Euk count (log)', f: q => lg(q.n1), floor: .12 },
+  { key: 'syn', label: 'Syn count (log)', f: q => lg(q.n2), floor: .12 },
+  { key: 'pro', label: 'Pro count (log)', f: q => lg(q.n7), floor: .15 },
+  { key: 'cry', label: 'crypto dim+bright (log)', f: q => lg(q.n3 + q.n4), floor: .25 },
+  { key: 'es', label: 'Euk with Syn (log)', f: q => lg(q.n5), floor: .35 },
+  { key: 'sp', label: 'Syn on particle (log)', f: q => lg(q.n8), floor: .35 },
+  { key: 'un', label: 'unassigned (log)', f: q => lg(q.n0), floor: .12 },
+  { key: 'flag1', label: 'flag: Syn-pigment particle (log)', f: q => lg(q.flag1), floor: .3 },
+  { key: 'flag2', label: 'flag: below Euk chl gap (log)', f: q => lg(q.flag2), floor: .3, minor: true }, // follows the Euk chl gap on/off
+  { key: 'flag3', label: 'flag: Pro tail (log)', f: q => lg(q.flag3), floor: .35, minor: true }, // on EN727 set only in files without a Euk chl gap
+  { key: 'catch', label: 'catch-all share of Euk', f: q => q.catchall_share, floor: .04, abs: v => v > .25 },
+  { key: 'untyped', label: 'untyped Syn share', f: q => q.syn_untyped_share, floor: .04, abs: v => v > .25 },
+  { key: 'srPEchl', label: 'Syn ref PE:chl', f: q => q.syn_ref_PEchl, floor: .06 },
+  { key: 'srGL', label: 'Syn ref GL2:GL3', f: q => q.syn_ref_GL2GL3, floor: .05 },
+  { key: 'srBL3', label: 'Syn ref chl', f: q => q.syn_ref_BL3, floor: .06 },
+  { key: 'srSize', label: 'Syn ref size', f: q => q.syn_ref_size, floor: .06 },
+  { key: 'pefloor', label: 'Syn PE floor', f: q => q.syn_PE_floor, floor: .08 },
+  { key: 'eukgap', label: 'Euk chl gap (blank = none)', f: q => q.euk_chl_gap, floor: .08, gap: 'Euk chl gap' },
+  { key: 'pegap', label: 'Syn PE gap (blank = none)', f: q => q.syn_PE_gap, floor: .08, gap: 'Syn PE gap' },
+  { key: 'agree', label: 'agreement with old classes', f: q => q.agreement, floor: .03 },
+];
+const HALF = 10;
+let zthr = 4;
+const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+function neighbours(i) {
+  // up to HALF files on each side with the same Pro setting, excluding i
+  const out = [], pm = F[i].pro_measured;
+  for (let j = i - 1; j >= 0 && out.length < HALF; j--) if (F[j].pro_measured === pm) out.push(j);
+  const n1 = out.length;
+  for (let j = i + 1; j < N && out.length < n1 + HALF; j++) if (F[j].pro_measured === pm) out.push(j);
+  return out;
+}
+const NB = F.map((_, i) => neighbours(i));
+function stats() {
+  // per metric: values, running median, scale; per file: list of reasons
+  F.forEach(f => f.why = []);
+  for (const m of METRICS) {
+    m.v = F.map(q => { const v = m.f(q); return (v === null || v === undefined) ? NaN : v; });
+    m.med = []; m.sc = [];
+    F.forEach((q, i) => {
+      const nb = NB[i].map(j => m.v[j]).filter(Number.isFinite);
+      const v = m.v[i];
+      if (m.gap) {
+        const found = nb.length ? NB[i].filter(j => Number.isFinite(m.v[j])).length / NB[i].length : NaN;
+        if (Number.isFinite(found) && NB[i].length >= 4) {
+          if (Number.isFinite(v) && found < .3) q.why.push({ m, z: 9, minor: true, txt: `${m.gap} found (in ${Math.round(found * 100)}% of neighbours)` });
+          if (!Number.isFinite(v) && found > .7) q.why.push({ m, z: 9, minor: true, txt: `${m.gap} not found (found in ${Math.round(found * 100)}% of neighbours)` });
+        }
+      }
+      if (nb.length < 4) { m.med.push(NaN); m.sc.push(NaN); return; }
+      const md = median(nb), mad = 1.4826 * median(nb.map(x => Math.abs(x - md)));
+      const sc = Math.max(mad, m.floor);
+      m.med.push(md); m.sc.push(sc);
+      if (Number.isFinite(v)) {
+        const z = (v - md) / sc;
+        if (Math.abs(z) > zthr) q.why.push({ m, z, minor: !!(m.gap || m.minor), txt: `${m.label} ${fmt(v)} vs ${fmt(md)} nearby (z ${z.toFixed(1)})` });
+      }
+      if (m.abs && Number.isFinite(v) && m.abs(v)) q.why.push({ m, z: 9, txt: `${m.label} high: ${fmt(v)}` });
+    });
+  }
+  F.forEach(q => q.unusual = q.why.some(r => !r.minor || $('gapflag').checked));
+}
+
+// ---------- state ----------
+let cur = 0;
+const hasOld = F.some(f => f.old_n1 !== undefined);
+const SHOW = { 1: true, 2: true, 7: true, 3: true, 4: true, 5: true, 8: true, 0: false };
+$('slider').max = N - 1;
+METRICS.forEach((m, i) => { if (m.key === 'agree' && !hasOld) return; const o = document.createElement('option'); o.value = i; o.textContent = m.label; $('metric').appendChild(o); });
+$('metric').value = METRICS.findIndex(m => m.key === 'catch');
+$('cls_toggles').innerHTML = [1, 2, 7, 3, 4, 5, 8, 0].map(k =>
+  `<label><input type="checkbox" data-k="${k}" ${SHOW[k] ? 'checked' : ''}><span class="sw" style="background:${k ? rgb(colOf(k)) : rgb(R.col0)}"></span>${nameOf(k)}</label>`).join(' ');
+$('cls_toggles').addEventListener('change', e => { SHOW[e.target.dataset.k] = e.target.checked; drawStrips(); });
+
+// ---------- strips ----------
+function xs(w, pad) {
+  if ($('xmode').value === 'time') {
+    const t0 = F[0].t, t1 = F[N - 1].t || t0 + 1;
+    return i => pad + (F[i].t - t0) / Math.max(1, t1 - t0) * (w - pad - 8);
+  }
+  return i => pad + (N > 1 ? i / (N - 1) : .5) * (w - pad - 8);
+}
+function setupCanvas(c) {
+  // css height read once from the markup: c.height is rescaled by dpr below, so it can't be re-read
+  if (!c.dataset.h) c.dataset.h = c.getAttribute('height');
+  const dpr = window.devicePixelRatio || 1, w = c.clientWidth, h = +c.dataset.h;
+  c.width = w * dpr; c.height = h * dpr; c.style.height = h + 'px';
+  const g = c.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+  g.font = '11px system-ui, sans-serif';
+  return [g, w, h];
+}
+function dayTicks(g, X, h, top) {
+  g.fillStyle = '#6b7078'; g.strokeStyle = '#eef0f3'; let last = '';
+  F.forEach((f, i) => { const d = f.time.slice(5, 10); if (d !== last) { last = d; const x = X(i); g.beginPath(); g.moveTo(x, top); g.lineTo(x, h - 14); g.stroke(); g.fillText(d, x + 2, h - 3); } });
+}
+function cursorAndFlags(g, X, h, top) {
+  F.forEach((f, i) => { const d = DEC[f.file]; if (d && ST[d.status]) { g.fillStyle = ST[d.status].col; g.fillRect(X(i) - 1, top - 7, 2, 5); } });
+  F.forEach((f, i) => { if (f.unusual) { g.fillStyle = '#c0392b'; g.fillRect(X(i) - 1, top, 2, 6); } });
+  g.strokeStyle = '#1f6feb'; g.lineWidth = 1.5; g.beginPath(); g.moveTo(X(cur), top); g.lineTo(X(cur), h - 14); g.stroke(); g.lineWidth = 1;
+}
+function drawStrips() {
+  // counts
+  let [g, w, h] = setupCanvas($('ts1'));
+  const pad = 34, top = 8, X = xs(w, pad);
+  const keys = Object.keys(SHOW).filter(k => SHOW[k]).map(Number);
+  const val = (f, k) => lg(f['n' + k]);
+  let ymax = 1; F.forEach(f => keys.forEach(k => ymax = Math.max(ymax, val(f, k))));
+  ymax = Math.ceil(ymax);
+  const Y = v => h - 16 - v / ymax * (h - 16 - top - 6);
+  dayTicks(g, X, h, top);
+  g.fillStyle = '#6b7078';
+  for (let e = 0; e <= ymax; e++) { g.fillText(e ? '1e' + e : '1', 2, Y(e) + 4); g.strokeStyle = '#f0f1f4'; g.beginPath(); g.moveTo(pad, Y(e)); g.lineTo(w - 8, Y(e)); g.stroke(); }
+  for (const k of keys) {
+    g.strokeStyle = k ? rgb(colOf(k)) : rgb(R.col0); g.lineWidth = R.rare.includes(k) ? 1.2 : 1.6; g.beginPath();
+    F.forEach((f, i) => { const x = X(i), y = Y(val(f, k)); i ? g.lineTo(x, y) : g.moveTo(x, y); }); g.stroke();
+    if (N < 300) { g.fillStyle = g.strokeStyle; F.forEach((f, i) => g.fillRect(X(i) - 1.5, Y(val(f, k)) - 1.5, 3, 3)); }
+  }
+  cursorAndFlags(g, X, h, top);
+  // metric
+  [g, w, h] = setupCanvas($('ts2'));
+  const m = METRICS[+$('metric').value], X2 = xs(w, pad);
+  const vals = [...m.v, ...m.med.map((d, i) => d + zthr * m.sc[i]), ...m.med.map((d, i) => d - zthr * m.sc[i])].filter(Number.isFinite);
+  let lo = Math.min(...m.v.filter(Number.isFinite)), hi = Math.max(...m.v.filter(Number.isFinite));
+  if (!Number.isFinite(lo)) { lo = 0; hi = 1; }
+  const span = hi - lo || 1; lo -= span * .15; hi += span * .15;
+  const Y2 = v => h - 16 - (v - lo) / (hi - lo) * (h - 16 - top - 6);
+  dayTicks(g, X2, h, top);
+  g.fillStyle = '#6b7078'; g.fillText(fmt(hi), 2, Y2(hi) + 9); g.fillText(fmt(lo), 2, Y2(lo));
+  g.fillStyle = 'rgba(31,111,235,.10)'; g.beginPath();
+  let started = false;
+  F.forEach((f, i) => { if (!Number.isFinite(m.med[i])) return; const y = Y2(Math.min(hi, m.med[i] + zthr * m.sc[i])); started ? g.lineTo(X2(i), y) : (g.moveTo(X2(i), y), started = true); });
+  for (let i = N - 1; i >= 0; i--) if (Number.isFinite(m.med[i])) g.lineTo(X2(i), Y2(Math.max(lo, m.med[i] - zthr * m.sc[i])));
+  g.fill();
+  g.strokeStyle = '#444'; g.beginPath(); let pen = false;
+  F.forEach((f, i) => { const v = m.v[i]; if (!Number.isFinite(v)) { pen = false; return; } const x = X2(i), y = Y2(v); pen ? g.lineTo(x, y) : g.moveTo(x, y); pen = true; }); g.stroke();
+  F.forEach((f, i) => { const v = m.v[i]; if (!Number.isFinite(v)) return; const bad = f.why.some(r => r.m === m); g.fillStyle = bad ? '#c0392b' : '#444'; const s = bad ? 5 : 3; g.fillRect(X2(i) - s / 2, Y2(v) - s / 2, s, s); });
+  cursorAndFlags(g, X2, h, top);
+}
+function nearest(c, ev) {
+  const r = c.getBoundingClientRect(), X = xs(r.width, 34), x = ev.clientX - r.left;
+  let best = 0, bd = Infinity; for (let i = 0; i < N; i++) { const d = Math.abs(X(i) - x); if (d < bd) { bd = d; best = i; } }
+  return best;
+}
+for (const id of ['ts1', 'ts2']) {
+  const c = $(id);
+  c.addEventListener('click', ev => go(nearest(c, ev)));
+  c.addEventListener('mousemove', ev => { const i = nearest(c, ev), t = $('tip'); t.style.display = 'block'; t.style.left = ev.clientX + 12 + 'px'; t.style.top = ev.clientY + 12 + 'px'; t.textContent = `${i + 1}  ${F[i].file}  ${F[i].time.replace('T', ' ')}` + (F[i].unusual ? '  (unusual)' : ''); });
+  c.addEventListener('mouseleave', () => $('tip').style.display = 'none');
+}
+
+// ---------- frame with axes overlay ----------
+const GRIDC = 4, P = R.px, G = R.gap, ML = 40, MB = 30, MT = 6, PW = P + ML + 6, PH = P + MB + MT;
+function ticks(lim) { const out = []; for (let v = Math.ceil(lim[0]); v <= lim[1]; v++) out.push(v); return out; }
+function drawFrame() {
+  const f = F[cur], nv = R.views.length, rows = f.nrow === 3 ? ['old classes', 'v2 classes', 'disagreements'] : ['v2 classes'];
+  const iw = nv * P + (nv - 1) * G, ih = rows.length * P + (rows.length - 1) * G;
+  // a single row (v2 only) is shown as a grid of GRIDC columns so panels display larger
+  const grid = rows.length === 1, nc = grid ? GRIDC : nv, nr = grid ? Math.ceil(nv / GRIDC) : rows.length;
+  const W = nc * PW + 4, H = nr * PH + 2;
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" font-family="system-ui, sans-serif" font-size="9">`;
+  rows.forEach((rn, r) => {
+    R.views.forEach((v, c) => {
+      const dc = grid ? c % GRIDC : c, dr = grid ? Math.floor(c / GRIDC) : r;
+      const x0 = dc * PW + ML, y0 = dr * PH + MT, lx = v.xlim, ly = v.ylim;
+      const sx = a => x0 + (a - lx[0]) / (lx[1] - lx[0]) * P, sy = a => y0 + P - (a - ly[0]) / (ly[1] - ly[0]) * P;
+      s += `<svg x="${x0}" y="${y0}" width="${P}" height="${P}" viewBox="${c * (P + G)} ${r * (P + G)} ${P} ${P}"><image href="${f.src}" width="${iw}" height="${ih}" style="image-rendering:pixelated"/></svg>`;
+      s += `<rect x="${x0}" y="${y0}" width="${P}" height="${P}" fill="none" stroke="#aaa" stroke-width=".6"/>`;
+      for (const t of ticks(lx)) s += `<line x1="${sx(t)}" x2="${sx(t)}" y1="${y0 + P}" y2="${y0 + P + 3}" stroke="#666"/><text x="${sx(t)}" y="${y0 + P + 11}" text-anchor="middle" fill="#555">${t}</text>`;
+      for (const t of ticks(ly)) s += `<line x1="${x0 - 3}" x2="${x0}" y1="${sy(t)}" y2="${sy(t)}" stroke="#666"/><text x="${x0 - 4}" y="${sy(t) + 3}" text-anchor="end" fill="#555">${t}</text>`;
+      if (grid || r === rows.length - 1) s += `<text x="${x0 + P / 2}" y="${y0 + P + 22}" text-anchor="middle" fill="#333">${v.xlab}</text>`;
+      s += `<text transform="translate(${x0 - 24},${y0 + P / 2}) rotate(-90)" text-anchor="middle" fill="#333">${c === 0 && !grid ? '<tspan font-weight="700">' + rn + ':</tspan> ' : ''}${v.ylab}</text>`;
+      // rule lines, clipped to the panel
+      let L = '';
+      const hl = (y, col, dash) => { if (Number.isFinite(y) && y > ly[0] && y < ly[1]) L += `<line x1="${x0}" x2="${x0 + P}" y1="${sy(y)}" y2="${sy(y)}" stroke="${col}" stroke-dasharray="${dash}" stroke-width="1"/>`; };
+      const vl = (x, col, dash) => { if (Number.isFinite(x) && x > lx[0] && x < lx[1]) L += `<line x1="${sx(x)}" x2="${sx(x)}" y1="${y0}" y2="${y0 + P}" stroke="${col}" stroke-dasharray="${dash}" stroke-width="1"/>`; };
+      const tr = f.trig || {};
+      if (tr[v.x] !== undefined) vl(tr[v.x], '#000', '4 3');
+      if (tr[v.y] !== undefined) hl(tr[v.y], '#000', '4 3');
+      if (rn === 'v2 classes') {
+        const ge = f.euk_chl_gap, pf = f.syn_PE_floor;
+        if (v.x === 'BL3') vl(ge, rgb(colOf(1)), '2 2'); if (v.y === 'BL3') hl(ge, rgb(colOf(1)), '2 2');
+        if (v.x === 'GL2') vl(pf, rgb(colOf(2)), '2 2'); if (v.y === 'GL2') hl(pf, rgb(colOf(2)), '2 2');
+        if (v.y === 'dEuk' && f.euk_line && Number.isFinite(f.euk_line[0])) {
+          // chl relative to the Euk chl-size line: line itself, Euk-with-Syn cut, chl gap, min size
+          const eg = rgb(colOf(1)), b1 = f.euk_line[0], b2 = f.euk_line[1];
+          hl(0, eg, 'none');
+          hl(f.euksyn_cut, rgb(colOf(5)), '5 3');
+          if (Number.isFinite(ge)) L += `<line x1="${sx(lx[0])}" y1="${sy(ge - (b1 + b2 * lx[0]))}" x2="${sx(lx[1])}" y2="${sy(ge - (b1 + b2 * lx[1]))}" stroke="${eg}" stroke-dasharray="2 2" stroke-width="1"/>`;
+          vl(f.euk_min_size, eg, '6 2 1 2');
+        }
+        if (c === nv - 1 && f.syn_type_edges) for (const e of f.syn_type_edges) if (Number.isFinite(e)) {
+          L += `<line x1="${sx(lx[0])}" y1="${sy(lx[0] + e)}" x2="${sx(lx[1])}" y2="${sy(lx[1] + e)}" stroke="#000" stroke-dasharray="4 3" stroke-width=".8"/>`;
+        }
+      }
+      if (L) s += `<svg x="${x0}" y="${y0}" width="${P}" height="${P}" viewBox="${x0} ${y0} ${P} ${P}" overflow="hidden">${L}</svg>`;
+    });
+  });
+  s += '</svg>';
+  $('frame').firstElementChild.outerHTML = s;
+}
+function legend() {
+  const sw = (c, t) => `<span><span class="sw" style="background:${rgb(c)}"></span>${t}</span>`;
+  let h = sw(R.col0, 'unassigned') + R.codes.map((k, i) => sw(R.cols[i], R.names[i] + (R.rare.includes(k) ? ' (points)' : ''))).join('');
+  h += '<span style="color:#333">Syn type panel (Syn, Euk with Syn, Syn on particle):</span>' + ['A', 'B', 'C'].map((t, i) => sw(R.syn_type_cols[i], 'type ' + t)).join('') + sw(R.syn_untyped_col, 'untyped') + sw([.6, .6, .6], 'other');
+  h += R.flag_names.map((t, i) => sw(R.flag_cols[i], 'flag: ' + t)).join('');
+  if (F.some(f => f.nrow === 3)) h += sw(R.diff_cols[0], 'v2 adds') + sw(R.diff_cols[1], 'v2 drops') + sw(R.diff_cols[2], 'relabelled');
+  h += '<span>lines: <b>- -</b> trigger edge, <span style="color:' + rgb(colOf(1)) + '">··· Euk chl gap, — Euk chl-size line, -·- Euk min size</span>, <span style="color:' + rgb(colOf(5)) + '">- - Euk with Syn cut (below: unassigned, flag 1)</span>, <span style="color:' + rgb(colOf(2)) + '">··· Syn PE floor</span>, Syn type edges</span>';
+  $('legend').innerHTML = h;
+}
+
+// ---------- side panel and list ----------
+function side() {
+  const f = F[cur];
+  let h = '<h3>Counts</h3><table><tr><th></th>' + (f.old_n1 !== undefined ? '<th>old</th>' : '') + '<th>v2</th></tr>';
+  for (const k of [1, 2, 7, 3, 4, 5, 8, 0]) {
+    const old = f['old_n' + k];
+    h += `<tr><td><span class="sw" style="background:${k ? rgb(colOf(k)) : rgb(R.col0)}"></span>${nameOf(k)}</td>` + (f.old_n1 !== undefined ? `<td>${old === undefined ? '' : fmt(old)}</td>` : '') + `<td>${fmt(f['n' + k])}</td></tr>`;
+  }
+  h += `</table><div class="mut">${fmt(f.n_events)} events; trigger ${f.trigger}${f.pro_measured ? '; Pro run' : ''}</div>`;
+  h += '<h3>Unusual</h3>' + (f.why.length ? f.why.map(r => `<div class="why"${r.minor ? ' style="color:var(--mut)"' : ''}>• ${r.minor ? 'note: ' : ''}${r.txt}</div>`).join('') : '<div class="mut">nothing beyond the thresholds</div>');
+  h += '<h3>QC</h3><table>';
+  const rows = [['agreement with old', f.agreement, 3], ['catch-all (share of Euk)', `${fmt(f.n_catchall)} (${fmt(f.catchall_share)})`], ['Euk chl gap', f.euk_chl_gap], ['Syn PE gap', f.syn_PE_gap], ['Syn PE floor', f.syn_PE_floor],
+    ['Syn ref size / chl', `${fmt(f.syn_ref_size)} / ${fmt(f.syn_ref_BL3)}`], ['Syn ref PE:chl / GL2:GL3', `${fmt(f.syn_ref_PEchl)} / ${fmt(f.syn_ref_GL2GL3)}`],
+    ['Syn types A / B / C', `${fmt(f.syn_type1)} / ${fmt(f.syn_type2)} / ${fmt(f.syn_type3)}`], ['untyped Syn (share)', `${fmt(f.syn_untyped)} (${fmt(f.syn_untyped_share)})`],
+    ['flags: ' + R.flag_names.join(' / '), `${fmt(f.flag1)} / ${fmt(f.flag2)} / ${fmt(f.flag3)}`], ['crypto-type events, split', `${fmt(f.crypto_n)}, ${f.crypto_split_accepted ? 'two groups' : 'PE floor'}`],
+    ['mixture components', f.ncomp], ['trigger-edge pile', f.edge_pile_frac, 3]];
+  for (const [k, v, d] of rows) if (!(k.startsWith('agreement') && f.old_n1 === undefined)) h += `<tr><td>${k}</td><td>${fmt(v, d || 2)}</td></tr>`;
+  h += '</table><h3>Keys</h3><div class="mut"><kbd>←</kbd><kbd>→</kbd> step, <kbd>Shift</kbd> ×10, <kbd>n</kbd>/<kbd>p</kbd> next/previous unusual, <kbd>Home</kbd>/<kbd>End</kbd>; review status: <kbd>o</kbd> OK, <kbd>x</kbd> problem, <kbd>e</kbd> exclude, <kbd>?</kbd> needs another look (same key again clears), <kbd>m</kbd> note (<kbd>Esc</kbd> to leave it)</div>';
+  h += `<div class="mut" style="margin-top:8px">viewer made ${D.made}</div>`;
+  $('sideinfo').innerHTML = h;
+}
+function list() {
+  const u = F.map((f, i) => [f, i]).filter(([f]) => f.unusual);
+  let h = `<h3 style="margin:0 0 4px;font-size:13px">Unusual files: ${u.length} of ${N}</h3><table><tr><th>#</th><th>file</th><th>time</th><th style="text-align:left">review</th><th style="text-align:left">why</th></tr>`;
+  for (const [f, i] of u) h += `<tr data-i="${i}" class="${i === cur ? 'cur' : ''}"><td>${i + 1}</td><td style="text-align:left">${f.file}</td><td>${f.time.replace('T', ' ')}</td><td style="text-align:left">${pill(DEC[f.file])}</td><td style="text-align:left">${f.why.map(r => r.minor ? `<span class="mut">${r.txt}</span>` : r.txt).join('; ')}</td></tr>`;
+  h += '</table>';
+  // every file with a decision, in time order; decisions for files not in this build last
+  const idx = Object.fromEntries(F.map((f, i) => [f.file, i]));
+  const ds = Object.values(DEC).filter(d => d.status || d.note).sort((a, b) => (idx[a.file] ?? 1e9) - (idx[b.file] ?? 1e9));
+  h += `<h3 style="margin:12px 0 4px;font-size:13px">Review decisions: ${ds.length} file${ds.length === 1 ? '' : 's'}</h3>`;
+  if (ds.length) {
+    h += '<table><tr><th>#</th><th>file</th><th style="text-align:left">status</th><th style="text-align:left">note</th><th style="text-align:left">reviewer</th><th>saved</th></tr>';
+    for (const d of ds) {
+      const i = idx[d.file], on = i !== undefined;
+      h += `<tr ${on ? `data-i="${i}"` : ''} class="${i === cur ? 'cur' : ''}"><td>${on ? i + 1 : '–'}</td><td style="text-align:left">${esc(d.file)}${on ? '' : ' <span class="mut">(not in this build)</span>'}</td><td style="text-align:left">${pill(d)}</td><td style="text-align:left">${esc(d.note)}</td><td style="text-align:left">${esc(d.reviewer)}</td><td>${when(d.saved)}${d.build && d.build !== BUILD ? ` <span class="old" title="decided while viewing build ${esc(d.build)}; this is build ${esc(BUILD)}">older build</span>` : ''}</td></tr>`;
+    }
+    h += '</table>';
+  } else h += `<div class="mut">none yet; they are saved to <code>${esc(DEC_PATH)}</code></div>`;
+  $('list').innerHTML = h;
+}
+$('list').addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (tr) go(+tr.dataset.i); });
+
+// ---------- review decisions ----------
+// One row per file in review_decisions.csv (beside the review folder, in bead_calibrated).
+// Rebuilds copy the file into review_data.js; this page saves straight to it where the
+// browser allows (Chrome, Edge: File System Access), always keeps a copy in this browser,
+// and merges by file with the most recent change winning, so two reviewers' saves combine.
+const ST = {
+  ok: { label: 'reviewed – OK', key: 'o', col: '#2e8b57' },
+  problem: { label: 'problem', key: 'x', col: '#c0392b' },
+  exclude: { label: 'exclude', key: 'e', col: '#555b66' },
+  recheck: { label: 'needs another look', key: '?', col: '#d68910' },
+};
+const COLS = ['file', 'status', 'note', 'reviewer', 'saved', 'build'];
+const DEC_NAME = D.decisions_name || 'review_decisions.csv', DEC_PATH = D.decisions_path || DEC_NAME, BUILD = D.build || D.made;
+const LSK = 'attune-review:' + DEC_PATH, LSR = 'attune-review:reviewer';
+const DEC = {};
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const when = s => { const t = new Date(s); return s && !isNaN(t) ? t.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : esc(s); };
+const pill = d => d && ST[d.status] ? `<span class="pill" style="background:${ST[d.status].col}">${ST[d.status].label}</span>` + (d.note ? ' ✎' : '') : (d && d.note ? '✎ note' : '');
+function mergeIn(rows) {
+  // newest change per file wins; returns how many rows changed
+  let n = 0;
+  for (const r of rows || []) {
+    if (!r || !r.file) continue;
+    const row = Object.fromEntries(COLS.map(c => [c, r[c] == null ? '' : String(r[c])])), o = DEC[row.file];
+    if (!o || row.saved > o.saved) { DEC[row.file] = row; n++; }
+  }
+  return n;
+}
+const csvq = s => /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+function toCSV() {
+  const idx = Object.fromEntries(F.map((f, i) => [f.file, i]));
+  const rows = Object.values(DEC).sort((a, b) => (idx[a.file] ?? 1e9) - (idx[b.file] ?? 1e9) || (a.file < b.file ? -1 : 1));
+  return '﻿' + [COLS.join(','), ...rows.map(r => COLS.map(c => csvq(r[c] || '')).join(','))].join('\r\n') + '\r\n';
+}
+function parseCSV(t) {
+  t = t.replace(/^﻿/, '');
+  const out = []; let row = [], f = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(f); f = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(f); out.push(row); row = []; f = ''; }
+    else f += ch;
+  }
+  if (f !== '' || row.length) { row.push(f); out.push(row); }
+  if (!out.length) return [];
+  const hdr = out[0].map(s => s.trim().toLowerCase());
+  return out.slice(1).filter(r => r.some(x => x !== '')).map(r => Object.fromEntries(hdr.map((h, j) => [h, r[j] ?? ''])));
+}
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+// folder handle remembered across visits (IndexedDB), keyed by the decisions file path
+function idb(mode, fn) {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('attune-review', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('h');
+    rq.onerror = () => rej(rq.error);
+    rq.onsuccess = () => {
+      try { const tx = rq.result.transaction('h', mode), r = fn(tx.objectStore('h')); tx.oncomplete = () => res(r.result); tx.onerror = tx.onabort = () => rej(tx.error); }
+      catch (e) { rej(e); }
+    };
+  });
+}
+const idbGet = k => idb('readonly', s => s.get(k)).catch(() => null);
+const idbPut = (k, v) => idb('readwrite', s => s.put(v, k)).catch(() => null);
+const canWrite = () => typeof window.showDirectoryPicker === 'function';
+let dir = null, known = null, asked = false, dirty = false, saving = null, again = false, saveMsg = '', saveErr = '';
+async function readDisk() {
+  try { const fh = await dir.getFileHandle(DEC_NAME); return parseCSV(await (await fh.getFile()).text()); }
+  catch (e) { if (e.name === 'NotFoundError') return []; throw e; }
+}
+async function attach(h) {
+  dir = h; saveErr = '';
+  mergeIn(await readDisk());
+  await save();
+  decisionsChanged();
+}
+async function connect(pick) {
+  // needs a click or key press: reuse the remembered folder if allowed, else choose one
+  try {
+    if (known && !pick && await known.requestPermission({ mode: 'readwrite' }) === 'granted') return await attach(known);
+    if (known && !pick) { saveErr = 'permission to write to the folder was not given'; return showSave(); }
+    const h = await window.showDirectoryPicker({ id: 'attune-review', mode: 'readwrite' });
+    if (D.decisions_dir_name && h.name !== D.decisions_dir_name &&
+      !confirm(`You chose the folder "${h.name}", but this cruise's review decisions belong in\n${D.decisions_dir}\n\nSave ${DEC_NAME} in "${h.name}" anyway?`)) return showSave();
+    known = h; await idbPut(DEC_PATH, h);
+    await attach(h);
+  } catch (e) { if (e.name !== 'AbortError') saveErr = e.message; showSave(); }
+}
+async function save() {
+  lsSet(LSK, JSON.stringify(Object.values(DEC)));
+  if (!dir) return showSave();
+  if (saving) { again = true; return saving; }
+  saving = (async () => {
+    try {
+      let merged = 0;
+      do {
+        again = false;
+        merged += mergeIn(await readDisk()); // pick up other reviewers' saves first
+        const w = await (await dir.getFileHandle(DEC_NAME, { create: true })).createWritable();
+        await w.write(toCSV()); await w.close();
+      } while (again);
+      dirty = false; saveErr = ''; saveMsg = 'saved ' + new Date().toLocaleTimeString();
+      if (merged) decisionsChanged();
+    } catch (e) { saveErr = e.message || String(e); }
+    saving = null; showSave();
+  })();
+  return saving;
+}
+function download() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([toCSV()], { type: 'text/csv' })); a.download = DEC_NAME; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function showSave() {
+  let h;
+  if (dir && saveErr) h = `<span class="err">Could not save to <code>${esc(dir.name)}\\${esc(DEC_NAME)}</code>: ${esc(saveErr)}</span> <button data-a="retry">retry</button>`;
+  else if (dir) h = `<span style="color:#2e8b57">✓</span> ${saving || dirty ? 'saving…' : esc(saveMsg || 'connected')}: <code>${esc(dir.name)}\\${esc(DEC_NAME)}</code>`;
+  else if (!canWrite()) h = `This browser can't save files (use Chrome or Edge): decisions are kept in this browser only. <button data-a="dl">Download CSV</button> and put it at <code>${esc(DEC_PATH)}</code>`;
+  else h = (saveErr ? `<span class="err">${esc(saveErr)}</span><br>` : '') + (dirty ? '<b>Not saved to the file yet</b> (kept in this browser). ' : '') +
+    `Decisions save to <code>${esc(DEC_PATH)}</code> <button data-a="connect">${known ? 'Reconnect' : 'Choose folder'}</button>`;
+  if (canWrite()) h += ` <button data-a="dl" title="download the decisions as a CSV">CSV</button>`;
+  if (dir) h += ` <button data-a="pick" title="save to a different folder">change folder</button>`;
+  $('savestate').innerHTML = h;
+}
+$('savestate').addEventListener('click', e => {
+  const a = e.target.dataset.a;
+  if (a === 'connect') connect(false); else if (a === 'pick') connect(true); else if (a === 'dl') download(); else if (a === 'retry') save();
+});
+function setDec(patch, i = cur) {
+  const file = F[i].file, o = DEC[file] || { file, status: '', note: '' };
+  DEC[file] = { ...o, ...patch, file, reviewer: $('reviewer').value.trim(), saved: new Date().toISOString(), build: BUILD };
+  dirty = true;
+  if (canWrite() && !dir && !asked) { asked = true; connect(false); } // first decision: ask once where to save
+  else save();
+  decisionsChanged();
+}
+function setStatus(s) { flushNote(); const d = DEC[F[cur].file]; setDec({ status: d && d.status === s ? '' : s }); }
+let noteTimer = null, noteFor = -1;
+function flushNote() {
+  if (noteTimer === null) return;
+  clearTimeout(noteTimer); noteTimer = null;
+  const d = DEC[F[noteFor].file], v = $('note').value.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+  if (v !== ((d && d.note) || '')) setDec({ note: v }, noteFor);
+}
+$('note').addEventListener('input', () => { noteFor = cur; clearTimeout(noteTimer); noteTimer = setTimeout(flushNote, 800); });
+$('note').addEventListener('blur', flushNote);
+$('note').addEventListener('keydown', e => { if (e.key === 'Escape' || e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('note').blur(); } });
+$('reviewer').value = lsGet(LSR, '');
+$('reviewer').addEventListener('change', () => lsSet(LSR, $('reviewer').value.trim()));
+$('stbtns').innerHTML = Object.entries(ST).map(([k, s]) => `<button data-s="${k}" title="key ${s.key}">${s.label}</button>`).join('');
+$('stbtns').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setStatus(b.dataset.s); });
+function review() {
+  // review panel for the current file
+  const d = DEC[F[cur].file];
+  document.querySelectorAll('#stbtns button').forEach(b => { const on = d && d.status === b.dataset.s; b.classList.toggle('on', !!on); b.style.background = on ? ST[b.dataset.s].col : ''; });
+  if (document.activeElement !== $('note')) $('note').value = (d && d.note) || '';
+  $('revmeta').innerHTML = d && (d.status || d.note) ? `${esc(d.reviewer) || 'someone'}, ${when(d.saved)}` +
+    (d.build && d.build !== BUILD ? ` <span class="old">— decided on an older build (${esc(d.build)}; this one ${esc(BUILD)})</span>` : '') : 'not reviewed';
+}
+function badge() {
+  const f = F[cur], n = f.why.filter(r => !r.minor || $('gapflag').checked).length;
+  $('fbadge').innerHTML = (f.unusual ? `<span class="badge">${n} unusual</span>` : '<span class="badge ok">ok</span>') + ' ' + pill(DEC[f.file]);
+}
+function decisionsChanged() { review(); badge(); list(); drawStrips(); }
+
+// ---------- navigation ----------
+const cache = {};
+function preload(i) { if (i >= 0 && i < N && !cache[i]) { cache[i] = new Image(); cache[i].src = F[i].src; } }
+function go(i) {
+  flushNote();
+  cur = Math.max(0, Math.min(N - 1, i));
+  const f = F[cur];
+  $('slider').value = cur; $('fidx').textContent = `${cur + 1} / ${N}`; $('fname').textContent = f.file; $('ftime').textContent = f.time.replace('T', ' ');
+  badge(); drawFrame(); side(); review(); drawStrips();
+  document.querySelectorAll('#list tr[data-i]').forEach(tr => tr.classList.toggle('cur', +tr.dataset.i === cur));
+  history.replaceState(null, '', '#' + (cur + 1));
+  for (const d of [1, 2, -1]) preload(cur + d);
+}
+function jumpFlag(dir) {
+  const skip = $('skiprev').checked;
+  for (let i = cur + dir; i >= 0 && i < N; i += dir) if (F[i].unusual && !(skip && DEC[F[i].file] && ST[DEC[F[i].file].status])) return go(i);
+}
+$('prev').onclick = () => go(cur - 1); $('next').onclick = () => go(cur + 1);
+$('nflag').onclick = () => jumpFlag(1); $('pflag').onclick = () => jumpFlag(-1);
+$('slider').oninput = e => go(+e.target.value);
+$('metric').onchange = drawStrips; $('xmode').onchange = drawStrips;
+$('gapflag').onchange = () => { stats(); list(); go(cur); };
+$('zthr').onchange = e => { zthr = +e.target.value || 4; stats(); list(); go(cur); };
+document.addEventListener('keydown', e => {
+  const tg = e.target.tagName;
+  if (tg === 'TEXTAREA' || tg === 'SELECT' || tg === 'INPUT' && !['range', 'checkbox'].includes(e.target.type) || e.ctrlKey || e.metaKey || e.altKey) return;
+  const st = Object.keys(ST).find(k => ST[k].key === e.key);
+  if (st) { setStatus(st); e.preventDefault(); return; }
+  if (e.key === 'm') { $('note').focus(); e.preventDefault(); return; }
+  const s = e.shiftKey ? 10 : 1;
+  if (e.key === 'ArrowRight') { go(cur + s); e.preventDefault(); }
+  else if (e.key === 'ArrowLeft') { go(cur - s); e.preventDefault(); }
+  else if (e.key === 'n') jumpFlag(1); else if (e.key === 'p') jumpFlag(-1);
+  else if (e.key === 'Home') go(0); else if (e.key === 'End') go(N - 1);
+});
+window.addEventListener('resize', drawStrips);
+window.addEventListener('hashchange', () => { const i = (parseInt(location.hash.slice(1)) || 1) - 1; if (i !== cur) go(i); });
+// decisions: from the last build, then this browser's copy (newest change per file wins)
+mergeIn(D.decisions);
+try { if (mergeIn(JSON.parse(lsGet(LSK, '[]')))) dirty = true; } catch (e) { }
+stats(); legend(); list();
+go((parseInt(location.hash.slice(1)) || 1) - 1);
+showSave();
+// reconnect to the remembered folder without asking, if the browser still allows it
+(async () => {
+  if (!canWrite()) return;
+  known = await idbGet(DEC_PATH);
+  try { if (known && await known.queryPermission({ mode: 'readwrite' }) === 'granted') await attach(known); } catch (e) { }
+  showSave();
+})();
+</script>
+</body>
+</html>
