@@ -39,8 +39,21 @@ numBins = 1+2*(length(EukSizes))-1; %this is brittle, added a column for Pro
 Count = NaN(length(filelist),numBins-1);
 Biovol = Count;
 Carbon = Count;
-rem_ind = []; 
-Scatter_hv = NaN(length(filelist), 1); 
+rem_ind = [];
+Scatter_hv = NaN(length(filelist), 1);
+% classes and per-event codes added with assign_class_v2 (Nov 2026):
+% count, biovolume, carbon of single classes; Syn-type and flag counts
+% (NaN for class files without syn_type / flag, i.e. older classifiers)
+newclass = [3 4 5];
+newclassnames = {'Crypto_dimX' 'Crypto_brightX' 'Euk_with_SynX'};
+NewCount = NaN(length(filelist), numel(newclass));
+NewBiovol = NewCount; NewCarbon = NewCount;
+SynPart_count = NaN(length(filelist), 1); %class 8: Syn on particle, count only (not Syn size or carbon)
+syntype_classes = {2 'Syn'; 5 'Euk_with_Syn'; 8 'Syn_on_particle'};
+syntype_codes = {1 'typeA'; 2 'typeB'; 3 'typeC'; 9 'type_unusable'};
+SynTypeCount = NaN(length(filelist), size(syntype_classes, 1)*size(syntype_codes, 1));
+flag_codes = {1 'Flag_lowchl_Syn_pigment'; 2 'Flag_below_Euk_chl_gap'; 3 'Flag_Pro_tail'};
+FlagCount = NaN(length(filelist), size(flag_codes, 1));
 Num_particles= NaN(length(filelist), 1); 
 
 for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
@@ -100,13 +113,39 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
         Count(count,11) = sum(rename_class==7);
         Biovol(count,11) = nansum(volume(rename_class==7));
         Carbon(count,11) = nansum(carbon(rename_class==7));
-    
+
+    %single classes split out of the groups above, and Syn on particle (Nov 2026)
+    for ii = 1:numel(newclass)
+        ind = rename_class==newclass(ii);
+        NewCount(count,ii) = sum(ind);
+        NewBiovol(count,ii) = nansum(volume(ind));
+        NewCarbon(count,ii) = nansum(carbon(ind));
+    end
+    SynPart_count(count) = sum(rename_class==8);
+    %syn_type and flag read by name: a bare load does not shadow functions
+    %(flag is a colormap function), so read them into a struct
+    ev = load(filename, 'syn_type', 'flag');
+    if isfield(ev, 'syn_type') && numel(ev.syn_type) == numel(rename_class)
+        col = 0;
+        for ii = 1:size(syntype_classes, 1)
+            for jj = 1:size(syntype_codes, 1)
+                col = col + 1;
+                SynTypeCount(count,col) = sum(rename_class==syntype_classes{ii,1} & ev.syn_type==syntype_codes{jj,1});
+            end
+        end
+    end
+    if isfield(ev, 'flag') && numel(ev.flag) == numel(rename_class)
+        for ii = 1:size(flag_codes, 1)
+            FlagCount(count,ii) = sum(ev.flag==flag_codes{ii,1});
+        end
+    end
+
     else
         rem_ind = [rem_ind count]; %indeces to remove from final table
         disp(['skipped ', filelist{count}])
     end
     
-    clear volume volume_cubic_microns
+    clear volume volume_cubic_microns syn_type ev
 end
 
 
@@ -125,7 +164,22 @@ classnames = [classnames; {'ProX'}];
 AttuneTable = [AttuneTable array2table(Count, 'VariableNames', regexprep(classnames, 'X', '_count'))];
 AttuneTable = [AttuneTable array2table(Biovol, 'VariableNames', regexprep(classnames, 'X', '_biovolume'))];
 AttuneTable = [AttuneTable array2table(Carbon, 'VariableNames', regexprep(classnames, 'X', '_carbon'))];
-AttuneTable.Pro_count(~Attune.FCSfileinfo.pro_measured) = NaN;
+if ismember('pro_measured', Attune.FCSfileinfo.Properties.VariableNames) %older FCSfileinfo files lack it
+    AttuneTable.Pro_count(~Attune.FCSfileinfo.pro_measured) = NaN;
+end
+
+AttuneTable = [AttuneTable array2table(NewCount, 'VariableNames', regexprep(newclassnames, 'X', '_count'))];
+AttuneTable = [AttuneTable array2table(NewBiovol, 'VariableNames', regexprep(newclassnames, 'X', '_biovolume'))];
+AttuneTable = [AttuneTable array2table(NewCarbon, 'VariableNames', regexprep(newclassnames, 'X', '_carbon'))];
+AttuneTable.Syn_on_particle_count = SynPart_count;
+stnames = {};
+for ii = 1:size(syntype_classes, 1)
+    for jj = 1:size(syntype_codes, 1)
+        stnames{end+1} = [syntype_classes{ii,2} '_' syntype_codes{jj,2} '_count'];
+    end
+end
+AttuneTable = [AttuneTable array2table(SynTypeCount, 'VariableNames', stnames)];
+AttuneTable = [AttuneTable array2table(FlagCount, 'VariableNames', strcat(flag_codes(:,2)', '_count'))];
 
 AttuneTable.Num_particles = Num_particles; 
 AttuneTable.QC_flag = Attune.FCSfileinfo.QC_flag;
@@ -143,6 +197,10 @@ if exist('assign_class_function')
     table_metadata = {assign_class_function; classpath; string(datetime()); 'PE_with_euk_classes:' num2str(PE_euk_celltypes)};
 else 
     table_metadata = {notes(2); classpath; string(datetime())};
+    if numel(notes) >= 5 %assign_class_v2 class files: class, syn_type and flag code descriptions
+        table_metadata = [table_metadata; {notes(1); notes(4); notes(5); ...
+            'Crypto_dim/Crypto_bright = classes 3/4 (together = Euk_w_PE); Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Syn type counts by class; flags are class 0 events'}];
+    end
 end
 
 save([classpath '..\AttuneTable'],'AttuneTable', 'table_metadata')
