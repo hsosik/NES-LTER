@@ -93,6 +93,13 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
     %now Euks
     celltype = 1; 
     diam = (volume*3/4/pi).^(1/3)*2; %equivalent spherical diam, micrometers
+    % pre-Aug 2019 no-OD2 cruises: cells beyond the correctable SSC range
+    % (vol_flag, batch_mergedSSC2volume) carry the largest correctable volume
+    % as a lower bound (~9.6 um ESD at 160 V); count them as >10 um for the
+    % size bins (biovolume/carbon keep the lower-bound volume). Nov 2026
+    if exist('vol_flag', 'var') && numel(vol_flag) == numel(diam)
+        diam(vol_flag) = max(diam(vol_flag), 10.001);
+    end
     for ii = 1:length(EukSizes)-1
         ind = find(diam<=EukSizes(ii+1) & rename_class==celltype);
         Count(count,ii+1) = size(ind,1);
@@ -145,7 +152,7 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
         disp(['skipped ', filelist{count}])
     end
     
-    clear volume volume_cubic_microns syn_type ev
+    clear volume volume_cubic_microns vol_flag syn_type ev
 end
 
 
