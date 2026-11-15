@@ -12,6 +12,7 @@
  %Summary : 
  % This script will look through class file folder, sort files in 
  % chronological order, and  make a movie with the data from all the files 
+ 
  % (This assumes that files we wish to exclude (e.g. grazer experiments) 
  % have already been excluded from the class assingment step)
  % This script will open fcs & class files, and pass data to framemaker
@@ -39,11 +40,6 @@ clear temp
 %also make corresponding list of FCS files of interest
 filelist = regexprep(classfilelist,'mat', 'fcs'); 
 
-% initialize movie output
-v = VideoWriter([classpath 'Attune_cyto_vid.avi']); 
-v.FrameRate = 10; 
-open(v)
-
 %let's make sure the files are run in chronological order
 %assume FCSfileinfo.mat exists one dir up from class files
 temp_path = regexprep(classpath, 'class\', '');
@@ -52,12 +48,25 @@ temp = load([temp_path 'FCSfileinfo']);
 matdate = NaN(size(filelist));
 QC_flags = matdate; 
 matdate(a) = temp.FCSfileinfo.matdate_start(b);
-QC_flags(a) = temp.FCSfileinfo.QC_flag(b); 
+QC_flags(a) = temp.FCSfileinfo.QC_flag(b);
+pro_measured(a) = temp.FCSfileinfo.pro_measured(b);
 [matdate,sort_ind] = sort(matdate);
 filelist = filelist(sort_ind);
 classfilelist = classfilelist(sort_ind);
 QC_flags = QC_flags(sort_ind); 
+pro_measured = pro_measured(sort_ind);
 
+% initialize movie output
+v = VideoWriter([classpath 'Attune_cyto_vid.avi']); 
+v.FrameRate = 10; 
+open(v)
+
+if sum(pro_measured)
+    % initialize movie output
+    v2 = VideoWriter([classpath 'Attune_cyto_vid_pro.avi']); 
+    v2.FrameRate = 10; 
+    open(v2)
+end
 
 %% now go through list and make frames to save to video
 for count = 1:stepsize:length(filelist)
@@ -86,13 +95,16 @@ for count = 1:stepsize:length(filelist)
     cf = fitlm(fcsdat(fcsdat(:,ssch)<1000,ssch), fcsdat(fcsdat(:,ssch)<1000, ssc_ch), 'Intercept', false);
     cf = cf.Coefficients.Estimate;
     fcsdat(fcsdat(:,ssc_ch)<0, ssc_ch) = cf*fcsdat(fcsdat(:,ssc_ch)<0, ssch);
-    
-    % call the function to make the plots and getframe     
-    eval(['Frame = ', framemaker, '(fcsdat, fcshdr, class, channels, QC_flags(count));']);
-            
-    % add to movie
-    writeVideo(v, Frame);
 
+    % call the function to make the plots and getframe     
+    eval(['Frame = ', framemaker, '(fcsdat, fcshdr, class, channels, QC_flags(count));']);    
+
+    % add to movie
+    if pro_measured(count)
+        writeVideo(v2, Frame);
+    else
+        writeVideo(v, Frame);
+    end
     
     clear class fcsdat fcshdr
   
@@ -100,5 +112,8 @@ end
 
 close(v) 
 disp(['Result file saved:' classpath 'Attune_cyto_vid.avi'])
-
+if sum(pro_measured)
+    close(v2)
+    disp(['Result file saved:' classpath 'Attune_cyto_vid_pro.avi'])
+end
  end

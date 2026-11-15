@@ -501,3 +501,39 @@ The old dim crypto class is known to be a mixture, so agreement with it is not a
 
   `score_agreement` reports per-file counts as `flag_synpig`, `flag_below_gap` and `flag_pro_tail`.
 - **Planned for integration.** The per-sample class files would carry `syn_type` and `flag` as extra per-event variables next to `class`, with `notes` describing the codes. Code that reads only `class` is unaffected.
+
+### New hv exponents and bead stats; Pro chl:scatter rule (Nov 2026)
+
+- **New hv exponents and bead stats.** Two changes from sibling sessions:
+  - commit c5c6980: hv exponents SSC 8.5, FSC 2.1
+  - commit c9f722b: new `beadstat.mat` read by `bead_reference`
+
+  Rescoring the 60 files changed almost nothing: agreement medians within 0.002, Syn and Euk ratios within 0.003. The exception is AR95 19Oct AltPro(30) Pro(10), where agreement fell from 0.961 to 0.905.
+- **Why AR95 19Oct AltPro(30) changed.** Neither change was the real cause:
+  - With the old SSC exponent the result was the same.
+  - The bead positions moved 0.011 log or less.
+
+  The small shift tipped the initial mixture fit into forming a compact, low-chl group (4.5% of events, chl SD 0.15) and naming it Pro. That gave 579 events the old classes leave unassigned. They are the bottom of the faint smear in an SSC-triggered file: possibly some real Pro mixed with detritus and small particles, as seen near shore in well-mixed seasons. The decision was not to count them as Pro.
+- **Fix: Pro chl:scatter rule.** A Pro component's chl:scatter must be within `pro_max_chlSSC_below_syn` (1.0) of the Syn components' (weighted mean).
+  - Real Pro clusters in 14 Pro-setting files sit 0.28–0.82 below Syn; the false group sits 1.2 below.
+  - AltPro(30) agreement returns to 0.958, with no Pro.
+  - Every other file is unchanged.
+- **Open case.** AR95 21Oct AltPro(24) Pro(10) has 1,296 v2 Pro against none in the old classes, and it is AR95's lowest agreement (0.849). It is a separate compact cluster, 0.27 smaller than Syn, chl:scatter 0.64 below Syn, no PE. It looks like real Pro the old classifier missed. Plot: `output/examples/prochk_1_AR95.png`.
+- **Pro catch-all fix.** You judged that AR95 21Oct AltPro(24) has real Pro, but not the separate group with higher PE (chl −1 to −0.5, GL2 about −1.6). That group came from the catch-all, which accepted Pro whenever the file was Pro-setting.
+  - The catch-all now requires the main Pro rules: GL2 at or below the file's Pro PE ceiling, SSC < `pro_max_SSC`, BL3 < `pro_max_BL3`, and chl:scatter within `pro_chlSSC_sd` robust SDs of the file's Pro.
+  - In AltPro(24), Pro goes 1,296 → 1,110 and agreement 0.849 → 0.865.
+  - The other Pro-setting files lose 0–150 catch-all Pro each (at most about 3%), all moving closer to the old counts.
+  - AR95 median agreement 0.955 → 0.958. Nothing else changed.
+  - A PE-gap ceiling for Pro was tried and removed, because these events never passed the main rule.
+
+### Syn typing needs only BL2 and GL2 (Nov 2026)
+
+- **Change.** The Syn type uses BL2 − GL2 only. It previously also required GL3 to be at least 1 log above its floor. Dim summer Syn often miss that, so 23–30% of Syn were untyped in AR92 15Aug(13) and HRS2609 15Aug(4), almost all only because of GL3. Now only BL2 and GL2 must be on scale (not saturated, at least `syn_type_min_above_floor` above floor).
+- **Effect.** The median untyped share is now 0 in every cruise, and at most 0.3% in any file (was up to 61%).
+
+  | Cruise | Syn A | Syn B | Syn C |
+  |---|---|---|---|
+  | AR92 | 105,619 → 114,329 | 17,542 → 22,574 | 92,922 → 110,657 |
+  | HRS2609 | 83,842 → 88,728 | 15,222 → 18,563 | 112,673 → 129,516 |
+
+- **Other changes in this rescore.** Small class changes also appeared, for example AR95 18Oct AltPro(11) Pro(8) 0.938 → 0.922 and HRS2609 below-gap flags 2,819 → 2,246. They come from concurrent edits to `assign_class_v2.m` by the pre-2019 channel-mapping session, not from the typing change.

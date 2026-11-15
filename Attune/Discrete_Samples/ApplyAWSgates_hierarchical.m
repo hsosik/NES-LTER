@@ -40,6 +40,7 @@ function [gate_assignment, polygon_names, polygon_vars, polygon_vals, gate_names
 A = fopen(awsfilename);
 C = textscan(A, '%s', 'Delimiter', '<'); 
 C = C{1}; 
+fclose(A);
 
 %Ok region names are within <Regions ... </Regions> 
 % that has polygon information in it 

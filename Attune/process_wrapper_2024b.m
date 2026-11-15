@@ -58,6 +58,7 @@ function process_wrapper_2024(cruise, steps2do, assign_class_function)
 step = zeros(1,10);
 step(steps2do) = 1;
 basepath_temp =  '\\sosiknas1\Lab_data\Attune\cruise_data\';
+basepath_temp = '\\sosiknas1\Lab_data\Attune\2026_settings_evaluation\'
 temp = dir([basepath_temp '*' cruise]);
 if ~isempty(temp)
     p.basepath = [basepath_temp temp.name filesep];
@@ -253,6 +254,7 @@ end
 %% STEP 8 
 % make a movie 
 if step(8)
+    close all
     figure('WindowState','maximized')
     warning off
     attune_lter_moviemaker(p.fpath, p.classpath, p.OD2setting, p.framemaker, p.moviechannels, p.stepsize)

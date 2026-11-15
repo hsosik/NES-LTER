@@ -489,6 +489,7 @@ if step(4)
         clear gate_num_1 gate_num_2 gate_num_4 gate_num_b gate_assign_i gate_num_5 gate_num_6
 
         notes = "'Euks == 1'; 'Syn == 2'; 'Bacteria & Pro == 3'; 'Pro == 4'; 'LowPE_Euks = 5'; 'HighPE_Euks - 6'";
+        notes{2} = gated_table.awsfilename{i};
         class = class_i';
         save([p.classpath regexprep(gated_table.fcslist{i}, '.fcs', '')], 'class', 'notes') %I think class files wont have volume yet if we don't have bead statistics to calibrate 
         clear class class_i

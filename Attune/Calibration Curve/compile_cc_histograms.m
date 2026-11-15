@@ -30,15 +30,19 @@ for ii = 1:length(f)
     nexttile
     fn = fname{ii};
     x = ccdat.(fn).diameter_micron;
-    plot(x, ccdat.(fn).count, '.')
+    % Coulter channels are evenly spaced in diameter, so count per channel is a
+    % density per linear diameter; count.*diameter is the density per log
+    % diameter, whose mode matches the log-space Attune modes (Nov 2026)
+    ylog = ccdat.(fn).count .* x;
+    plot(x, ylog, '.')
     hold on
     if contains(fn, {'BD' 'FCB' 'NANO' 'C2MICRO'})
-        y = smooth(medfilt1(ccdat.(fn).count,3),4);
+        y = smooth(medfilt1(ylog,3),4);
         %y(x<1.25) = NaN; %skip noise on micro
         %s = 8;
     else
-        %y = smooth(medfilt1(ccdat.(fn).count,7),3);
-        y = smooth(medfilt1(ccdat.(fn).count,7),10);
+        %y = smooth(medfilt1(ylog,7),3);
+        y = smooth(medfilt1(ylog,7),10);
         %s = 20;
     end
     y(1:10) = NaN; %skip any noise at low channels
@@ -87,6 +91,7 @@ for ii = 1:length(tstr)
         y(:,1) = interp1(x(:,1),y(:,1),x(:,2));
         x = x(:,2);
     end
+    y = y .* x; % density per log diameter (see above)
     plot(x,y,'.')
     hold on
     plot(x,sum(y,2),'.k')
@@ -112,7 +117,7 @@ if printNow
 end
 
 if saveNow
-    notes = {'Created with compile_cc_histograms.m'};
+    notes = {'Created with compile_cc_histograms.m; modes and histograms are per log diameter (count .* diameter), Nov 2026'};
     fout = ['\\sosiknas1\lab_data\Attune\Size_calibration_July2026\CCSummary_saved_' datestr(now, 'ddmmmyyyy')]; 
     save(fout, 'CCMode', 'CCSizeCal_smoothhists', 'notes', 'ccdat')
     disp('Results saved:')

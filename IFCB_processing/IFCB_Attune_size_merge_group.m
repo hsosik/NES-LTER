@@ -80,7 +80,8 @@ for clistn = 1:length(clist)
     %%
     Twin = 12/60/24; %12 minutes as days
     %diambins = logspace(-.5,log10(50),100);
-    binedges = [0 2 3 5 7 10 15 20 30 40 50 100 inf];
+    %binedges = [0 2 3 5 7 10 15 20 30 40 50 100 inf];
+    binedges = [0 2 4 6 8 10 12 14 16 18 20 30 40 50 100 inf];
     nbins = length(binedges)-1;
     %cases2do = {'diatom' 'dino' 'nano' 'otherPhyto' 'ciliate' 'particle'};
     cases2do = {'protist_tricho' 'Detritus' 'Diatom_noDetritus' 'Dinoflagellate' 'Ciliate' 'NanoFlagCocco'};

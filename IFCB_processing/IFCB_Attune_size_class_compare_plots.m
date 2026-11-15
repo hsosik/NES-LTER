@@ -10,7 +10,7 @@ p = '\\sosiknas1\Lab_data\Attune\cruise_data\IFCB_Attune_merge\summary_files\';
 %clist = {clist.name}';
 %clist = {'TN368' 'RB1904' 'AR29'}; %p = '\\sosiknas1\IFCB_products\SPIROPA\summary\';
 %clist = {'EN695' 'HRS2303' 'EN706'};
-%clist = {'AR99'};
+%clist = {'HRS2609'};
 %clist = {'20220713_EN685_IFCB_Attune_merge_sum.mat'};
 
 if ischar(clist), clist = cellstr(clist); end
@@ -30,8 +30,8 @@ for count = 1:length(clist)
     binrange = [binedges(1:end-1); binedges(2:end); 1:length(binedges)-1];
     %%
     figure
-    tl = tiledlayout(2,3);
-    for c = 1:5
+    tl = tiledlayout(2,4);
+    for c = 1:8
         nexttile
         b = c+2;
         %%plot([ifcbHcount.diatom(:,b)+ifcbHcount.dino(:,b)+ifcbHcount.nano(:,b)+ifcbHcount.ciliate(:,b)+ifcbHcount.otherPhyto(:,b)]./ifcbHmeta.ml_analyzed, attuneHcount.Euk(:,b)./attuneml', '.')
@@ -48,13 +48,13 @@ for count = 1:length(clist)
 
     %%
     figure
-    tl = tiledlayout(5,1);
+    tl = tiledlayout(4,2, 'tilespacing', 'compact');
     dt = datetime(ifcbHmeta.sample_time, 'InputFormat', 'yyyy-MM-dd hh:mm:ss+00:00');
     ifcbHmeta.dt = datetime(ifcbHmeta.sample_time, 'InputFormat', 'yyyy-MM-dd HH:mm:ss+00:00');
     ifcbHmeta.mdate = datenum(ifcbHmeta.dt);
     [~,ind] = sort(dt);
 
-    for c = 1:5
+    for c = 1:8
         nexttile
         b = c+2;
 %        plot(dt(ind), [ifcbHcount.diatom(ind,b)+ifcbHcount.dino(ind,b)+ifcbHcount.nano(ind,b)+ifcbHcount.ciliate(ind,b)]./ifcbHmeta.ml_analyzed(ind), '-')

@@ -85,7 +85,7 @@ fcsdat = array2table(fcsdat, 'VariableNames', {fcshdr.par.name});
     b = 3:.2:4.5; %log bin edges
     [m f] = mode(discretize(log10(fcsdat.(par_eukX)(in_euk)), b,(b(1:end-1))+.05)); %log mode
 %    eukminX = prctile(fcsdat{in_euk&fcsdatlog.(par_eukX)>(m-.5),par_eukX},2)/2;
-    eukminX = prctile(fcsdat{in_euk&fcsdatlog.(par_eukX)>(m-.5),par_eukX},2)/5;  %get too much then refine with mahal below
+    eukminX = prctile(fcsdat{in_euk&fcsdatlog.(par_eukX)>(m-.5),par_eukX},2)/4;  %get too much then refine with mahal below
 
     minY = max([minY 100]); %not below trigger level for this cruise
 

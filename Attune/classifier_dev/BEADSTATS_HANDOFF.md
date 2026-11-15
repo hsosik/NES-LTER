@@ -76,3 +76,16 @@ These are relevant to what is worth keeping.
 - **Regenerated:** 42 cruises, 762 runs. QC good: 0.5 µm 736, 1 µm 752, 6 µm 677. EN608 to EN627 have no FCB bead runs.
 - **Classifier check** (`score_agreement`, 15 files each; `output/beads_baseline` vs `output/beads_new`): mean agreement AR92 0.9833 → 0.9833, AR95 0.9513 → 0.9490, EN727 0.9226 → 0.9216, HRS2609 0.9778 → 0.9774. The bead references move by ≤ 0.011 log, the largest being GL1, where the median sat low. One AR95 AltPro file drops 0.961 → 0.905 because 800 events are added instead of 218.
 - **Design and test scripts:** in `bead_design/` (`run_bead_prototype`, `compare_bead_prototype`, `plot_bead_disagreements`; outputs in `output/bead_proto*`). The pipeline does not need them.
+
+## Cruises with only PT beads (Nov 2026)
+
+`generate_pt_beadstats.m` (with `find_pt_beads.m`) writes `beadstat.mat` for EN617, AR31A and EN627 in the same format as the FCB cruises, with `meta.source = "PT conversion"`. EN608, AR28B and AR29 have no PT bead data files.
+
+- **PT beads:** one size, three intensity levels (~1.4 log apart) per fluorescence channel, repeatable to about 0.02 log. The PT runs are in `cruise_data/beads/PT_beads_seawater_settings` and `PT_beads_bead_settings`.
+- **Conversion:** FCB peak = PT level + (FCB − PT) offset. The ratio of two beads on one detector does not depend on gain or laser power, so the offset carries over between dates with the same filters.
+- **Calibration:** FCB runs of 20 Mar – 12 Apr 2019 against PT runs of 28 Feb – 5 Mar 2019, at identical voltages.
+- **Cross-check:** PT runs at bead settings on the same days as the FCB runs (scaled with k) give offsets within 0.01–0.02 log (fluorescence) and 0.015–0.03 (FSC, SSC), with run-to-run SD 0.005–0.027.
+- **AR31A:** only bead-settings PT runs exist. They are brought to seawater settings with the July 2018 same-day bead→seawater offsets (pair SD ≤ 0.03). Its 25–26 Oct PT runs show no PT levels on the green channels (laser or delay off?), so GL2–GL4 are NaN. A 16 Nov 2018 run looks normal but falls outside the cruise window.
+- **EN627:** the PT scatter (FSC, SSC) moves between runs by up to ~0.5 log, which looks like a real change in instrument state (cleaning). The synthetic FSC and SSC therefore vary too (SD 0.19, 0.09); fluorescence varies 0.02–0.06.
+- **GL1:** no green scatter channel before Aug 2019, so there is no GL1 reference. `bead_reference` now warns and returns NaN for a channel without QC'd runs.
+- **Outputs:** calibration and per-cruise tables in `output/pt_conversion.mat`.
