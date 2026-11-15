@@ -8,6 +8,9 @@ function ref = bead_reference(beadstat, t, cfg)
 % exponent (cfg.k); runs are brought to the first run's voltage before the
 % median.
 %
+% ref.chan / ref.layout - attune_config channel map for time t (read by
+%            attune_features); ref.OD2 too when cfg.cruise is set
+%
 % beadstat - table from load_beadstat (process_beads_PT_adjust_3): per
 %            population P = 05, 1, 6, QCP and peakP (KDE mode per channel,
 %            linear units), and hv per channel
@@ -17,6 +20,15 @@ function ref = bead_reference(beadstat, t, cfg)
 P = {'05' '1' '6'};
 bt = datenum(beadstat.time);
 ref.chans = cfg.chans;
+% physical channel -> this file's parameter name. beadstat columns are already
+% physical channels (measure_beads / PT transfer map them through attune_config),
+% so only the sample files need the map; the layout follows from the date
+% (filter change Aug 2019). cfg.cruise, when set, also gives the OD2 placement
+if isfield(cfg, 'cruise'), cr = cfg.cruise; else, cr = ''; end
+conf = attune_config(cr, t);
+ref.chan = conf.chan;
+ref.layout = conf.layout;
+if ~isempty(cr), ref.OD2 = conf.OD2; end
 ref.floor_raw = cfg.floor_raw;
 ref.ntimes = struct();
 for c = cfg.chans
@@ -30,7 +42,13 @@ for c = cfg.chans
         q = find(good);
         [~, i] = min(abs(bt(q) - t)); use(q(i)) = true;
     end
-    if ~any(use), error('bead_reference:noQC', 'no QC''d bead runs for %s', ch), end
+    if ~any(use)
+        % e.g. GL1 before Aug 2019 (no green scatter channel), or green
+        % channels on AR31A (PT conversion without green signal)
+        warning('bead_reference:noQC', 'no QC''d bead runs for %s', ch)
+        ref.bead_log.(ch) = NaN; ref.bead_hv.(ch) = NaN; ref.k.(ch) = cfg.k.(ch); ref.ntimes.(ch) = 0;
+        continue
+    end
     v = v(use); hv = hv(use);
     hv0 = hv(1);
     ref.bead_log.(ch) = median(log10(v) - cfg.k.(ch) * log10(hv / hv0));

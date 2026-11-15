@@ -17,11 +17,20 @@ cfg.k = struct('FSC', 2.1, 'SSC', 8.5, 'GL1', 8.5, 'BL1', 8.5, 'BL2', 8.5, 'BL3'
 cfg.bead_pop = struct('FSC', 2, 'SSC', 2, 'GL1', 2, 'BL1', 2, 'BL2', 1, 'BL3', 2, 'GL2', 1, 'GL3', 3, 'GL4', 1);
 cfg.bead_window_days = 1.5;
 % size merge (assign_class_v2): GL1 is side scatter through the OD2 filter on these
-% cruises (p.OD2setting = 'GL1'); switch to it above these raw GL1-H counts,
-% averaging with SSC in between (batch_mergedSSC2volume convention). GL1 is on the
-% 1 um bead scale (bead_pop above) so that it is equivalent to SSC
+% cruises (p.OD2setting = 'GL1'); switch to it above this GL1 level, averaging with
+% SSC in between. GL1 is on the 1 um bead scale (bead_pop above) so that it is
+% equivalent to SSC. The window is in 1 um bead units (GL1-H / bead GL1-H), not raw
+% counts, so it stays where both channels are linear when voltages change: GL1 reads
+% high below ~10^2 raw (OD2 low-signal excess), SSC compresses above ~10^5.2 (220 V)
+% to ~10^5.6 (240 V). 0.5-2x bead is linear on both at SSC/GL1 220/220 (all cruises
+% to 2026; raw GL1 ~560-2200, close to the earlier 500-1000 counts) and 240/180
+% (AR104). Nov 2026, classifier_dev/pt_transfer/README.md
+% Callers set this per cruise: strcmpi(attune_config(cruise).OD2, 'GL1') (false before
+% Aug 2019, when OD2 sat on SSC or nowhere); assign_class_v2 also skips the merge when GL1
+% is not in the file or ref.OD2 (cfg.cruise set) is not 'GL1'. Optional cfg.cruise
+% lets bead_reference record the OD2 placement in ref.
 cfg.gl1_is_od2_scatter = true;
-cfg.gl1_merge = [500 1000];
+cfg.gl1_merge_bead = [0.5 2];
 cfg.floor_raw = 10; %raw values below this are treated as not detected
 
 % pigment signatures in bead-relative log10 units (from AR92 summer and EN727 winter, Nov 2026)
@@ -91,8 +100,10 @@ cfg.sig.euk_chlSSC_tol = 0.7;      %Euk events no more than this below the file'
 cfg.sig.euk_min_size_below_syn = 0.5; %Euks no smaller than ~3x less scatter than the file's Syn
 cfg.sig.euk_rescue_size_above_syn = 0.5; %events in detritus-named components return to Euk if in the Euk chl:size band, no PE, and this much larger than Syn
 cfg.sig.nonphyto_min_n = 50;       %Euk chl:size cut uses the midpoint to the non-phyto particles when there are this many of them
-cfg.sig.edge_pro_band = 0.4;        %non-Pro-setting files: no-PE events within this of the chl trigger edge (pile is ~0.4 thick in AR95 19Oct Euk(20); cuts no old-class Euks) ...
-cfg.sig.edge_pro_size_above_syn = 0.1; %... and no larger than the file's Syn (+ this) are the Pro tail, left unassigned
+cfg.sig.edge_pro_band = 0.4;        %non-Pro-setting files: band above the chl trigger edge where no-PE events pile up (~0.4 thick in AR95 19Oct Euk(20)); defines the trigger-noise pile, and Syn rescue seeds lie above it
+% (the Pro-tail cut, edge_pro_size_above_syn, was removed Nov 2026: it sliced real small-Euk clusters in summer files; see assign_class_v2 'Euks carry no PE')
+cfg.sig.edge_pile_max_frac = 0.5;   %non-Pro files: where no-PE events in that band are more than this fraction of chl events (pre-2019 trigger-noise pile) ...
+cfg.sig.edge_pile_fit_ratio = 1;    %... they enter the mixture fit sample at most this many times the other events
 cfg.sig.euk_gap_size_above = 1;     %chl gap at the bottom of the Euks: small no-PE particles (smaller than Syn + this) ...
 cfg.sig.euk_gap_bw = 0.05;          %... KDE bandwidth of their chl (log10)
 cfg.sig.euk_gap_min_above_edge = 0.2; %... Euk peak at least this far above the chl trigger edge
@@ -102,6 +113,8 @@ cfg.sig.euk_gap_min_pile = 20;      %... with at least this many events below th
 cfg.sig.euk_gap_min_n = 200;        %... only with at least this many candidate particles
 cfg.sig.syn_PEchl_default = -0.2;  %used when a file has no Syn
 cfg.sig.syn_size_default = -1.24;
+cfg.sig.syn_rescue = true;         %no component named Syn: events near these defaults with a Syn PE spectrum start as Syn (rare Syn; assign_class_v2) ...
+cfg.sig.syn_rescue_min_n = 20;     %... if there are at least this many
 cfg.sig.pro_max_SSC = -1.44;        %smaller than Syn
 cfg.sig.pro_max_BL3 = -0.3;        %dimmer than Syn and Euks
 cfg.sig.pro_GL2_above_euk = 0.3;   %Pro have no PE: GL2 no more than this above the file's Euk median GL2 (noise level) ...
@@ -109,6 +122,7 @@ cfg.sig.pro_GL2_default_above_floor = 1.5; %... or above the GL2 floor when a fi
 cfg.sig.pro_GL2_sd = 4;            %... and more than this many robust SDs above the Pro cluster's median GL2
 cfg.sig.pro_chlSSC_sd = 4;         %Pro fail the detritus chl:size cut only if also this many robust SDs below the Pro cluster's median chl:size
 cfg.sig.pro_max_sd_BL3 = 0.4;       %Pro component must be compact in chl (SD; real Pro 0.09-0.29 over 14 Pro files, spurious AR95 cluster 0.50)
+cfg.sig.pro_max_chlSSC_below_syn = 1; %Pro component chl:scatter no more than this below the Syn components' (real Pro 0.28-0.82 below over 14 Pro files; AR95 19Oct AltPro(30) false group 1.2)
 
 cfg.gmm_K = 3:9;
 cfg.gmm_max_fit = 10000;
@@ -126,7 +140,7 @@ cfg.sig.catchall_max_ref = 30000;   %subsample of assigned events used as neighb
 % modes that recur across 20 cruises, 2020-2026: -0.23 (A, every file), 0.00 (B) and
 % +0.45 (C, summer/fall only); troughs at -0.10 and +0.19. Labelled per event in
 % info.syn_type for Syn (2), Euk with Syn (5) and Syn on particle (8):
-% 1 = A, 2 = B, 3 = C, 9 = spectrum not usable (saturated, or BL2/GL2/GL3 near floor), 0 = other classes
+% 1 = A, 2 = B, 3 = C, 9 = spectrum not usable (BL2 or GL2 saturated or near floor), 0 = other classes
 cfg.sig.syn_type_edges = [-0.10 0.19];
 cfg.sig.syn_type_names = {'A (low PUB:PEB)' 'B (mid)' 'C (high PUB:PEB)'};
-cfg.sig.syn_type_min_above_floor = 1; %BL2, GL2 and GL3 at least this far above their floors
+cfg.sig.syn_type_min_above_floor = 1; %BL2 and GL2 at least this far above their floors

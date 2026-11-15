@@ -1,0 +1,809 @@
+function [class, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, pro_measured)
+% function [class, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, pro_measured)
+% Prototype cruise-independent classifier.
+%  1. put all channels on the bead-relative scale (attune_features)
+%  2. drop events with no chlorophyll signal above the trigger edge
+%  3. fit a Gaussian mixture to chlorophyll-containing events in
+%     [SSC, BL3, PE:chl, GL2:GL3] and pick the number of components by BIC
+%  4. name each component from its mean using pigment signatures that are
+%     the same across cruises and seasons (cfg.sig)
+%  5. events far from their component (Mahalanobis) are left as 0
+% Class codes match the existing class files:
+%  0 = not phytoplankton / unassigned, 1 = Euk without PE, 2 = Syn,
+%  3 = dim cryptophyte (less PE, more red-shifted PE spectrum), 4 = bright cryptophyte,
+%  5 = Euk with Syn (Syn-like PE, ~one Syn's worth; possible grazers), 7 = Pro
+%  8 = particle-associated Syn (new code: Syn on or inside a larger particle,
+%      ~1 Syn per event; count with Syn abundance, not Syn size or carbon)
+%
+% ref - from bead_reference; cfg - from classifier_config
+%
+% Nov 2026, classifier redesign prototype
+
+[F, finfo] = attune_features(fcsdat, fcshdr, ref);
+n = height(F);
+class = zeros(n, 1);
+% size: SSC, switching to scatter through the OD2 filter (GL1) for large particles.
+% SSC-H does not clip; it rolls off gradually from ~10x the 1 um bead while GL1
+% stays linear. As in batch_mergedSSC2volume, SSC and GL1 each relative to their
+% own 1 um bead peak are taken as equivalent (no fitted offset): GL1 above
+% cfg.gl1_merge_bead(2) x the 1 um bead, the mean of the two between
+% cfg.gl1_merge_bead(1) and (2) (bead units, so the window does not move with
+% the GL1 voltage; was raw GL1-H 500-1000 counts)
+% Only where GL1 is OD2 green scatter: cfg.gl1_is_od2_scatter (set per cruise from
+% attune_config(cruise).OD2 == "GL1"), ref.OD2 when bead_reference knew the cruise,
+% and GL1 actually measured (no green scatter channel before Aug 2019, when OD2 sat
+% on SSC or nowhere: size is SSC alone)
+F.size = F.SSC;
+use_gl1 = cfg.gl1_is_od2_scatter && any(isfinite(F.GL1)) && (~isfield(ref, 'OD2') || strcmpi(ref.OD2, 'GL1'));
+info.size_from_gl1 = use_gl1;
+if use_gl1
+    hi = F.GL1 > log10(cfg.gl1_merge_bead(2));
+    mid = F.GL1 > log10(cfg.gl1_merge_bead(1)) & ~hi;
+    F.size(hi) = F.GL1(hi);
+    F.size(mid) = log10((10.^F.SSC(mid) + 10.^F.GL1(mid)) / 2);
+end
+F.PEchl = F.GL2 - F.BL3;
+F.GL2GL3 = F.GL2 - F.GL3;
+F.chlSSC = F.BL3 - F.size;
+sig = cfg.sig;
+
+% trigger edges in bead-relative units; events pile up just above them
+edge = struct();
+trigs = [finfo.trigger finfo.trigger2]; levels = [finfo.trigger_level finfo.trigger2_level];
+for t = 1:2
+    ch = char(regexp(trigs(t), '(?<=_)\w+$', 'match', 'once'));
+    if ~isempty(ch) && isfield(finfo.floor, ch)
+        edge.(ch) = finfo.floor.(ch) + log10(levels(t)) - log10(cfg.floor_raw);
+    end
+end
+info.trigger_edges = edge;
+info.floor = finfo.floor;
+
+% pigment present: chlorophyll clear of its trigger edge, or PE clearly
+% detected (OR_GL2 triggering picks up dim Syn by PE alone)
+chl_min = sig.chl_min;
+if isfield(edge, 'BL3'), chl_min = max(chl_min, edge.BL3 + sig.trigger_margin); end
+pe_min = sig.pe_min_GL2;
+if isfield(edge, 'GL2'), pe_min = max(pe_min, edge.GL2 + sig.trigger_margin); end
+has_pe = F.GL2 > pe_min & F.PEchl > sig.pe_min_PEchl & F.BL3 > sig.chl_min;
+has_chl = (F.BL3 > chl_min | has_pe) & F.SSC > finfo.floor.SSC + 0.1;
+X = [F.size F.BL3 F.PEchl F.GL2GL3];
+X = X(has_chl, :);
+info.n_has_chl = sum(has_chl);
+if size(X, 1) < 50
+    info.ncomp = 0; info.comp = table;
+    info.syn_type = zeros(n, 1, 'uint8'); info.flag = zeros(n, 1, 'uint8'); info.features = F; %nothing assigned
+    return
+end
+
+% fit on a subsample, choose K by BIC
+if isfield(cfg, 'seed'), sd = cfg.seed; else, sd = 1; end
+rng(sd, 'twister') %same fit in serial runs and on parallel workers (whose default generator differs)
+nfit = min(size(X, 1), cfg.gmm_max_fit);
+% trigger-noise pile (Nov 2026): in files run without Pro settings, no-PE events
+% just above the chl trigger edge can be most of the file (AR34B, RB1904, EN627:
+% 60-98% of chl events; post-2019 non-Pro files < 25%). Fitted at full weight they
+% take nearly every component, real Syn are absorbed and a few bright cryptos get
+% named Syn. Where the pile is over edge_pile_max_frac of the events, it enters the
+% fit sample with at most edge_pile_fit_ratio x the other events (all events are
+% still assigned with the fitted model; the Pro-tail rule below handles the pile)
+pile = false(size(X, 1), 1);
+if ~pro_measured && isfield(edge, 'BL3')
+    pile = ~has_pe(has_chl) & X(:, 2) < edge.BL3 + sig.edge_pro_band;
+end
+info.edge_pile_frac = mean(pile);
+info.edge_pile_capped = info.edge_pile_frac > sig.edge_pile_max_frac;
+if info.edge_pile_capped
+    ip = find(pile); in = find(~pile);
+    % ... but enough events in all to fit the largest mixture (20 per component)
+    npf = max(round(sig.edge_pile_fit_ratio * numel(in)), 20 * max(cfg.gmm_K) - numel(in));
+    ip = ip(randperm(numel(ip), min(numel(ip), npf)));
+    pool = [in; ip];
+    nfit = min(numel(pool), cfg.gmm_max_fit);
+    Xfit = X(pool(randperm(numel(pool), nfit)), :);
+else
+    Xfit = X(randperm(size(X, 1), nfit), :);
+end
+best = []; bestbic = Inf;
+opts = statset('MaxIter', 500);
+warning('off', 'stats:gmdistribution:FailedToConvergeReps')
+warning('off', 'stats:gmdistribution:FailedToConverge')
+for K = cfg.gmm_K
+    if nfit < 20 * K, break, end
+    try
+        g = fitgmdist(Xfit, K, 'RegularizationValue', 1e-3, 'Replicates', 2, 'Options', opts);
+    catch
+        continue
+    end
+    if g.BIC < bestbic, best = g; bestbic = g.BIC; end
+end
+if isempty(best) %no mixture could be fitted (too few events): nothing assigned
+    info.ncomp = 0; info.comp = table;
+    info.syn_type = zeros(n, 1, 'uint8'); info.flag = zeros(n, 1, 'uint8'); info.features = F; %nothing assigned
+    return
+end
+info.ncomp = best.NumComponents;
+info.gmm = best;
+
+% name components from their means
+mu = name_components(best, finfo, sig, pe_min, pro_measured);
+% Pro components must have chl per scatter close to the file's Syn components
+% (real Pro clusters in 14 Pro-setting files: 0.28-0.82 below Syn); a compact
+% group far lower is faint detritus / small particles at the bottom of the
+% background smear (AR95 19Oct AltPro(30) Pro(10): 1.2 below), not Pro
+if any(mu.label == 7) && any(mu.label == 2)
+    sync = sum(mu.chlSSC(mu.label == 2) .* mu.weight(mu.label == 2)) / sum(mu.weight(mu.label == 2));
+    mu.label(mu.label == 7 & mu.chlSSC < sync - sig.pro_max_chlSSC_below_syn) = 0;
+end
+info.comp = mu;
+
+% assign events, leave outliers unassigned
+[comp, ~, ~, ~, d2] = cluster(best, X);
+d2own = d2(sub2ind(size(d2), (1:size(X, 1))', comp));
+lab = mu.label(comp);
+lab(d2own > chi2inv(cfg.outlier_p, size(X, 2))) = 0;
+class(has_chl) = lab;
+% with the pile under-weighted in the fit, its events can fall into Syn or PE-euk
+% components; they have no PE, so they may only be Euks (cut later as the Pro tail
+% where small) or unassigned, and stay out of the catch-all
+pile_ev = false(n, 1);
+if info.edge_pile_capped
+    pile_ev(has_chl) = pile;
+    class(pile_ev & class ~= 1) = 0;
+end
+% rare Syn (Nov 2026): where Syn are a tiny fraction of the file (~100-200 of 80-100k
+% events in AR34B / RB1904 files) no component is named Syn and they end up as PE euks
+% or unassigned. Without a Syn component, events with PE, a Syn-type PE spectrum, and
+% PE:chl and size near the usual Syn (cfg defaults, Syn-check tolerances) start as Syn;
+% the Syn checks below then work from them as usual
+info.syn_rescued = 0;
+if sig.syn_rescue && ~any(class == 2)
+    gl3c = F.GL3 > finfo.floor.GL3 + sig.ratio_min_above_floor;
+    rs = has_pe & ~pile_ev & (~gl3c | F.GL2GL3 > sig.syn_min_GL2GL3) & ...
+        abs(F.PEchl - sig.syn_PEchl_default) < sig.syn_PEchl_tol & abs(F.size - sig.syn_size_default) < sig.syn_size_tol & ...
+        F.chlSSC > sig.detritus_max_chlSSC;
+    % ... and chl clearly above the chl trigger edge: in OR-trigger files faint events
+    % that cleared only the PE trigger (chl below the edge) have Syn-like PE:chl and
+    % spectrum, and seeding Syn from them (RB1904 12May Sample(1)) moved the file's Syn
+    % reference onto that pile (Syn on particle, crypto PE scale and PE-euk test followed)
+    if isfield(edge, 'BL3'), rs = rs & F.BL3 > edge.BL3 + sig.edge_pro_band; end
+    if sum(rs) >= sig.syn_rescue_min_n
+        class(rs) = 2;
+        info.syn_rescued = sum(rs);
+    end
+end
+info.trace.gmm_label = mu.label(comp); info.trace.gmm_outlier = d2own > chi2inv(cfg.outlier_p, size(X, 2)); info.trace.has_chl = has_chl;
+info.trace.after_gmm = class;
+
+% event-level checks: broad components pick up stray events
+% too little chlorophyll for the particle size: detritus / non-phytoplankton
+det = F.chlSSC < sig.detritus_max_chlSSC;
+% Pro sit at the chl trigger edge, so the largest ones fall below the fixed cut
+% without being detritus; drop Pro only if also far below the Pro cluster's own
+% chl:size (in the sparse tail, not through the cluster's edge)
+pro = class == 7;
+if any(pro)
+    det(pro) = det(pro) & F.chlSSC(pro) < median(F.chlSSC(pro)) - sig.pro_chlSSC_sd * 1.4826 * mad(F.chlSSC(pro), 1);
+end
+% same for Syn: dim-chl Syn near the chl trigger edge (or detected by PE alone)
+synd = class == 2;
+if any(synd)
+    det(synd) = det(synd) & F.chlSSC(synd) < median(F.chlSSC(synd)) - sig.pro_chlSSC_sd * 1.4826 * mad(F.chlSSC(synd), 1);
+end
+class(det) = 0;
+info.trace.after_detritus = class;
+% Syn must sit near this file's Syn cluster in PE:chl, PE spectrum and size
+syn = class == 2;
+syn_PEchl = median(F.PEchl(syn)); syn_size = median(F.size(syn));
+syn_GL2GL3 = median(F.GL2GL3(syn)); syn_BL3 = median(F.BL3(syn));
+if ~any(syn), syn_PEchl = sig.syn_PEchl_default; syn_size = sig.syn_size_default; end
+% GL2:GL3 is only meaningful where GL3 is clear of its floor (dim summer Syn are not)
+gl3ok = F.GL3 > finfo.floor.GL3 + sig.ratio_min_above_floor;
+% Syn pigment types differ in GL2:GL3 and a sample can hold a mixture (e.g. two
+% types at ~0.26 and ~0.4 in AR92), so accept the range spanned by this file's Syn
+% components (those with a Syn-type spectrum measured clear of the GL3 floor), not one centre
+syn_range = syn_ratio_range(mu, syn_GL2GL3, sig);
+% PE:chl below Syn (PE euks) uses the fixed tolerance; size uses it widened to the
+% file's Syn spread; more PE per chl than Syn is allowed further (dim-chl Syn near the
+% chl trigger edge or detected by PE alone), up to syn_PEchl_sd robust SDs
+if any(syn)
+    syn_PEchl_sdv = 1.4826 * mad(F.PEchl(syn), 1);
+    % size centre and spread from the peak of the distribution, which neither an upward
+    % smear of large Syn nor tiny signals below shift or stretch
+    [syn_size, syn_size_sdv] = peak_centre(F.size(syn));
+else
+    syn_PEchl_sdv = 0; syn_size_sdv = 0;
+end
+% Syn PE before the check, for the PE gap below; events too large for Syn are left
+% out (a bright-crypto component named Syn in AR34B files put the PE peak above the
+% real Syn, and the gap below it removed every Syn). Only the upper size limit: the
+% faint pile the gap is for is small
+gs0 = F.GL2(syn & F.size <= syn_size + sig.syn_size_tol);
+class(syn & (F.PEchl < syn_PEchl - sig.syn_PEchl_tol | F.PEchl > syn_PEchl + max(sig.syn_PEchl_tol, sig.syn_PEchl_sd * syn_PEchl_sdv) | ...
+    F.size > syn_size + sig.syn_size_tol | F.size < syn_size - min(sig.syn_size_max_below, max(sig.syn_size_tol_below, sig.syn_size_sd * syn_size_sdv)) | ...
+    (gl3ok & (F.GL2GL3 < syn_range(1) - sig.syn_GL2GL3_tol | F.GL2GL3 > syn_range(2) + sig.syn_GL2GL3_tol)))) = 0;
+% boundaries of the Syn check, kept for plotting (plot_v2_rules)
+info.rules.syn_check = struct('PEchl', syn_PEchl, 'PEchl_lo', syn_PEchl - sig.syn_PEchl_tol, ...
+    'PEchl_hi', syn_PEchl + max(sig.syn_PEchl_tol, sig.syn_PEchl_sd * syn_PEchl_sdv), ...
+    'size', syn_size, 'size_hi', syn_size + sig.syn_size_tol, ...
+    'size_lo', syn_size - min(sig.syn_size_max_below, max(sig.syn_size_tol_below, sig.syn_size_sd * syn_size_sdv)), ...
+    'GL2GL3_lo', syn_range(1) - sig.syn_GL2GL3_tol, 'GL2GL3_hi', syn_range(2) + sig.syn_GL2GL3_tol, ...
+    'gl3ok_min', finfo.floor.GL3 + sig.ratio_min_above_floor);
+% Syn must carry PE close to the Syn cluster's (dim-chl Syn keep normal PE; events
+% low in both chl and PE are not Syn). Spreads are taken from the low side of the
+% distribution, which an upward tail (winter smear) does not stretch
+syn_PE_floor = -Inf;
+if any(class == 2)
+    gs = F.GL2(class == 2); gmed = median(gs);
+    syn_PE_floor = gmed - max(sig.syn_PE_tol_below, sig.syn_PE_sd * (gmed - prctile(gs, 15.87)));
+    % ... and above a PE gap. In OR-trigger files, faint events that cleared only the
+    % GL2 trigger pile up at its edge, separated from the Syn cluster by a trough in
+    % PE. The gap is found in the Syn PE distribution before the Syn check (which
+    % removes most of the pile by size, leaving its Syn-sized part as a flat tail with
+    % no visible trough): a local minimum below the Syn peak, under syn_PE_gap_frac of
+    % the peak density, with density rising again below it by syn_PE_gap_rise into a
+    % pile of at least syn_PE_gap_min_pile events. Syn whose PE runs smoothly down to
+    % the trigger edge (summer) have no such gap and keep the statistical floor
+    pe_gap = -Inf;
+    if numel(gs0) >= sig.syn_PE_gap_min_n
+        [fk, gk] = ksdensity(gs0, 'NumPoints', 400, 'Bandwidth', sig.syn_PE_gap_bw);
+        [fm, ip] = max(fk); best = Inf;
+        for j = ip - 1:-1:2
+            if fk(j) <= fk(j - 1) && fk(j) <= fk(j + 1) && fk(j) < sig.syn_PE_gap_frac * fm && ...
+                    max(fk(1:j - 1)) > sig.syn_PE_gap_rise * fk(j) && sum(gs0 < gk(j)) >= sig.syn_PE_gap_min_pile && fk(j) < best
+                best = fk(j); pe_gap = gk(j);
+            end
+        end
+    end
+    syn_PE_floor = max(syn_PE_floor, pe_gap);
+    info.syn_PE_gap = pe_gap;
+    % no-PE noise floor (on when cfg sets syn_PE_noise_prc): upper percentile of GL2
+    % in small Euks only (no larger than Syn + syn_PE_noise_size_above). Large Euks
+    % show PE-channel signal from bright chl spillover, and the Euk set at this stage
+    % still holds cryptos, so all Euks together overstate the noise
+    info.syn_PE_noise = NaN;
+    if isfield(sig, 'syn_PE_noise_prc')
+        se = class == 1 & F.size < syn_size + sig.syn_PE_noise_size_above;
+        if sum(se) >= sig.syn_PE_noise_min_n
+            info.syn_PE_noise = prctile(F.GL2(se), sig.syn_PE_noise_prc);
+            syn_PE_floor = max(syn_PE_floor, info.syn_PE_noise);
+        end
+        info.syn_PE_noise_n = sum(se);
+    end
+    class(class == 2 & F.GL2 < syn_PE_floor) = 0;
+end
+info.syn_PE_floor = syn_PE_floor;
+syn_rejected = syn & class == 0; %re-checked as Euks below
+info.trace.after_syncheck = class;
+info.trace.syn_ref0 = struct('PEchl', syn_PEchl, 'GL2GL3', syn_GL2GL3, 'BL3', syn_BL3, 'size', syn_size, 'GL2GL3_range', syn_range);
+% the tolerances above are broad, so take the file's Syn position from the checked events
+syn = class == 2;
+if any(syn)
+    syn_PEchl = median(F.PEchl(syn)); syn_GL2GL3 = median(F.GL2GL3(syn)); syn_BL3 = median(F.BL3(syn));
+    syn_size = peak_centre(F.size(syn));  %peak of the Syn size distribution (robust to a smear above or tiny signals below)
+end
+% no known Euks are much smaller than Syn (Ostreococcus is only slightly smaller);
+% smaller chlorophyll-bearing particles without PE are Pro only in Pro-setting files
+class(class == 1 & F.size < syn_size - sig.euk_min_size_below_syn) = 0;
+% Euks carry no PE: events named Euk that have PE with about the PE:chl of this file's
+% Syn are not Euks (Nov 2026). In OR-trigger files faint Syn-like events detected by
+% the PE trigger alone (chl below the chl edge) were put in Euk components (AR95,
+% HRS2609, AR34B, RB1904: 40-90 per file); they are left for the Syn rules and the
+% catch-all. (Replaces the Pro-tail cut, which removed no-PE events within 0.4 of
+% the chl edge and no larger than Syn: in summer files that sliced the bottom off real
+% small-Euk clusters, ~3,500 old-class Euks in 12 TN368 files; the Euk chl-gap rule
+% handles the no-PE pile at the edge where there is one)
+euk_synpe = class == 1 & has_pe & F.PEchl > syn_PEchl - sig.syn_PEchl_tol;
+class(euk_synpe) = 0;
+info.n_euk_synpe = sum(euk_synpe);
+% where the trigger-noise pile dominates (capped fit, pre-2019), no-PE events in the
+% edge band are left out at any size, as the old per-cruise classifiers did (raw BL3
+% < 200 with a trigger of 100); flag 3
+pile_cut = class == 1 & pile_ev;
+class(pile_cut) = 0;
+% events in a component named PE euk (broad large-particle components can hold
+% bright cryptos and large Euks together) but without PE of their own are Euks
+class(class == 3 & ~has_pe) = 1;
+% Euks must have clearly more chl per scatter than non-phytoplankton particles.
+% Euks are variable, so the cut is the looser of (Euk median - euk_chlSSC_tol) and
+% the midpoint between the Euk median and the median of this file's large
+% non-phytoplankton particles (scatter without matching chl)
+euk = class == 1;
+if any(euk)
+    euk_med = median(F.chlSSC(euk));
+    euk_cut = euk_med - sig.euk_chlSSC_tol;
+    nonphyto = F.chlSSC < sig.detritus_max_chlSSC & F.size > syn_size + sig.euk_rescue_size_above_syn & F.SSC > finfo.floor.SSC + 0.1;
+    if sum(nonphyto) >= sig.nonphyto_min_n
+        euk_cut = min(euk_cut, (euk_med + median(F.chlSSC(nonphyto))) / 2);
+    end
+    euk_cut = max(euk_cut, sig.detritus_max_chlSSC);
+    info.euk_chlSSC_cut = euk_cut;
+    class(euk & F.chlSSC < euk_cut) = 0;
+    % large Euks are sparse and can be absorbed by a broad detritus component (named
+    % 0 from its mean); give back events in such components that individually sit
+    % in this file's Euk chl:size band, have no PE, and are well larger than Syn
+    in_det = false(n, 1); in_det(has_chl) = mu.label(comp) == 0 & d2own <= chi2inv(cfg.outlier_p, size(X, 2));
+    euk_back = class == 0 & in_det & ~has_pe & F.chlSSC > euk_cut & F.size > syn_size + sig.euk_rescue_size_above_syn;
+    class(euk_back) = 1;
+    info.n_euk_rescued = sum(euk_back);
+end
+% events the mixture put with Syn but that failed the Syn check (too little PE
+% for their chl, or too large) are re-checked as Euks: chl normal for a Euk of their
+% size (within euksyn_max_chl_below_euk of the Euk chl-size line) and no smaller
+% than Euks may be -> Euk with Syn (5) if they carry PE with a Syn-like spectrum,
+% else Euk (1)
+if any(syn_rejected) && sum(class == 1) >= 50
+    be = robustfit(F.size(class == 1), F.BL3(class == 1));
+    eukish = syn_rejected & F.BL3 - (be(1) + be(2) * F.size) > -sig.euksyn_max_chl_below_euk & ...
+        F.size > syn_size - sig.euk_min_size_below_syn & F.chlSSC > sig.detritus_max_chlSSC;
+    pe_syn = F.GL2 > pe_min & F.PEchl > median(F.PEchl(class == 1)) + sig.euksyn_min_PEchl_above_euk & ...
+        (~gl3ok | (F.GL2GL3 > syn_range(1) - sig.syn_GL2GL3_tol & F.GL2GL3 < syn_range(2) + sig.syn_GL2GL3_tol));
+    % events with Syn-level PE per chl (Euks have ~1000x less) that failed only the
+    % spectrum test are not plain Euks: leave them for the catch-all
+    synpe = has_pe & F.PEchl > syn_PEchl - sig.syn_PEchl_tol;
+    % Euk with Syn here must meet the same rules as from the PE-euk step: clearly
+    % larger than Syn and clearly less PE per chl than Syn (else they stay unassigned)
+    euksyn_ok = F.size > syn_size + sig.peeuk_size_above_syn & F.PEchl < syn_PEchl - sig.peeuk_PEchl_below_syn;
+    class(eukish & pe_syn & euksyn_ok) = 5;
+    class(eukish & ~pe_syn & ~synpe) = 1;
+    info.n_syn_rejected_rechecked = [sum(eukish & pe_syn & euksyn_ok) sum(eukish & ~pe_syn & ~synpe) sum(eukish & ~pe_syn & synpe)];
+    info.trace.synpe_held = eukish & ~pe_syn & synpe;
+end
+% chl gap at the bottom of the Euks (Nov 2026): faint events that just clear the
+% chl trigger pile up at its edge. Where the chl distribution of small no-PE
+% particles (Euks and unassigned, smaller than Syn + euk_gap_size_above) has a deep
+% minimum between that pile and the Euk peak, small Euks below the minimum are left
+% unassigned (and the catch-all may not re-add them). Files whose smallest Euks run
+% smoothly down to the trigger have no such minimum and keep the rules above
+euk_below_gap = false(n, 1);
+info.euk_chl_gap = -Inf;
+if isfield(edge, 'BL3')
+    cand = ismember(class, [0 1]) & ~has_pe & F.size < syn_size + sig.euk_gap_size_above & F.BL3 > edge.BL3 - 0.05 & ...
+        F.SSC > finfo.floor.SSC + 0.1;
+    x = F.BL3(cand);
+    if numel(x) >= sig.euk_gap_min_n
+        [fk, gk] = ksdensity(x, 'NumPoints', 400, 'Bandwidth', sig.euk_gap_bw);
+        % Euk peak: the highest density at least euk_gap_min_above_edge above the edge
+        up = find(gk >= edge.BL3 + sig.euk_gap_min_above_edge);
+        if ~isempty(up)
+            [fm, ip] = max(fk(up)); ip = up(ip); best = Inf;
+            for j = ip - 1:-1:2
+                if gk(j) <= edge.BL3, break, end
+                if fk(j) <= fk(j - 1) && fk(j) <= fk(j + 1) && fk(j) < sig.euk_gap_frac * fm && ...
+                        max(fk(1:j - 1)) > sig.euk_gap_rise * fk(j) && sum(x < gk(j)) >= sig.euk_gap_min_pile && fk(j) < best
+                    best = fk(j); info.euk_chl_gap = gk(j);
+                end
+            end
+        end
+    end
+    euk_below_gap = F.BL3 < info.euk_chl_gap & F.size < syn_size + sig.euk_gap_size_above & ~has_pe;
+    class(class == 1 & euk_below_gap) = 0;
+end
+info.n_euk_below_gap = sum(euk_below_gap & info.trace.after_gmm == 1);
+% Pro have no PE: GL2 must be at the noise level seen in this file's Euks
+% (which also lack PE), else the file's GL2 floor plus a default
+pro = class == 7;
+if any(pro)
+    if sum(class == 1) >= 20
+        pro_GL2_max = median(F.GL2(class == 1)) + sig.pro_GL2_above_euk;
+    else
+        pro_GL2_max = finfo.floor.GL2 + sig.pro_GL2_default_above_floor;
+    end
+    % ... and well outside the Pro cluster's own GL2 spread, so the cut falls in the
+    % sparse tail instead of slicing through the top of the cluster
+    pro_GL2_max = max(pro_GL2_max, median(F.GL2(pro)) + sig.pro_GL2_sd * 1.4826 * mad(F.GL2(pro), 1));
+    class(pro & F.GL2 > pro_GL2_max) = 0;
+    info.pro_GL2_max = pro_GL2_max;
+end
+info.trace.after_pro_pe = class;
+
+% PE-containing euks are often too rare to get their own component; pick them
+% out event by event: PE present, larger than this file's Syn, and either less
+% PE per chlorophyll than Syn or a cryptophyte-type PE spectrum
+% PE spectrum relative to this file's Syn from BL2:GL3 (blue- vs green-excited PE;
+% both stay on scale where GL2 saturates, and cryptophyte PE sits well below Syn).
+% Bright cryptos near GL2 saturation can have Syn-like PE:chl and a GL2:GL3 that is
+% compressed, so the BL2:GL3 test is needed to recognise them
+% physical channel -> file column (attune_config map; the PE channel is GL1-H before Aug 2019)
+satch = @(ch) sat_col(fcsdat, finfo.col.(ch), sig.sat_frac);
+satG2 = satch('GL2');
+okB = ~satch('BL2') & ~satch('GL3') & F.BL2 > finfo.floor.BL2 + 1 & F.GL3 > finfo.floor.GL3 + 1;
+syB = class == 2 & okB & ~satG2;
+% crypto-type spectrum: BL2:GL3 below this file's Syn by more than the larger of
+% peeuk4_dBL2GL3 and crypto_dB_sd robust SDs of the Syn spectrum. Syn spectra are
+% tight in winter (SD ~0.08) but wide in summer/fall when pigment types mix
+% (SD up to ~0.3), where a fixed 0.3 offset is ordinary Syn spread
+dB_cut = sig.peeuk4_dBL2GL3;
+if sum(syB) >= 50
+    dB = (F.BL2 - F.GL3) - median(F.BL2(syB) - F.GL3(syB));
+    dB_cut = min(dB_cut, -sig.crypto_dB_sd * 1.4826 * mad(dB(syB), 1));
+else
+    dB = nan(n, 1);
+end
+% PE euks: larger than Syn with clearly less PE per chl than Syn, or with a
+% crypto-type spectrum; the spectrum route also needs PE per chl below the Syn
+% median (Syn-like PE:chl on a larger particle is Syn or Syn on a particle), except
+% where GL2 saturates and PE:chl is compressed (bright cryptos)
+spec = F.GL2GL3 < sig.peeuk_max_GL2GL3 | (okB & dB < dB_cut);
+spec_ok = satG2 | F.PEchl < syn_PEchl - sig.peeuk_spec_PEchl_below_syn;
+% PE present on a large particle: clearly above the PE-channel signal of this
+% file's large Euks, which is chl spillover (no PE). Their PE:chl falls with chl,
+% so the floor is the Euks' PE:chl-vs-chl trend plus peeuk_spill_sd robust SDs
+% (fixed pe_min_PEchl / peeuk_min_GL2 cuts ran through a separate PE band in
+% summer files). Fixed cuts are the fallback when there are too few large Euks
+big = F.size > syn_size + sig.peeuk_size_above_syn;
+eub = class == 1 & big & F.BL3 > chl_min;
+pe_big = has_pe & F.GL2 > sig.peeuk_min_GL2;
+info.peeuk_spill = [];
+if sum(eub) >= sig.peeuk_spill_min_n
+    bs = robustfit(F.BL3(eub), F.PEchl(eub));
+    rs = F.PEchl(eub) - (bs(1) + bs(2) * F.BL3(eub));
+    spill_sd = 1.4826 * mad(rs, 1);
+    pe_big = F.GL2 > pe_min & F.PEchl > bs(1) + bs(2) * F.BL3 + sig.peeuk_spill_sd * spill_sd;
+    info.peeuk_spill = [bs' spill_sd];
+end
+pe_euk = pe_big & F.size > syn_size + sig.peeuk_size_above_syn & ...
+    F.chlSSC > sig.detritus_max_chlSSC & ...
+    (F.PEchl < syn_PEchl - sig.peeuk_PEchl_below_syn | (spec & spec_ok));
+info.crypto_dB_cut = dB_cut;
+class(pe_euk) = 3;
+class(class == 3 & ~pe_euk) = 0; %component-level PE euk calls must pass the same test
+info.trace.after_peeuk = class;
+
+% split PE euks (Nov 2026) by PE spectrum and amount:
+%  5 = Euk with Syn: Syn-like PE spectrum, Euk-level chl, PE ~ one Syn's worth
+%      (grazers with ingested Syn or Syn attached; not chance coincidences);
+%      those with much less chl than Euks of their size go to 8 (Syn on a particle)
+%  3 = dim cryptophytes and 4 = bright cryptophytes: cryptophyte-type spectrum
+%      (BL2:GL3 below Syn); in winter/fall these form two compact groups that differ
+%      mainly in PE and spectrum (dim ones more red-shifted; also ~3x less scatter), split per file when the
+%      two groups are clearly there; otherwise split by a PE floor (dimmer = 3)
+% The spectrum is read from BL2:GL3 (blue- vs green-excited PE; both stay on scale
+% where GL2 saturates) relative to this file's Syn; GL2:GL3 where BL2 or GL3 is
+% unusable; events saturated in GL2 with no usable BL2/GL3 are crypto-type.
+% PE amount: GL2, or BL2 scaled to GL2 (from this file's Syn) where GL2 saturates.
+pe3 = class == 3;
+info.crypto_split = struct('n', 0, 'accepted', false);
+if any(pe3)
+    sy = class == 2 & okB & ~satG2;
+    if sum(sy) >= 50
+        dB = (F.BL2 - F.GL3) - median(F.BL2(sy) - F.GL3(sy));
+        dG = F.GL2GL3 - median(F.GL2GL3(sy));
+        % spectral cuts relative to this file's Syn spread (see dB_cut above)
+        dB_cut = min(sig.peeuk4_dBL2GL3, -sig.crypto_dB_sd * 1.4826 * mad(dB(sy), 1));
+        dG_cut = min(sig.peeuk4_dGL2GL3, -sig.crypto_dB_sd * 1.4826 * mad(dG(sy), 1));
+        info.crypto_dB_cut = dB_cut;
+        % Syn can be a mixture of pigment types (e.g. a second type ~0.7 below the
+        % main one in BL2:GL3 in HRS2609 17Aug(11)), so a spectrum below the Syn
+        % median is not enough: crypto-type means below every Syn type in the file
+        % (the low end of the Syn spectrum distribution, minus a margin); otherwise
+        % the PE is Syn-type (Euk with Syn). GL2-saturated PE euks are bright
+        % cryptos regardless of spectrum (set after the split below)
+        info.syn_ref_BL2GL3 = median(F.BL2(sy) - F.GL3(sy));
+        PE = F.GL2; k = satG2 & okB;
+        PE(k) = F.BL2(k) - median(F.BL2(sy) - F.GL2(sy));
+        PEs = PE - median(F.GL2(sy));          %log10 Syn equivalents
+        dB_low = min(dB_cut, prctile(dB(sy), sig.crypto_syn_low_prc) - sig.crypto_syn_low_margin);
+        dG_low = min(dG_cut, prctile(dG(sy), sig.crypto_syn_low_prc) - sig.crypto_syn_low_margin);
+        info.crypto_dB_low = dB_low;
+        % events with far more PE than a Syn (> crypto_min_PE_above_syn, i.e. >10 Syn;
+        % Euk with Syn holds ~one Syn's worth) keep the median-relative spectrum cut:
+        % unsaturated bright cryptos in summer files sit within the Syn spectral spread
+        loose = (okB & dB < dB_cut) | (~okB & ~satG2 & gl3ok & dG < dG_cut);
+        crypto = (okB & dB < dB_low) | (~okB & ~satG2 & gl3ok & dG < dG_low) | satG2 | (loose & PEs > sig.crypto_min_PE_above_syn);
+    else
+        crypto = F.GL2GL3 < sig.peeuk_max_GL2GL3 | satG2;
+        dB = nan(n, 1); PEs = F.GL2 - syn_PEchl - syn_BL3;
+    end
+    cr = pe3 & crypto;
+    class(pe3 & ~crypto) = 5;
+    class(cr) = 4;
+    % two crypto groups? fit two components on [PE, spectrum] and accept only if
+    % both are populated, compact, well separated, and the dimmer one is the more
+    % red-shifted (as in EN727 / AR95)
+    % the dim/bright fit uses events with a crypto-type spectrum (saturated events with
+    % compressed, Syn-like spectra would widen the bright group; they are set to 4 below)
+    cspec = cr & okB & isfinite(dB) & dB < dB_cut;
+    fitset = cspec;
+    info.crypto_split.n = sum(cr);
+    if sum(fitset) >= sig.crypto_split_min_n
+        Xc = [PEs(fitset) dB(fitset)];
+        try
+            rng(sd + 7, 'twister')
+            gc = fitgmdist(Xc, 2, 'Replicates', 3, 'RegularizationValue', 1e-3, 'Options', opts);
+            [~, o] = sort(gc.mu(:, 1));            %o(1) dimmer, o(2) brighter
+            S1 = gc.Sigma(:, :, o(1)); S2 = gc.Sigma(:, :, o(2));
+            dm = gc.mu(o(2), :) - gc.mu(o(1), :);
+            sep = sqrt(dm / ((S1 + S2) / 2) * dm');
+            nmin = min(gc.ComponentProportion) * size(Xc, 1);
+            compact = all(sqrt([S1(1, 1) S2(1, 1)]) <= sig.crypto_max_sd_PE) && all(sqrt([S1(2, 2) S2(2, 2)]) <= sig.crypto_max_sd_dB);
+            redder = gc.mu(o(1), 2) < gc.mu(o(2), 2) - sig.crypto_min_dB_offset;
+            ok = nmin >= sig.crypto_min_group_n && compact && sep >= sig.crypto_min_sep && redder;
+            info.crypto_split = struct('n', sum(cr), 'accepted', ok, 'sep', sep, 'nmin', nmin, 'compact', compact, 'redder', redder, ...
+                'mu_dim', gc.mu(o(1), :), 'mu_bright', gc.mu(o(2), :));
+            info.crypto_gmm = gc; info.crypto_gmm_order = o;
+            if ok
+                % events with a usable spectrum by posterior; the rest by PE alone
+                post = posterior(gc, [PEs dB]);
+                small = cr & okB & isfinite(dB) & post(:, o(1)) > 0.5;
+                small = small | (cr & ~(okB & isfinite(dB)) & abs(PEs - gc.mu(o(1), 1)) < abs(PEs - gc.mu(o(2), 1)));
+                class(small) = 3;
+            end
+        catch
+        end
+    end
+    if ~info.crypto_split.accepted
+        % no two separate groups. If the crypto-type events form one compact group,
+        % label the whole group by where its median PE sits (a PE floor would cut a
+        % single group in two); if they are diffuse (summer), split by PE event by event
+        one = cspec;
+        single = sum(one) >= sig.crypto_min_group_n && 1.4826 * mad(PEs(one), 1) <= sig.crypto_max_sd_PE && ...
+            1.4826 * mad(dB(one), 1) <= sig.crypto_max_sd_dB;
+        info.crypto_split.single_group = single;
+        if single
+            % whole group by its median PE; events far outside the group's PE spread
+            % (both sides) take the other label, so a few dim events are not called
+            % bright with a bright group, nor bright ones dim with a dim group
+            gmed = median(PEs(one)); gsd = 1.4826 * mad(PEs(one), 1);
+            if gmed < sig.crypto_min_PE_above_syn, class(cr) = 3; end
+            class(cr & PEs < gmed - sig.crypto_outlier_sd * gsd) = 3;
+            class(cr & PEs > gmed + sig.crypto_outlier_sd * gsd) = 4;
+        else
+            class(cr & PEs < sig.crypto_min_PE_above_syn) = 3;
+        end
+    end
+    % PE euks at or near GL2 saturation are bright cryptos: no other class carries
+    % that much PE (Syn on a particle and Euk with Syn hold ~one Syn's worth), and
+    % saturation compresses their PE:chl and GL2:GL3 toward Syn-like values
+    class(pe3 & satG2) = 4;
+    % Euk-with-Syn events far below the Euks' chl-size line are not Euks carrying
+    % a Syn but aggregates / detritus with a Syn and a little chl (two groups in
+    % EN727 and AR92, ~1.2 and ~0.2 below the line): count them as Syn on a particle
+    if any(class == 5) && sum(class == 1) >= 50
+        b = robustfit(F.size(class == 1), F.BL3(class == 1));
+        euksyn_lowchl = class == 5 & F.BL3 - (b(1) + b(2) * F.size) < -sig.euksyn_max_chl_below_euk;
+        class(euksyn_lowchl) = sig.euksyn_low_chl_class; %8 = Syn on particle, or 0 = leave unassigned
+        info.trace.euksyn_lowchl = euksyn_lowchl;
+        info.trace.from_euksyn = class == 8; %Euk with Syn moved to Syn on particle (trace only)
+    end
+end
+
+% particle-associated Syn: Syn spectrum and about one Syn's pigment on a much
+% larger particle (aggregate, detritus, or a grazer that has eaten Syn). These
+% form a continuous tail in scatter rather than a cluster, so they are picked
+% event by event; no upper size limit, and exempt from the chl:size detritus rule
+if any(class == 2)
+    % core Syn centre and spread from the peak of the size distribution
+    [syn_core, syn_size_sd] = peak_centre(F.size(class == 2));
+    synpart_cut = syn_core + max(sig.synpart_min_size_above, sig.synpart_size_sd * syn_size_sd);
+    info.syn_core_size = [syn_core syn_size_sd];
+    % Syn chl-size trend from the core cluster: large Syn follow it (chl rises with
+    % scatter along the phyto diagonal); a Syn on a larger particle carries about one
+    % Syn's chl on more scatter, so it falls clearly below the trend extended
+    corez = class == 2 & abs(F.size - syn_core) < 2 * syn_size_sd;
+    if sum(corez) >= 50
+        bt = robustfit(F.size(corez), F.BL3(corez));
+    else
+        bt = [syn_BL3 - syn_core; 0];
+    end
+    below_trend = F.BL3 < bt(1) + bt(2) * F.size - sig.synpart_below_trend;
+    info.syn_chl_trend = bt';
+    synpart_rule = has_pe & ...
+        abs(F.PEchl - syn_PEchl) < sig.synpart_PEchl_tol & (~gl3ok | (F.GL2GL3 > syn_range(1) - sig.synpart_GL2GL3_tol & F.GL2GL3 < syn_range(2) + sig.synpart_GL2GL3_tol)) & ...
+        F.BL3 > syn_BL3 - sig.synpart_BL3_below & F.BL3 < syn_BL3 + sig.synpart_BL3_above & ...
+        F.size > synpart_cut & below_trend;
+    synpart = ismember(class, [0 2]) & synpart_rule;
+    class(synpart) = 8;
+    info.trace.synpart_main = synpart; %(trace only)
+    % larger than the core Syn, below the Syn chl trend, but not a Syn on a particle
+    % (e.g. too little chl even for one Syn): not Syn. Large Syn on the trend stay Syn
+    class(class == 2 & F.size > synpart_cut & below_trend) = 0;
+end
+% catch-all (Nov 2026): no event that looks like a cell is left unassigned. An
+% event is cell-like if it carries PE like a cell or chl like a cell for its size
+% (above the detritus cut and, for particles well larger than Syn, above this
+% file's Euk chl:size cut). Unassigned cell-like events take the majority class of
+% their nearest assigned neighbours in [size, chl, PE, BL2, GL3], if they also meet
+% that class's own rules (sizes relative to Syn, Pro only in Pro files); otherwise
+% they stay unassigned. The Pro tail at the chl trigger in files run without Pro
+% settings stays unassigned.
+if exist('euk_cut', 'var'), ccut = euk_cut; else, ccut = sig.detritus_max_chlSSC; end
+cell_chl = has_chl & F.chlSSC > sig.detritus_max_chlSSC & (F.size <= syn_size + sig.euk_rescue_size_above_syn | F.chlSSC > ccut);
+% PE like a cell: at least ~1/3 of a Syn's PE (detected-but-faint PE near the GL2
+% trigger is common on non-phyto particles)
+if any(class == 2)
+    cell_pe = has_pe & F.GL2 > median(F.GL2(class == 2)) - sig.cell_PE_below_syn;
+else
+    cell_pe = has_pe & F.GL2 > pe_min + sig.cell_PE_below_syn;
+end
+if ~isfield(info.trace, 'euksyn_lowchl'), info.trace.euksyn_lowchl = false(n, 1); end
+left = class == 0 & (cell_pe | cell_chl) & ~euk_below_gap & ~pile_ev & ~(info.trace.euksyn_lowchl & sig.euksyn_low_chl_class == 0);
+refset = ismember(class, [1 2 3 4 5 7 8]);
+info.n_catchall = 0;
+if any(left) && sum(refset) >= 50
+    Z = [F.size F.BL3 F.GL2 F.BL2 F.GL3];
+    zs = std(Z(refset, :)); zs(zs == 0) = 1;
+    Z = (Z - mean(Z(refset, :))) ./ zs;
+    ir = find(refset);
+    if numel(ir) > sig.catchall_max_ref, ir = ir(randperm(numel(ir), sig.catchall_max_ref)); end
+    nn = knnsearch(Z(ir, :), Z(left, :), 'K', min(sig.catchall_k, numel(ir)));
+    nl = mode(reshape(class(ir(nn)), size(nn)), 2);
+    % the neighbours' class is taken only if the event also meets that class's own
+    % rules; tiny signals far smaller than Syn, for example, are neither Euks nor Syn
+    fz = F(left, :);
+    smin_euk = syn_size - sig.euk_min_size_below_syn;
+    ok = false(size(nl));
+    ok(nl == 1 | nl == 5) = fz.size(nl == 1 | nl == 5) > smin_euk;
+    % catch-all Euks carry no Syn-like PE either (rule above)
+    hpz = has_pe(left);
+    ok(nl == 1) = ok(nl == 1) & ~(hpz(nl == 1) & fz.PEchl(nl == 1) > syn_PEchl - sig.syn_PEchl_tol);
+    % no catch-all Euk may have less chl than the Euks the main rules accepted: at
+    % any size, chl must reach the lower edge of the main-rule Euks about their
+    % chl-size line (catchall_euk_chl_prc percentile of the residuals), and chl per
+    % scatter must pass the Euk chl:scatter cut
+    if sum(class == 1) >= 50
+        e1 = class == 1;
+        bl = robustfit(F.size(e1), F.BL3(e1));
+        rlo = prctile(F.BL3(e1) - (bl(1) + bl(2) * F.size(e1)), sig.catchall_euk_chl_prc);
+        lowe = (nl == 1 | nl == 5) & (fz.BL3 < bl(1) + bl(2) * fz.size + rlo | fz.chlSSC < ccut);
+        % Euk with Syn also within euksyn_max_chl_below_euk of the Euk chl-size line
+        lowe = lowe | (nl == 5 & fz.BL3 < bl(1) + bl(2) * fz.size - sig.euksyn_max_chl_below_euk);
+        ok(lowe) = false;
+        info.catchall_euk_floor = [bl' rlo];
+    end
+    if exist('synpart_cut', 'var'), smax2 = synpart_cut; else, smax2 = syn_size + sig.syn_size_tol; end
+    ok(nl == 2) = fz.size(nl == 2) > syn_size - min(sig.syn_size_max_below, max(sig.syn_size_tol_below, sig.syn_size_sd * syn_size_sdv)) & fz.size(nl == 2) < smax2 & ...
+        fz.GL2(nl == 2) >= syn_PE_floor & fz.PEchl(nl == 2) > syn_PEchl - sig.syn_PEchl_tol & fz.PEchl(nl == 2) < syn_PEchl + max(sig.syn_PEchl_tol, sig.syn_PEchl_sd * syn_PEchl_sdv);
+    ok(nl == 3 | nl == 4) = fz.size(nl == 3 | nl == 4) > syn_size + sig.peeuk_size_above_syn;
+    ok(nl == 7) = logical(pro_measured);
+    % ... and the Pro rules: no PE above the file's Pro ceiling, smaller and dimmer than
+    % Syn (pro_max_SSC / pro_max_BL3), chl:scatter close to the file's Pro
+    if exist('pro_GL2_max', 'var') && any(class == 7)
+        pc = median(F.chlSSC(class == 7)); ps = max(1.4826 * mad(F.chlSSC(class == 7), 1), 0.05);
+        ok(nl == 7) = ok(nl == 7) & fz.GL2(nl == 7) <= pro_GL2_max & fz.SSC(nl == 7) < sig.pro_max_SSC & fz.BL3(nl == 7) < sig.pro_max_BL3 & ...
+            abs(fz.chlSSC(nl == 7) - pc) < sig.pro_chlSSC_sd * ps;
+    else
+        ok(nl == 7) = false;
+    end
+    if exist('synpart_cut', 'var'), c8 = synpart_cut; else, c8 = syn_size + sig.synpart_min_size_above; end
+    ok(nl == 8) = fz.size(nl == 8) > c8;
+    % ... and the rest of the Syn-on-particle rules (Syn-like PE:chl and spectrum, about
+    % one Syn's chl, below the Syn chl trend); Euk with Syn: the PE-euk size and PE:chl rules
+    if exist('synpart_rule', 'var'), sr = synpart_rule(left); ok(nl == 8) = ok(nl == 8) & sr(nl == 8); end
+    ok(nl == 5) = ok(nl == 5) & fz.size(nl == 5) > syn_size + sig.peeuk_size_above_syn & fz.PEchl(nl == 5) < syn_PEchl - sig.peeuk_PEchl_below_syn;
+    nl(~ok) = 0;
+    class(left) = nl;
+    left(left) = ok;
+    info.n_catchall = sum(left);
+    info.catchall_classes = arrayfun(@(x) sum(left & class == x), [1 2 3 4 5 7 8]);
+end
+info.trace.catchall = left;
+% rule boundaries for plotting (plot_v2_rules); values as used in this file
+R = struct();
+R.detritus_chlSSC = sig.detritus_max_chlSSC;
+R.chl_min = chl_min; R.pe_min = pe_min;
+R.euk_min_size = syn_size - sig.euk_min_size_below_syn;
+if exist('euk_cut', 'var'), R.euk_chlSSC_cut = euk_cut; end
+if exist('be', 'var'), R.euk_line = be'; end
+R.euksyn_max_chl_below_euk = sig.euksyn_max_chl_below_euk;
+R.euk_synpe_PEchl = syn_PEchl - sig.syn_PEchl_tol; %Euks with PE above this PE:chl are not Euks
+R.peeuk_min_size = syn_size + sig.peeuk_size_above_syn;
+R.peeuk_PEchl_max = syn_PEchl - sig.peeuk_PEchl_below_syn;
+R.peeuk_max_GL2GL3 = sig.peeuk_max_GL2GL3;
+R.peeuk_min_GL2 = sig.peeuk_min_GL2;
+R.crypto_dB = info.crypto_dB_cut; if isfield(info, 'crypto_dB_low'), R.crypto_dB_low = info.crypto_dB_low; end
+R.crypto_min_PE_above_syn = sig.crypto_min_PE_above_syn;
+if exist('sy', 'var') && sum(sy) >= 50
+    R.syn_BL2GL3 = median(F.BL2(sy) - F.GL3(sy));
+    R.syn_BL2GL2 = median(F.BL2(sy) - F.GL2(sy));
+    R.syn_GL2 = median(F.GL2(sy));
+end
+if exist('synpart_cut', 'var')
+    R.synpart_cut = synpart_cut; R.syn_chl_trend = bt'; R.synpart_below_trend = sig.synpart_below_trend;
+    R.synpart_PEchl = [syn_PEchl - sig.synpart_PEchl_tol, syn_PEchl + sig.synpart_PEchl_tol];
+    R.synpart_BL3 = [syn_BL3 - sig.synpart_BL3_below, syn_BL3 + sig.synpart_BL3_above];
+end
+R.sat_frac = sig.sat_frac;
+if isfield(info, 'rules'), R.syn_check = info.rules.syn_check; end
+info.rules = R;
+info.syn_ref = struct('PEchl', syn_PEchl, 'GL2GL3', syn_GL2GL3, 'BL3', syn_BL3, 'size', syn_size, 'GL2GL3_range', syn_range);
+% Syn spectral subtype (Nov 2026): fixed windows on the bead-normalized excitation
+% ratio BL2-GL2 (PUB:PEB proxy), the same in every file and cruise. Kept as a
+% separate label so class 2 (and its counts downstream) is unchanged:
+% 1/2/3 = types A/B/C, 9 = Syn-bearing event whose spectrum is not usable, 0 = other
+st = zeros(n, 1, 'uint8');
+synlike = ismember(class, [2 5 8]);
+% the type uses BL2 and GL2 only, so only those must be on scale (GL3 near its floor,
+% common for dim summer Syn, does not matter here)
+usable = ~satch('BL2') & ~satch('GL2') & ...
+    F.BL2 > finfo.floor.BL2 + sig.syn_type_min_above_floor & F.GL2 > finfo.floor.GL2 + sig.syn_type_min_above_floor;
+ex = F.BL2 - F.GL2;
+st(synlike) = 9;
+st(synlike & usable) = 1 + (ex(synlike & usable) >= sig.syn_type_edges(1)) + (ex(synlike & usable) >= sig.syn_type_edges(2));
+info.syn_type = st;
+% flag for unassigned events left out for a specific reason, so they can be
+% counted later without entering the phytoplankton classes (class stays 0):
+% 1 = Syn-pigment particle with low chl (Euk-with-Syn-like but far below the Euk
+%     chl-size line: detritus or grazers with partly degraded Syn and/or Euks)
+% 2 = faint particle below the chl gap at the bottom of the Euks
+% 3 = Pro tail at the chl trigger in files run without Pro settings
+fl = zeros(n, 1, 'uint8');
+if isfield(info.trace, 'euksyn_lowchl'), fl(class == 0 & info.trace.euksyn_lowchl) = 1; end
+fl(class == 0 & fl == 0 & euk_below_gap) = 2;
+fl(class == 0 & fl == 0 & pile_cut) = 3;
+info.flag = fl;
+info.flag_names = {'Syn-pigment particle, low chl (degraded Syn/Euk, grazer, detritus)' 'below Euk chl gap' 'trigger-noise pile at the chl edge (capped files)'};
+info.syn_type_names = sig.syn_type_names; info.syn_type_edges = sig.syn_type_edges;
+info.features = F;
+end
+
+function s = sat_col(fcsdat, j, frac)
+% events at or near the file's maximum in column j (none when the channel is not in the file)
+if j == 0, s = false(size(fcsdat, 1), 1); return, end
+x = fcsdat(:, j);
+s = x >= frac * max(x);
+end
+
+function r = syn_ratio_range(mu, syn_GL2GL3, sig)
+% [low high] GL2:GL3 of this file's Syn components: means of components named Syn
+% with a Syn-type spectrum, mean GL3 clear of its floor, and at least
+% sig.syn_comp_min_weight of the fitted events; the Syn median when there are none
+use = mu.label == 2 & mu.gl3ok & mu.GL2GL3 > sig.syn_min_GL2GL3 & mu.weight >= sig.syn_comp_min_weight;
+if any(use)
+    r = [min(mu.GL2GL3(use)) max(mu.GL2GL3(use))];
+elseif ~isnan(syn_GL2GL3)
+    r = [syn_GL2GL3 syn_GL2GL3];
+else
+    r = [sig.syn_min_GL2GL3 sig.syn_min_GL2GL3];
+end
+end
+
+function mu = name_components(g, finfo, sig, pe_min, pro_measured)
+% name mixture components from their means using pigment signatures
+mu = array2table(g.mu, 'VariableNames', {'SSC' 'BL3' 'PEchl' 'GL2GL3'});
+mu.GL2 = mu.PEchl + mu.BL3;
+mu.chlSSC = mu.BL3 - mu.SSC;
+mu.label = zeros(height(mu), 1);
+mu.gl3ok = false(height(mu), 1);
+for c = 1:height(mu)
+    m = mu(c, :);
+    comp_pe = m.PEchl > sig.pe_min_PEchl && m.GL2 > pe_min;
+    % GL2:GL3 says nothing when GL3 is near its floor (dim Syn), so call those Syn;
+    % PE euks among them are still picked out event by event below
+    comp_gl3ok = m.GL2 - m.GL2GL3 > finfo.floor.GL3 + sig.ratio_min_above_floor;
+    % component means average out GL3 noise, so a looser margin serves the Syn spectrum range
+    mu.gl3ok(c) = m.GL2 - m.GL2GL3 > finfo.floor.GL3 + sig.comp_ratio_min_above_floor;
+    if m.chlSSC < sig.detritus_max_chlSSC
+        mu.label(c) = 0;                      %scatter without matching chlorophyll
+    elseif comp_pe && (m.GL2GL3 > sig.syn_min_GL2GL3 || ~comp_gl3ok)
+        mu.label(c) = 2;                      %Syn PE spectrum
+    elseif comp_pe
+        mu.label(c) = 3;                      %cryptophyte-type PE
+    elseif pro_measured && m.SSC < sig.pro_max_SSC && m.BL3 < sig.pro_max_BL3
+        % Pro need a compact cluster: a diffuse component that happens to fall in
+        % the Pro size/chl window (small Euks and noise in cold water) is left unassigned
+        if sqrt(g.Sigma(2, 2, c)) <= sig.pro_max_sd_BL3
+            mu.label(c) = 7;
+        else
+            mu.label(c) = 0;
+        end
+    else
+        mu.label(c) = 1;
+    end
+end
+mu.weight = g.ComponentProportion(:);
+end
+
+function [c, sd] = peak_centre(x)
+% centre = peak of a kernel density of x; sd = half width at half maximum of the
+% narrower side / 1.1774 (Gaussian equivalent). Robust to tails on either side.
+x = x(isfinite(x));
+if numel(x) < 20, c = median(x); sd = max(1.4826 * mad(x, 1), 0.05); return, end
+[f, g] = ksdensity(x, 'NumPoints', 400);
+[fm, i] = max(f); c = g(i);
+lo = find(f(1:i) < fm / 2, 1, 'last'); hi = i - 1 + find(f(i:end) < fm / 2, 1, 'first');
+w = [];
+if ~isempty(lo), w(end + 1) = c - g(lo); end
+if ~isempty(hi), w(end + 1) = g(hi) - c; end
+if isempty(w), sd = max(1.4826 * mad(x, 1), 0.05); else, sd = max(min(w) / 1.1774, 0.05); end
+end
