@@ -501,7 +501,7 @@ function setDec(patch, i = cur) {
   const file = F[i].file, o = DEC[file] || { file, status: '', note: '' };
   DEC[file] = { ...o, ...patch, file, reviewer: $('reviewer').value.trim(), saved: new Date().toISOString(), build: BUILD };
   dirty = true;
-  if (canWrite() && !dir && !asked) { asked = true; connect(false); } // first decision: ask once where to save
+  if (canWrite() && !dir && !asked) { asked = true; lsSet(LSK, JSON.stringify(Object.values(DEC))); connect(false); } // first decision: ask once where to save
   else save();
   decisionsChanged();
 }

@@ -18,6 +18,11 @@ function p = process_cruise(cruise, steps, opts)
 %                 unless opts.force.
 %               - no FCB beads (EN608 to EN627): pt_transfer\make_perf_beadstat.
 %                 EN627 keeps its PT conversion unless opts.force.
+%               An FCB bead table also gets the bead review (classifier_dev\review\
+%               bead_review, page in bead_calibrated\bead_review\) unless
+%               opts.bead_review is false. Runs marked exclude there
+%               (bead_review_decisions.csv) are skipped by steps 3 and 4 (load_beadstat);
+%               after changing exclusions rerun from step 3 (without opts.append).
 %   3 classify  assign_class_v2 on every sample file -> bead_calibrated\class\<file>.mat
 %               holding class, syn_type, flag, notes, class_meta (see below), and the
 %               classification review in bead_calibrated\review\ (unless opts.review is
@@ -41,6 +46,8 @@ function p = process_cruise(cruise, steps, opts)
 %   .force     passed to the bead step (default false)
 %   .review    true (default): build the classification review during step 3. A run on
 %              some files (.files, .append) updates their frames and keeps the rest.
+%   .bead_review  true (default): build the bead review when step 2 writes an FCB bead
+%              table (PT-transfer tables have no FCB bead runs to show)
 %
 % Class file variables written by step 3 (step 4 loads and re-saves the file, keeping them)
 %   class      per event, double: 0 unassigned, 1 Euk, 2 Syn, 3 dim crypto, 4 bright crypto,
@@ -61,7 +68,7 @@ function p = process_cruise(cruise, steps, opts)
 
 if nargin < 2 || isempty(steps), steps = 1:6; end
 if nargin < 3, opts = struct(); end
-def = struct('root', '', 'outpath', '', 'files', [], 'append', false, 'parallel', [], 'force', false, 'review', true);
+def = struct('root', '', 'outpath', '', 'files', [], 'append', false, 'parallel', [], 'force', false, 'review', true, 'bead_review', true);
 f = fieldnames(def);
 for i = 1:numel(f), if ~isfield(opts, f{i}), opts.(f{i}) = def.(f{i}); end, end
 
@@ -107,7 +114,14 @@ end
 
 %% 2 beads
 if ismember(2, steps)
-    bead_step(p, c, opts.force)
+    made = bead_step(p, c, opts.force);
+    if made && opts.bead_review
+        try
+            bead_review(p.cruise, struct('root', opts.root, 'beaddir', p.outpath));
+        catch ME
+            warning('process_cruise:bead_review', 'bead review not built: %s', ME.message)
+        end
+    end
 end
 
 %% 3 classify
@@ -145,7 +159,9 @@ end
 end
 
 
-function bead_step(p, c, force)
+function made = bead_step(p, c, force)
+% made: true when an FCB bead table was written (the bead review is built from it)
+made = false;
 fn = [p.outpath 'beadstat.mat'];
 if c.fcb_beads
     if exist(fn, 'file')
@@ -156,7 +172,8 @@ if c.fcb_beads
         end
     end
     load([p.outpath 'FCSfileinfo.mat'], 'FCSfileinfo')
-    process_beads_PT_adjust_3(p.basepath, FCSfileinfo, p.beadfiles2include, 'FCB', c.OD2);
+    B = process_beads_PT_adjust_3(p.basepath, FCSfileinfo, p.beadfiles2include, 'FCB', c.OD2);
+    made = height(B) > 0;
 else
     try
         info = make_perf_beadstat(regexprep(p.basepath, '[\\/]+$', ''), struct('force', force, 'bead_dir', p.outpath));
@@ -193,7 +210,8 @@ n = height(Fi);
 fprintf('step 3: classifying %d files\n', n)
 if n == 0, return, end
 
-[bs, bmeta] = load_beadstat(p.outpath);
+[bs, bmeta] = load_beadstat(p.outpath); % skips runs marked exclude in the bead review
+bexcl = bmeta.excluded;
 cfg = classifier_config();
 cfg.gl1_is_od2_scatter = strcmp(c.OD2, 'GL1');
 cfg.cruise = p.cruise; %bead_reference: OD2 placement (ref.OD2) and channel map from attune_config
@@ -229,7 +247,7 @@ parfor (k = 1:n, M)
         o.flag = field_or(info, 'flag', zeros(size(cls), 'uint8'));
         o.notes = [codes.class; "assign_class_v2"; string(datetime('now')); codes.syn_type; codes.flag];
         o.class_meta = struct('classifier', "assign_class_v2", 'date', datetime('now'), 'version', version, ...
-            'cruise', p.cruise, 'config', c, 'bead_source', src, 'ref', ref, 'cfg', cfg, ...
+            'cruise', p.cruise, 'config', c, 'bead_source', src, 'bead_excluded', bexcl, 'ref', ref, 'cfg', cfg, ...
             'pro_measured', pro(k), 'ncomp', info.ncomp, 'comp', info.comp, ...
             'trigger_edges', field_or(info, 'trigger_edges', struct()));
         save_classfile(classfile{k}, o)

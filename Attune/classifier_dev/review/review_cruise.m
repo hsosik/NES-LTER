@@ -14,7 +14,7 @@ function Q = review_cruise(cruise, opts)
 %              (agreement metric, old counts) where they match the event count
 %   .parallel  true (default when a pool can start): parfor over files
 %   .decisions review decisions file the viewer reads and saves to (default
-%              <cruise>ead_calibratedeview_decisions.csv; see review_decisions)
+%              <cruise>\bead_calibrated\review_decisions.csv; see review_decisions)
 % Returns the QC structs (also saved as review_qc.mat in outdir); files that fail are
 % listed in review_errors.txt.
 % e.g. review_cruise('EN727')

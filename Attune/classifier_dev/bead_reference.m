@@ -6,8 +6,11 @@ function ref = bead_reference(beadstat, t, cfg)
 % such run. Each channel uses the bead population that is on scale there
 % (cfg.bead_pop: 1 = 0.5, 2 = 1, 3 = 6 um) and that channel's voltage
 % exponent (cfg.k); runs are brought to the first run's voltage before the
-% median.
+% median. Runs marked exclude in the bead review (beadstat.excluded, set by
+% load_beadstat) are never used.
 %
+% ref.ntimes / ref.runs - per channel, how many and which bead runs (file
+%            names) went into the median
 % ref.chan / ref.layout - attune_config channel map for time t (read by
 %            attune_features); ref.OD2 too when cfg.cruise is set
 %
@@ -37,6 +40,7 @@ for c = cfg.chans
     v = beadstat.(['peak' b]).([ch '_H']);
     hv = beadstat.hv.(ch);
     good = beadstat.(['QC' b]) & v > 0 & hv > 0;
+    if ismember('excluded', beadstat.Properties.VariableNames), good = good & ~beadstat.excluded; end
     use = good & abs(bt - t) <= cfg.bead_window_days;
     if ~any(use) && any(good)
         q = find(good);
@@ -46,9 +50,10 @@ for c = cfg.chans
         % e.g. GL1 before Aug 2019 (no green scatter channel), or green
         % channels on AR31A (PT conversion without green signal)
         warning('bead_reference:noQC', 'no QC''d bead runs for %s', ch)
-        ref.bead_log.(ch) = NaN; ref.bead_hv.(ch) = NaN; ref.k.(ch) = cfg.k.(ch); ref.ntimes.(ch) = 0;
+        ref.bead_log.(ch) = NaN; ref.bead_hv.(ch) = NaN; ref.k.(ch) = cfg.k.(ch); ref.ntimes.(ch) = 0; ref.runs.(ch) = strings(0, 1);
         continue
     end
+    ref.runs.(ch) = string(beadstat.filename(use));
     v = v(use); hv = hv(use);
     hv0 = hv(1);
     ref.bead_log.(ch) = median(log10(v) - cfg.k.(ch) * log10(hv / hv0));
