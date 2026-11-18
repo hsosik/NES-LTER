@@ -20,9 +20,10 @@ function p = process_cruise(cruise, steps, opts)
 %                 unless opts.force.
 %               - no FCB beads (EN608 to EN627): pt_transfer\make_perf_beadstat.
 %                 EN627 keeps its PT conversion unless opts.force.
-%               An FCB bead table also gets the bead review (classifier_dev\review\
-%               bead_review, page in bead_calibrated\bead_review\) unless
-%               opts.bead_review is false. Runs marked exclude there
+%               A newly written table (FCB or PT transfer) also gets the bead review
+%               (classifier_dev\review\bead_review, page in bead_calibrated\bead_review\;
+%               for PT transfer it shows the performance tests) unless
+%               opts.bead_review is false. Runs or tests marked exclude there
 %               (bead_review_decisions.csv) are skipped by steps 3 and 4 (load_beadstat);
 %               after changing exclusions rerun from step 3 (without opts.append).
 %   3 classify  assign_class_v2 on every sample file -> bead_calibrated\class\<file>.mat
@@ -48,8 +49,8 @@ function p = process_cruise(cruise, steps, opts)
 %   .force     passed to the bead step; step 1 rebuilds FCSfileinfo (default false)
 %   .review    true (default): build the classification review during step 3. A run on
 %              some files (.files, .append) updates their frames and keeps the rest.
-%   .bead_review  true (default): build the bead review when step 2 writes an FCB bead
-%              table (PT-transfer tables have no FCB bead runs to show)
+%   .bead_review  true (default): build the bead review when step 2 writes a bead table
+%              (FCB runs, or the performance tests of a PT-transfer table)
 %
 % Class file variables written by step 3 (step 4 loads and re-saves the file, keeping them)
 %   class      per event, double: 0 unassigned, 1 Euk, 2 Syn, 3 dim crypto, 4 bright crypto,
@@ -167,7 +168,7 @@ end
 
 
 function made = bead_step(p, c, force)
-% made: true when an FCB bead table was written (the bead review is built from it)
+% made: true when a bead table was written or installed (the bead review is built from it)
 made = false;
 fn = [p.outpath 'beadstat.mat'];
 if c.fcb_beads
@@ -185,6 +186,7 @@ else
     try
         info = make_perf_beadstat(regexprep(p.basepath, '[\\/]+$', ''), struct('force', force, 'bead_dir', p.outpath));
         fprintf('step 2: PT-transfer bead table from %d performance tests: %s\n', info.ntests, info.installed)
+        made = strlength(string(info.installed)) > 0;
     catch ME
         if strcmp(ME.identifier, 'make_perf_beadstat:exists')
             m = load(fn, 'meta');

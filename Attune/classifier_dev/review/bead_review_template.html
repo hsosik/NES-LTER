@@ -80,14 +80,15 @@ kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:3px; 
 <main>
   <section class="card full">
     <div class="head">
-      <b>Bead peaks through the cruise</b>
-      <span>per classifier channel, log10 offset from the cruise median of good runs; click a run to open it</span>
-      <label title="bring every run to the cruise's most common detector voltage with the classifier's exponent k (signal ~ hv^k)"><input id="hvcorr" type="checkbox" checked> voltage-corrected</label>
+      <b id="ttl_ts">Bead peaks through the cruise</b>
+      <span id="ttl_ts_sub">per classifier channel, log10 offset from the cruise median of good runs; click a run to open it</span>
+      <select id="pmode" title="what the panels plot"><option value="peak">bead peak offset (log10)</option><option value="hv">detector voltage (V)</option></select>
+      <label title="bring every run to the cruise's common detector voltage with the classifier's exponent k (signal ~ hv^k)"><input id="hvcorr" type="checkbox" checked> voltage-corrected</label>
       <span>flag at |offset| &gt; <input id="tol" type="number" value="0.03" min="0.005" max="0.5" step="0.005" style="width:70px"> log10</span>
     </div>
     <canvas id="ts"></canvas>
     <div class="help">
-      <span style="color:#2e8b57">●</span> run, population QC good &nbsp;
+      <span style="color:#2e8b57">●</span> <span id="lg_run">run, population QC good</span> &nbsp;
       <span style="color:var(--hi)">✕</span> QC failed (not used) &nbsp;
       <span style="color:#555b66">◌</span> marked exclude (not used for bead references or volumes when classification next runs; left out of the cruise median here) &nbsp;
       <span style="color:var(--ref)">━</span> reference each sample file is normalized against (median of the good runs within ±<span id="wd"></span> d) &nbsp;
@@ -96,9 +97,9 @@ kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:3px; 
     </div>
   </section>
   <section class="card" id="detail">
-    <div class="head"><b>Gating</b> <span>grey all events, coloured the gated populations (blue 0.5, orange 1, yellow 6 µm), dashed search window, + expected, o found centre</span></div>
+    <div class="head" id="ttl_gate"><b>Gating</b> <span>grey all events, coloured the gated populations (blue 0.5, orange 1, yellow 6 µm), dashed search window, + expected, o found centre</span></div>
     <img id="gate" alt="gating plot">
-    <div class="head" style="margin-top:8px"><b>Histograms</b> <span>log10 signal per channel: all events grey, populations coloured; solid line peak (KDE mode), dashed median; black tick: cruise median peak at this run's voltage. Bold channel label: the population the classifier uses there</span></div>
+    <div class="head" style="margin-top:8px" id="ttl_hist"><b>Histograms</b> <span>log10 signal per channel: all events grey, populations coloured; solid line peak (KDE mode), dashed median; black tick: cruise median peak at this run's voltage. Bold channel label: the population the classifier uses there</span></div>
     <div id="hists"></div>
   </section>
   <aside class="card" id="side">
@@ -128,7 +129,14 @@ const median = a => { a = a.filter(fin).sort((x, y) => x - y); const n = a.lengt
 $('title').textContent = `${D.cruise} bead review`;
 document.title = `${D.cruise} beads`;
 $('wd').textContent = D.window_days;
-F.forEach(f => { f.t = new Date(f.time).getTime(); f.pops = arr(f.pops); });
+// MATLAB NaN arrives as null, which arithmetic treats as 0: restore NaN
+const nan = o => { if (o) for (const k in o) if (o[k] === null) o[k] = NaN; };
+F.forEach(f => {
+  f.t = new Date(f.time).getTime(); f.pops = arr(f.pops);
+  f.pops.forEach(p => { nan(p.peak); nan(p.med); nan(p.rsd); });
+  nan(f.hv); if (f.pt) { nan(f.pt.pk); nan(f.pt.rcv); }
+});
+nan(D.hvc);
 S.t = arr(S.time).map(s => new Date(s).getTime());
 const CH = arr(D.chans), popOf = ch => D.bead_pop[ch] - 1;
 for (const ch of CH) { S.ref[ch] = arr(S.ref[ch]); S.nearest[ch] = arr(S.nearest[ch]); S.nruns[ch] = arr(S.nruns[ch]); S.runs[ch] = arr(S.runs[ch]).map(arr); }
@@ -136,6 +144,21 @@ for (const ch of CH) { S.ref[ch] = arr(S.ref[ch]); S.nearest[ch] = arr(S.nearest
 F.forEach(f => f.users = new Set());
 for (const ch of CH) S.runs[ch].forEach((rs, k) => rs.forEach(i => F[i] && F[i].users.add(k)));
 const hvOf = (f, ch) => f.hv[ch];
+// PT-transfer tables (cruises without FCB beads): one row per Attune performance test
+const PTM = D.mode === 'pt', RUN = PTM ? 'test' : 'run', RUNS = PTM ? 'tests' : 'runs';
+const ptOff = (f, ch) => peakOf(f, ch) - f.pt.pk[ch]; // FCB-equivalent − PT peak (log10)
+if (PTM) { // the cruise's usual optical state and filter set: the most common among the tests
+  const most = a => [...new Set(a)].sort((x, y) => a.filter(v => v === y).length - a.filter(v => v === x).length)[0];
+  D.state_usual = most(F.map(f => f.pt.state)); D.filter_usual = most(F.map(f => f.pt.filterset));
+}
+if (PTM) {
+  $('ttl_ts').textContent = 'FCB-equivalent bead peaks through the cruise';
+  $('ttl_ts_sub').textContent = 'per classifier channel, from the performance tests (PT peak + FCB−PT offset for the optical state); log10 offset from the cruise median; click a test to open it';
+  $('lg_run').textContent = 'performance test, QC good';
+  $('ttl_gate').innerHTML = '<b>Performance test</b> <span>FSC × SSC: all events grey, singlets orange (dashed: singlet gate); fluorescence pairs: singlets grey, brightest PT intensity level coloured (the peak is its median, black lines)</span>';
+  $('ttl_hist').innerHTML = '<b>Histograms</b> <span>log10 signal per channel: all events grey, singlets orange, brightest PT level blue; solid line PT peak; black tick: cruise median at this test\'s voltage (PT units). Bold channel label: a classifier channel (the FCB-equivalent bead size it stands for)</span>';
+  for (const id of ['prev', 'next', 'pflag', 'nflag']) $(id).title = $(id).title.replace('run', 'test');
+}
 // ---------- per-run metrics and unusual runs ----------
 let tol = 0.03;
 const hvAdj = (f, ch) => $('hvcorr').checked && fin(hvOf(f, ch)) && fin(D.hvc[ch]) ? -D.k[ch] * Math.log10(hvOf(f, ch) / D.hvc[ch]) : 0;
@@ -154,12 +177,16 @@ function metrics() {
   for (const ch of CH) {
     const ip = popOf(ch), good = F.filter(f => f.pops[ip].QC && !isExcl(f));
     CM[ch] = { peak: median(good.map(f => peakOf(f, ch) + hvAdj(f, ch))), rsd: median(good.map(f => f.pops[ip].rsd[ch + '_H'])),
-      skew: median(good.map(f => f.pops[ip].med[ch + '_H'] - f.pops[ip].peak[ch + '_H'])) };
+      skew: median(good.map(f => f.pops[ip].med[ch + '_H'] - f.pops[ip].peak[ch + '_H'])),
+      rcv: PTM ? median(good.map(f => f.pt.rcv[ch])) : NaN };
   }
   for (const f of F) {
     f.dev = {}; f.why = [];
     if (f.read) f.why.push({ t: `could not re-read the file: ${f.read}` });
-    f.pops.forEach((p, ip) => { if (!p.QC) f.why.push({ t: `${PN[ip]} µm QC failed${p.why ? ': ' + p.why : ''} (n = ${p.n})` }); });
+    if (PTM) { // one measurement behind all three bead sizes: one QC message
+      const p = f.pops.find(p => !p.QC);
+      if (p) f.why.push({ t: `QC failed${p.why ? ': ' + p.why : ''}` });
+    } else f.pops.forEach((p, ip) => { if (!p.QC) f.why.push({ t: `${PN[ip]} µm QC failed${p.why ? ': ' + p.why : ''} (n = ${p.n})` }); });
     for (const ch of CH) {
       const ip = popOf(ch), p = f.pops[ip], c = ch + '_H';
       f.dev[ch] = peakOf(f, ch) + hvAdj(f, ch) - CM[ch].peak;
@@ -170,11 +197,21 @@ function metrics() {
       // skew compared with this channel's usual (FSC is always skewed)
       const sk = p.med[c] - p.peak[c];
       if (fin(sk) && fin(CM[ch].skew) && Math.abs(sk - CM[ch].skew) > 0.03) f.why.push({ t: `${ch} ${PN[ip]} µm skewed: median − peak ${sk.toFixed(3)} log10 (cruise ${CM[ch].skew.toFixed(3)})`, minor: true });
+      // PT peak spread (robust CV of the events the peak comes from)
+      const cv = PTM ? f.pt.rcv[ch] : NaN;
+      if (fin(cv) && fin(CM[ch].rcv) && cv > Math.max(1.5 * CM[ch].rcv, CM[ch].rcv + 0.02)) f.why.push({ t: `${ch} PT peak broad: CV ${cv.toFixed(3)} (cruise ${CM[ch].rcv.toFixed(3)})` });
     }
-    const hvd = CH.filter(ch => fin(hvOf(f, ch)) && fin(D.hvc[ch]) && hvOf(f, ch) !== D.hvc[ch]);
-    if (hvd.length) f.why.push({ t: `voltage differs from the cruise's usual: ${hvd.map(ch => `${ch} ${hvOf(f, ch)} (${D.hvc[ch]})`).join(', ')}`, minor: true });
+    if (PTM) { // performance tests set their own voltages: no voltage note; the optical state and timing matter instead
+      if (f.pt.state !== D.state_usual) f.why.push({ t: `optical state ${f.pt.state}, cruise's usual ${D.state_usual} (different FCB−PT offsets)`, minor: true });
+      if (f.pt.filterset !== D.filter_usual) f.why.push({ t: `BL3 / green-chl filters ${f.pt.filterset}, cruise's usual ${D.filter_usual}`, minor: true });
+      if (NS && S.t[0] - f.t > 36e5) f.why.push({ t: `before the first sample file (by ${((S.t[0] - f.t) / 36e5).toFixed(0)} h)`, minor: true });
+      if (NS && f.t - S.t[NS - 1] > 36e5) f.why.push({ t: `after the last sample file (by ${((f.t - S.t[NS - 1]) / 36e5).toFixed(0)} h)`, minor: true });
+    } else {
+      const hvd = CH.filter(ch => fin(hvOf(f, ch)) && fin(D.hvc[ch]) && hvOf(f, ch) !== D.hvc[ch]);
+      if (hvd.length) f.why.push({ t: `voltage differs from the cruise's usual: ${hvd.map(ch => `${ch} ${hvOf(f, ch)} (${D.hvc[ch]})`).join(', ')}`, minor: true });
+    }
     f.pops.forEach((p, ip) => { if (fin(p.nnow) && Math.abs(p.nnow - p.n) > Math.max(5, 0.02 * p.n)) f.why.push({ t: `${PN[ip]} µm re-gated n = ${p.nnow}, beadstat n = ${p.n} (gating plot may differ slightly)`, minor: true }); });
-    if (!f.users.size) f.why.push({ t: 'no sample file uses this run', minor: true });
+    if (!f.users.size) f.why.push({ t: `no sample file uses this ${RUN}`, minor: true });
     f.unusual = f.why.some(w => !w.minor);
   }
 }
@@ -193,12 +230,18 @@ tlo = Math.min(...allT); thi = Math.max(...allT);
 { const pad = (thi - tlo) * 0.03 || 3.6e6; tlo -= pad; thi += pad; }
 const DAY = 864e5;
 const niceStep = r => [0.01, 0.02, 0.05, 0.1, 0.2].find(s => r / s <= 4) || 0.2;
+// panels plot the peak offset (log10) or the detector voltage minus the cruise's common voltage
+const VM = () => $('pmode').value === 'hv';
+const val = (f, ch) => VM() ? (fin(hvOf(f, ch)) && fin(D.hvc[ch]) ? hvOf(f, ch) - D.hvc[ch] : NaN) : f.dev[ch];
+const HVW = PTM ? 'median' : 'usual';
 function drawStrips() {
   const cw = ts.clientWidth, cols = cw >= 1050 ? 3 : cw >= 650 ? 2 : 1, nrow = Math.ceil(CH.length / cols);
   const H = nrow * PH + (nrow - 1) * GAP, W = sizeCanvas(ts, H), c = tctx, pw = (W - (cols - 1) * GAP) / cols;
   c.clearRect(0, 0, W, H);
-  ylim = Math.min(0.5, Math.max(2 * tol, 0.05, ...F.flatMap(f => CH.map(ch => f.pops[popOf(ch)].QC ? Math.abs(f.dev[ch]) : 0)).filter(fin)) * 1.15);
-  const step = niceStep(ylim), users = [...F[cur].users].sort((a, b) => a - b);
+  const vm = VM();
+  ylim = vm ? Math.max(5, ...F.flatMap(f => CH.map(ch => Math.abs(val(f, ch)))).filter(fin)) * 1.15
+    : Math.min(0.5, Math.max(2 * tol, 0.05, ...F.flatMap(f => CH.map(ch => f.pops[popOf(ch)].QC ? Math.abs(f.dev[ch]) : 0)).filter(fin)) * 1.15);
+  const step = vm ? [1, 2, 5, 10, 20, 50, 100].find(s => ylim / s <= 4) || 100 : niceStep(ylim), users = [...F[cur].users].sort((a, b) => a - b);
   panels = [];
   CH.forEach((ch, n) => {
     const px = (n % cols) * (pw + GAP), py = Math.floor(n / cols) * (PH + GAP);
@@ -208,12 +251,13 @@ function drawStrips() {
     c.strokeStyle = '#d9dce1'; c.strokeRect(px + 0.5, py + 0.5, pw - 1, PH - 1);
     // title
     c.textAlign = 'left'; c.fillStyle = '#1d1f23'; c.font = '600 12px system-ui, sans-serif'; c.fillText(ch, px + 8, py + 14);
-    c.fillStyle = '#6b7078'; c.font = '11px system-ui, sans-serif'; c.fillText(`${PN[popOf(ch)]} µm beads · usual ${fmt(D.hvc[ch], 0)} V`, px + 8 + c.measureText(ch).width + 30, py + 14);
+    c.fillStyle = '#6b7078'; c.font = '11px system-ui, sans-serif'; c.fillText(`${PN[popOf(ch)]} µm beads${PTM ? ' (FCB-equivalent)' : ''} · ${HVW} ${fmt(D.hvc[ch], 0)} V${vm ? ' (plotted: V − ' + HVW + ')' : ''}`, px + 8 + c.measureText(ch).width + 30, py + 14);
+    if (!F.some(f => fin(val(f, ch)))) { c.fillStyle = '#6b7078'; c.textAlign = 'center'; c.fillText('not measured on this cruise', (x0 + x1) / 2, (y0 + y1) / 2); return; }
     c.save(); c.beginPath(); c.rect(x0, y0 - 4, x1 - x0, y1 - y0 + 8); c.clip();
     // files using the current run
     if (users.length) { c.fillStyle = 'rgba(255,170,80,0.15)'; const a = X(S.t[users[0]]), b = X(S.t[users[users.length - 1]]); c.fillRect(a, y0 - 4, Math.max(2, b - a), y1 - y0 + 8); }
     // tolerance band, grid
-    c.fillStyle = '#eceef2'; c.fillRect(x0, Y(tol), x1 - x0, Y(-tol) - Y(tol));
+    if (!vm) { c.fillStyle = '#eceef2'; c.fillRect(x0, Y(tol), x1 - x0, Y(-tol) - Y(tol)); }
     c.strokeStyle = '#eef0f3';
     for (let v = -Math.floor(ylim / step) * step; v <= ylim + 1e-9; v += step) { c.beginPath(); c.moveTo(x0, Y(v)); c.lineTo(x1, Y(v)); c.stroke(); }
     const d0 = new Date(tlo); d0.setHours(24, 0, 0, 0);
@@ -221,7 +265,7 @@ function drawStrips() {
     c.strokeStyle = '#b9bdc4'; c.beginPath(); c.moveTo(x0, Y(0)); c.lineTo(x1, Y(0)); c.stroke();
     // reference each sample file is normalized against (at the common voltage)
     c.strokeStyle = '#1f6feb'; c.lineWidth = 1.8; c.beginPath(); let pen = false;
-    for (let k = 0; k < NS; k++) {
+    for (let k = 0; k < NS * !vm; k++) {
       const v = S.ref[ch][k] - CM[ch].peak;
       if (!fin(v)) { pen = false; continue; }
       const x = X(S.t[k]), y = Y(Math.max(-ylim, Math.min(ylim, v)));
@@ -233,12 +277,12 @@ function drawStrips() {
     // runs
     c.font = '11px system-ui, sans-serif'; c.textAlign = 'center';
     F.forEach((f, i) => {
-      const p = f.pops[popOf(ch)], v = f.dev[ch]; if (!fin(v)) return;
+      const p = f.pops[popOf(ch)], v = val(f, ch); if (!fin(v)) return;
       const x = X(f.t), y = Y(Math.max(-ylim, Math.min(ylim, v))), d = DEC[f.file];
       if (i === cur) { c.strokeStyle = '#1d1f23'; c.lineWidth = 1.5; c.beginPath(); c.arc(x, y, 8, 0, 7); c.stroke(); c.lineWidth = 1; }
       if (!p.QC) { c.strokeStyle = '#c0392b'; c.lineWidth = 2; c.beginPath(); c.moveTo(x - 5, y - 5); c.lineTo(x + 5, y + 5); c.moveTo(x + 5, y - 5); c.lineTo(x - 5, y + 5); c.stroke(); c.lineWidth = 1; }
       else if (d && d.status === 'exclude') { c.strokeStyle = '#555b66'; c.setLineDash([2, 2]); c.beginPath(); c.arc(x, y, 5, 0, 7); c.stroke(); c.setLineDash([]); }
-      else { c.fillStyle = Math.abs(v) > tol ? '#c0392b' : '#2e8b57'; c.beginPath(); c.arc(x, y, 4.5, 0, 7); c.fill(); }
+      else { c.fillStyle = !vm && Math.abs(v) > tol ? '#c0392b' : '#2e8b57'; c.beginPath(); c.arc(x, y, 4.5, 0, 7); c.fill(); }
       if (Math.abs(v) > ylim) { c.fillStyle = '#c0392b'; c.fillText(v > 0 ? '▲' : '▼', x, v > 0 ? y0 + 6 : y1 - 2); }
     });
     c.restore();
@@ -254,10 +298,11 @@ function drawStrips() {
     });
     // axes labels
     c.font = '10px system-ui, sans-serif'; c.fillStyle = '#6b7078'; c.textAlign = 'right';
-    for (let v = -Math.floor(ylim / step) * step; v <= ylim + 1e-9; v += step) c.fillText(Math.abs(v) < 1e-9 ? '0' : (v > 0 ? '+' : '') + v.toFixed(2), x0 - 4, Y(v) + 3);
+    for (let v = -Math.floor(ylim / step) * step; v <= ylim + 1e-9; v += step) c.fillText(Math.abs(v) < 1e-9 ? '0' : (v > 0 ? '+' : '') + v.toFixed(vm ? 0 : 2), x0 - 4, Y(v) + 3);
     c.textAlign = 'center';
+    const every = Math.max(1, Math.ceil(36 / ((x1 - x0) / ((thi - tlo) / DAY)))); // a label at least every 36 px
     for (const d = new Date(d0); d.getTime() <= thi; d.setDate(d.getDate() + 1)) {
-      const x = X(d.getTime()); if (x > x0 + 12 && x < x1 - 12) c.fillText(`${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, x, py + PH - 5);
+      const x = X(d.getTime()); if (x > x0 + 12 && x < x1 - 12 && Math.round((d.getTime() - d0.getTime()) / DAY) % every === 0) c.fillText(`${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`, x, py + PH - 5);
     }
   });
 }
@@ -266,7 +311,7 @@ function hit(e) {
   const P = panels.find(q => mx >= q.px && mx <= q.x1 + PR && my >= q.py && my <= q.py + PH);
   if (!P) return null;
   let b = 0, bd = 1e18;
-  F.forEach((f, i) => { const v = f.dev[P.ch], d = Math.hypot(P.X(f.t) - mx, fin(v) ? P.Y(Math.max(-ylim, Math.min(ylim, v))) - my : 0); if (d < bd) { bd = d; b = i; } });
+  F.forEach((f, i) => { const v = val(f, P.ch), d = Math.hypot(P.X(f.t) - mx, fin(v) ? P.Y(Math.max(-ylim, Math.min(ylim, v))) - my : 0); if (d < bd) { bd = d; b = i; } });
   return { P, mx, i: b, d: bd };
 }
 ts.addEventListener('click', e => { const h = hit(e); if (h) { let b = 0, bd = 1e18; F.forEach((f, i) => { const d = Math.abs(h.P.X(f.t) - h.mx); if (d < bd) { bd = d; b = i; } }); go(b); } });
@@ -277,7 +322,7 @@ ts.addEventListener('mousemove', e => {
   let s;
   if (h.d < 12) {
     const p = f.pops[popOf(ch)];
-    s = `run ${h.i + 1}  ${f.time.replace('T', ' ')}\n${ch} offset ${fmt(f.dev[ch])} log10 (${fin(f.dev[ch]) ? ((10 ** f.dev[ch] - 1) * 100).toFixed(1) : '–'}%)${p.QC ? '' : '  (QC failed)'}\nvoltage ${hvOf(f, ch)} (usual ${D.hvc[ch]})\nused by ${f.users.size} sample files`;
+    s = `${RUN} ${h.i + 1}  ${f.time.replace('T', ' ')}\n${ch} offset ${fmt(f.dev[ch])} log10 (${fin(f.dev[ch]) ? ((10 ** f.dev[ch] - 1) * 100).toFixed(1) : '–'}%)${p.QC ? '' : '  (QC failed)'}\nvoltage ${hvOf(f, ch)} (${HVW} ${D.hvc[ch]})\nused by ${f.users.size} sample files`;
   } else {
     const t = tlo + (h.mx - h.P.x0) / (h.P.x1 - h.P.x0) * (thi - tlo); let k = 0, kd = 1e18;
     for (let j = 0; j < NS; j++) { const dd = Math.abs(S.t[j] - t); if (dd < kd) { kd = dd; k = j; } }
@@ -314,8 +359,17 @@ function drawHists() {
       if (fin(pk)) { g.strokeStyle = PC[ip]; g.beginPath(); g.moveTo(X(pk), 4); g.lineTo(X(pk), H - 14); g.stroke(); }
       if (fin(md)) { g.strokeStyle = PC[ip]; g.setLineDash([3, 2]); g.beginPath(); g.moveTo(X(md), 10); g.lineTo(X(md), H - 14); g.stroke(); g.setLineDash([]); }
     });
-    if (used >= 0 && fin(CM[ch].peak)) { // cruise median at this run's voltage
-      const v = CM[ch].peak - hvAdj(f, ch); g.strokeStyle = '#1d1f23'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(v), H - 14); g.lineTo(X(v), H - 6); g.stroke(); g.lineWidth = 1;
+    if (PTM) { // singlets, brightest PT level, PT peak
+      const hs = arr(f.pt.hist[c]), ht = arr(f.pt.top[c]);
+      if (hs.length) { g.lineWidth = 1.4; line(hs, PC[1]); }
+      if (ht.length) { g.lineWidth = 1.4; line(ht, PC[0]); }
+      g.lineWidth = 1;
+      const pk = c.endsWith('_H') ? f.pt.pk[ch] : NaN;
+      if (fin(pk)) { g.strokeStyle = ht.length ? PC[0] : PC[1]; g.beginPath(); g.moveTo(X(pk), 4); g.lineTo(X(pk), H - 14); g.stroke(); }
+    }
+    if (used >= 0 && fin(CM[ch].peak)) { // cruise median at this run's voltage (PT units for a performance test)
+      const v = CM[ch].peak - hvAdj(f, ch) - (PTM ? ptOff(f, ch) : 0);
+      if (fin(v)) { g.strokeStyle = '#1d1f23'; g.lineWidth = 2; g.beginPath(); g.moveTo(X(v), H - 14); g.lineTo(X(v), H - 6); g.stroke(); g.lineWidth = 1; }
     }
     g.fillStyle = '#6b7078'; g.font = '10px system-ui'; g.textAlign = 'center';
     for (let v = 0; v <= 6; v++) g.fillText(v, X(v), H - 2);
@@ -325,14 +379,28 @@ function side() {
   const f = F[cur], U = [...f.users].sort((a, b) => a - b);
   let h = exclNote(f);
   if (f.why.length) h += '<h3>Flags</h3>' + f.why.map(w => `<div class="${w.minor ? 'minor' : 'why'}">${esc(w.t)}</div>`).join('');
+  if (PTM) {
+    const q = f.pops[0];
+    h += '<h3>Performance test</h3><table>' +
+      `<tr><td>singlets / events</td><td>${fmt(f.pt.nsing)} / ${fmt(f.pt.n)}</td></tr>` +
+      `<tr><td>optical state</td><td class="${f.pt.state !== D.state_usual ? 'bad' : ''}">${esc(f.pt.state)}</td></tr>` +
+      `<tr><td>BL3 / green-chl filters</td><td class="${f.pt.filterset !== D.filter_usual ? 'bad' : ''}">${esc(f.pt.filterset)}</td></tr>` +
+      `<tr><td>QC</td><td class="${q.QC ? '' : 'bad'}">${q.QC ? 'good' : 'failed'}</td></tr></table>`;
+    h += '<h3>Classifier channels</h3><table><tr><th class="l">chan</th><th title="FCB bead size the channel is referenced to">µm</th><th title="log10 PT peak">PT</th><th title="FCB-equivalent − PT peak (log10): the offset for this bead size and optical state">+offset</th><th title="log10 offset from the cruise median (voltage-corrected if ticked)">dev</th><th title="robust CV of the events the PT peak comes from">CV</th><th>V</th></tr>' +
+      CH.map(ch => { const ip = popOf(ch), p = f.pops[ip], v = f.dev[ch], bad = p.QC && Math.abs(v) > tol, cv = f.pt.rcv[ch];
+        const bcv = fin(cv) && fin(CM[ch].rcv) && cv > Math.max(1.5 * CM[ch].rcv, CM[ch].rcv + 0.02);
+        return `<tr><td>${ch}</td><td>${PN[ip]}</td><td>${fmt(f.pt.pk[ch])}</td><td>${fmt(ptOff(f, ch))}</td><td class="${bad ? 'bad' : ''}">${p.QC ? fmt(v) : '<span class="mut">' + fmt(v) + '</span>'}</td><td class="${bcv ? 'bad' : ''}">${fmt(cv)}</td><td>${fmt(hvOf(f, ch), 0)}</td></tr>`; }).join('') + '</table>';
+  } else {
   h += '<h3>Populations</h3><table><tr><th class="l">µm</th><th>n</th><th>QC</th><th class="l">reason</th></tr>' +
     f.pops.map((p, ip) => `<tr><td><span class="sw" style="background:${PC[ip]}"></span>${PN[ip]}</td><td>${fmt(p.n)}</td><td class="${p.QC ? '' : 'bad'}">${p.QC ? 'good' : 'failed'}</td><td class="l mut">${esc(p.why)}</td></tr>`).join('') + '</table>';
   h += '<h3>Classifier channels</h3><table><tr><th class="l">chan</th><th>µm</th><th title="log10 offset from the cruise median (voltage-corrected if ticked)">offset</th><th title="robust SD of log10 signal">rsd</th><th>V</th></tr>' +
     CH.map(ch => { const ip = popOf(ch), p = f.pops[ip], v = f.dev[ch], bad = p.QC && Math.abs(v) > tol;
       return `<tr><td>${ch}</td><td>${PN[ip]}</td><td class="${bad ? 'bad' : ''}">${p.QC ? fmt(v) : '<span class="mut">' + fmt(v) + '</span>'}</td><td>${fmt(p.rsd[ch + '_H'])}</td><td class="${fin(hvOf(f, ch)) && hvOf(f, ch) !== D.hvc[ch] ? 'bad' : ''}">${fmt(hvOf(f, ch), 0)}</td></tr>`; }).join('') + '</table>';
+  }
   h += `<h3>Used by</h3><div>${U.length ? `${U.length} sample files, ${S.time[U[0]].replace('T', ' ')} to ${S.time[U[U.length - 1]].replace('T', ' ')}` : '<span class="mut">no sample files</span>'}</div>`;
-  h += `<h3>Build</h3><div class="mut">bead stats ${esc(D.processed)} (${esc(D.code)}); page ${esc(D.made)}<br>cruise offsets learned from ${Object.entries(D.nshift).map(([k, v]) => `${v} (${k.slice(1).replace('05', '0.5')} µm)`).join(', ')} runs</div>`;
-  h += '<p class="help">Keys: <kbd>←</kbd> <kbd>→</kbd> runs, <kbd>n</kbd> <kbd>p</kbd> unusual runs, <kbd>o</kbd> OK, <kbd>x</kbd> problem, <kbd>e</kbd> exclude, <kbd>?</kbd> needs another look, <kbd>m</kbd> note</p>';
+  h += PTM ? `<h3>Build</h3><div class="mut">bead table ${esc(D.processed)} (${esc(D.code)}): ${esc(D.source)}; page ${esc(D.made)}</div>` + arr(D.notes).map(n => `<p class="help">${esc(n)}</p>`).join('')
+    : `<h3>Build</h3><div class="mut">bead stats ${esc(D.processed)} (${esc(D.code)}); page ${esc(D.made)}<br>cruise offsets learned from ${Object.entries(D.nshift).map(([k, v]) => `${v} (${k.slice(1).replace('05', '0.5')} µm)`).join(', ')} runs</div>`;
+  h += `<p class="help">Keys: <kbd>←</kbd> <kbd>→</kbd> ${RUNS}, <kbd>n</kbd> <kbd>p</kbd> unusual ${RUNS}, <kbd>o</kbd> OK, <kbd>x</kbd> problem, <kbd>e</kbd> exclude, <kbd>?</kbd> needs another look, <kbd>m</kbd> note</p>`;
   $('sideinfo').innerHTML = h;
 }
 function list() {
@@ -340,13 +408,17 @@ function list() {
     const worst = CH.filter(ch => f.pops[popOf(ch)].QC && fin(f.dev[ch])).sort((a, b) => Math.abs(f.dev[b]) - Math.abs(f.dev[a]))[0];
     const d = DEC[f.file];
     return `<tr data-i="${i}" class="${i === cur ? 'cur' : ''}"><td>${i + 1}</td><td class="l">${f.time.replace('T', ' ').slice(0, 16)}</td><td class="l"><code>${esc(f.file)}</code></td>` +
-      f.pops.map(p => `<td class="${p.QC ? '' : 'bad'}">${fmt(p.n)}${p.QC ? '' : ' ✕'}</td>`).join('') +
+      (PTM ? `<td class="${f.pops[0].QC ? '' : 'bad'}">${fmt(f.pt.nsing)}${f.pops[0].QC ? '' : ' ✕'}</td><td class="l${f.pt.state !== D.state_usual ? ' bad' : ''}">${esc(f.pt.state)}</td><td class="l${f.pt.filterset !== D.filter_usual ? ' bad' : ''}">${esc(f.pt.filterset)}</td>`
+        : f.pops.map(p => `<td class="${p.QC ? '' : 'bad'}">${fmt(p.n)}${p.QC ? '' : ' ✕'}</td>`).join('')) +
       `<td class="${worst && Math.abs(f.dev[worst]) > tol ? 'bad' : ''}">${worst ? `${worst} ${fmt(f.dev[worst])}` : '–'}</td><td>${f.users.size}</td>` +
       `<td class="l">${f.why.filter(w => !w.minor).length ? `<span class="badge">${f.why.filter(w => !w.minor).length}</span>` : ''} ${f.why.filter(w => w.minor).length ? `<span class="mut">${f.why.filter(w => w.minor).length} note${f.why.filter(w => w.minor).length > 1 ? 's' : ''}</span>` : ''}</td>` +
       `<td class="l">${pill(d)}${d && d.note ? ' <span class="mut">' + esc(d.note) + '</span>' : ''}</td></tr>`;
   }).join('');
-  $('list').innerHTML = `<div class="head"><b>Bead runs</b> <span>${N} runs; QC good: ${PN.map((p, ip) => `${F.filter(f => f.pops[ip].QC).length} at ${p} µm`).join(', ')}; ${F.filter(f => f.unusual).length} unusual. Click a row to open it</span></div>` +
-    `<table><tr><th>#</th><th class="l">time</th><th class="l">file</th><th>n 0.5</th><th>n 1</th><th>n 6</th><th title="largest offset from the cruise median among QC-good classifier channels">largest offset</th><th>sample files</th><th class="l">flags</th><th class="l">review</th></tr>${rows}</table>`;
+  const qcs = PTM ? `${F.filter(f => f.pops[0].QC).length}` : PN.map((p, ip) => `${F.filter(f => f.pops[ip].QC).length} at ${p} µm`).join(', ');
+  const f695 = PTM ? F.filter(f => f.pt.filterset !== '680/40').length : 0;
+  $('list').innerHTML = `<div class="head"><b>${PTM ? 'Performance tests' : 'Bead runs'}</b> <span>${N} ${RUNS}; QC good: ${qcs}; ${F.filter(f => f.unusual).length} unusual. Click a row to open it</span></div>` +
+    (f695 ? `<div class="minor" style="margin-bottom:4px">${f695} of ${N} tests had the 695/40 BL3 and green-chl filters; the FCB−PT offsets were measured with 680/40, so BL3 and GL4 assume the same FCB/PT ratio through both</div>` : '') +
+    `<table><tr><th>#</th><th class="l">time</th><th class="l">file</th>${PTM ? '<th>singlets</th><th class="l">state</th><th class="l">filters</th>' : '<th>n 0.5</th><th>n 1</th><th>n 6</th>'}<th title="largest offset from the cruise median among QC-good classifier channels">largest offset</th><th>sample files</th><th class="l">flags</th><th class="l">review</th></tr>${rows}</table>`;
   $('list').querySelectorAll('tr[data-i]').forEach(tr => tr.addEventListener('click', () => go(+tr.dataset.i)));
 }
 function coverage() {
@@ -362,8 +434,8 @@ function coverage() {
     const desc = per.map(([c, r, nr]) => `${same ? '' : c + ': '}${r.length ? r.map(j => j + 1).join(' ') : 'none'}${nr ? ' <span class="minor">(nearest only)</span>' : ''}`).join('; ');
     return `<tr><td>${a + 1}–${b + 1}</td><td>${b - a + 1}</td><td class="l">${S.time[a].replace('T', ' ').slice(0, 16)}</td><td class="l">${S.time[b].replace('T', ' ').slice(0, 16)}</td><td class="l">${desc}</td></tr>`;
   }).join('');
-  $('cover').innerHTML = `<div class="head"><b>Coverage</b> <span>${NS} sample files; ${nnear ? `<span class="minor">${nnear} with no run within ±${D.window_days} d (nearest run used)</span>` : `every file has a good run within ±${D.window_days} d`}; ${same ? 'all channels use the same runs' : 'channels differ: runs listed per channel'}; longest gap between runs ${fmt(Math.max(...gaps, 0), 1)} h</span></div>` +
-    `<table><tr><th>files</th><th>n</th><th class="l">from</th><th class="l">to</th><th class="l">runs in the median (#)</th></tr>${rows}</table>`;
+  $('cover').innerHTML = `<div class="head"><b>Coverage</b> <span>${NS} sample files; ${nnear ? `<span class="minor">${nnear} with no ${RUN} within ±${D.window_days} d (nearest ${RUN} used)</span>` : `every file has a good ${RUN} within ±${D.window_days} d`}; ${same ? `all channels use the same ${RUNS}` : `channels differ: ${RUNS} listed per channel`}; longest gap between ${RUNS} ${fmt(Math.max(...gaps, 0), 1)} h</span></div>` +
+    `<table><tr><th>files</th><th>n</th><th class="l">from</th><th class="l">to</th><th class="l">${RUNS} in the median (#)</th></tr>${rows}</table>`;
 }
 // ---------- review decisions (as in the class review) ----------
 const ST = {
@@ -524,7 +596,7 @@ function go(i) {
   flushNote();
   cur = Math.max(0, Math.min(N - 1, i));
   const f = F[cur];
-  $('fidx').textContent = `run ${cur + 1} / ${N}`;
+  $('fidx').textContent = `${RUN} ${cur + 1} / ${N}`;
   $('fname').textContent = f.file;
   $('ftime').textContent = f.time.replace('T', ' ');
   $('gate').src = f.frame + '?v=' + encodeURIComponent(D.made);
@@ -539,6 +611,7 @@ $('prev').onclick = () => go(cur - 1); $('next').onclick = () => go(cur + 1);
 $('pflag').onclick = () => jumpFlag(-1); $('nflag').onclick = () => jumpFlag(1);
 const refresh = () => { metrics(); badge(); side(); drawHists(); drawStrips(); list(); };
 $('hvcorr').addEventListener('change', refresh);
+$('pmode').addEventListener('change', drawStrips);
 $('tol').addEventListener('change', () => { const v = parseFloat($('tol').value); if (v > 0) { tol = v; refresh(); } });
 document.addEventListener('keydown', e => {
   const tg = e.target.tagName;

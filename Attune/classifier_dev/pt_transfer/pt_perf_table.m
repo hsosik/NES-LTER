@@ -43,28 +43,12 @@ for k = 1:numel(F)
     names = {h.par.name};
     conf = attune_config('', datenum(r.time));
     r.layout = string(conf.layout);
-    % singlets: central cluster on FSC-H x SSC-H
-    fs = log10(max(d(:, strcmp(names, 'FSC-H')), 1));
-    ss = log10(max(d(:, strcmp(names, 'SSC-H')), 1));
-    g = abs(fs - median(fs)) < 0.15 & abs(ss - median(ss)) < 0.15;
-    r.n = size(d, 1); r.nsing = sum(g);
+    % singlets (central cluster on FSC-H x SSC-H) and peaks: pt_test_peaks
+    P = pt_test_peaks(double(d), h, conf, chans);
+    r.n = size(d, 1); r.nsing = sum(P.sing);
     for j = 1:numel(chans)
-        ch = chans{j}; p = conf.chan.(ch);
-        c = find(strcmp(names, p), 1);
-        if isempty(p) || isempty(c)
-            r.(['hv_' ch]) = NaN; r.(['pk_' ch]) = NaN; r.(['rcv_' ch]) = NaN;
-            continue
-        end
-        r.(['hv_' ch]) = h.par(c).hv;
-        x = d(g, c);
-        if ismember(ch, {'FSC' 'SSC'})
-            v = x;
-        else % brightest PT intensity level
-            lx = log10(max(x, 1));
-            v = x(lx > prctile(lx, 70));
-        end
-        r.(['pk_' ch]) = log10(median(v));
-        r.(['rcv_' ch]) = iqr(v) / 1.349 / median(v);
+        q = P.ch.(chans{j});
+        r.(['hv_' chans{j}]) = q.hv; r.(['pk_' chans{j}]) = q.pk; r.(['rcv_' chans{j}]) = q.rcv;
     end
     if conf.layout == "v2019" && r.hv_SSC > 330
         r.od2 = "SSC";

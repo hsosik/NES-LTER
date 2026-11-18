@@ -20,19 +20,33 @@ function D = bead_review(cruise, opts)
 %     the volume step (load_beadstat -> bead_reference, batch_mergedSSC2volume) the
 %     next time they run; rebuild this page to see the references without them
 %
+% Cruises without FCB bead runs (2018 - early 2019): beadstat.mat is the PT-transfer
+% table (make_perf_beadstat, meta.source "PT performance test transfer"), one row per
+% Attune performance test with FCB-equivalent peaks (PT peak + FCB-PT offset for the
+% channel, bead size and optical state). The page then shows each test instead of a
+% bead run: FSC x SSC with the singlet gate and the PT intensity levels (plot_pt_test),
+% histograms of all events, singlets and the brightest level, the PT peak, offset and
+% CV per channel, the optical state and filter set; flags for broad peaks, a state or
+% filter set other than the cruise's usual, and tests before or after the sample files.
+% Exclusions work the same way. Tests are read from performance_test_fcs beside
+% cruise_data (opts.ptdir).
+%
 % opts (all optional):
 %   .root       cruise_data root passed to attune_cruise_settings
-%   .beaddir    folder with beadstat.mat and FCSfileinfo.mat (default bead_calibrated)
+%   .beaddir    folder with beadstat.mat and FCSfileinfo.mat (default bead_calibrated);
+%               without FCSfileinfo.mat the sample times are read from the FCS headers
 %   .outdir     viewer folder (default <beaddir>\bead_review)
-% e.g. bead_review('EN727')
+%   .ptdir      performance-test FCS folder (PT-transfer tables; default
+%               <cruise_data>\..\performance_test_fcs)
+% e.g. bead_review('EN727'), bead_review('AR29')
 %
-% Nov 2026, bead review
+% Nov 2026, bead review; PT-transfer tables
 
 if nargin < 2, opts = struct(); end
-def = struct('root', '', 'beaddir', '', 'outdir', '');
+def = struct('root', '', 'beaddir', '', 'outdir', '', 'ptdir', '');
 for f = fieldnames(def)', if ~isfield(opts, f{1}), opts.(f{1}) = def.(f{1}); end, end
 here = fileparts(mfilename('fullpath'));
-addpath(fileparts(here)) % classifier_dev
+addpath(fileparts(here), fullfile(fileparts(here), 'pt_transfer')) % classifier_dev, pt_test_peaks
 s = attune_cruise_settings(cruise, opts.root);
 bp = opts.beaddir; if isempty(bp), bp = fullfile(s.basepath, 'bead_calibrated'); end
 outdir = opts.outdir; if isempty(outdir), outdir = fullfile(bp, 'bead_review'); end
@@ -40,7 +54,17 @@ decfile = fullfile(bp, 'bead_review_decisions.csv'); % where load_beadstat reads
 if ~exist(fullfile(outdir, 'frames'), 'dir'), mkdir(fullfile(outdir, 'frames')); end
 
 [bs, meta] = load_beadstat(bp, false); % as measured: the page shows QC before exclusions
-F = load(fullfile(bp, 'FCSfileinfo.mat')); fn = fieldnames(F); Fi = F.(fn{1});
+src = ""; if isfield(meta, 'source'), src = string(meta.source); end
+pt = src == "PT performance test transfer";
+if ~pt && ~isfield(meta, 'signature')
+    error('bead_review:source', ['%s: beadstat.mat is neither an FCB bead table nor a PT-transfer table ' ...
+        '(meta.source "%s"); for a cruise without FCB beads rebuild it with make_perf_beadstat'], s.cruise, src)
+end
+if isfile(fullfile(bp, 'FCSfileinfo.mat'))
+    F = load(fullfile(bp, 'FCSfileinfo.mat')); fn = fieldnames(F); Fi = F.(fn{1});
+else % step 1 not run yet: sample times from the FCS headers
+    Fi = list_fcs(fullfile(s.basepath, 'FCS'));
+end
 cfg = classifier_config();
 cfg.cruise = s.cruise;
 conf = attune_config(s.cruise);
@@ -48,19 +72,30 @@ P = {'05' '1' '6'}; PN = {'0.5' '1' '6'};
 chans = bs.peak1.Properties.VariableNames; % FSC_H ... GL4_H, SSC_A, GL1_A
 bt = datenum(bs.time);
 nr = height(bs);
+if pt
+    ptdir = opts.ptdir;
+    if isempty(ptdir), ptdir = fullfile(fileparts(fileparts(regexprep(s.basepath, '[\\/]+$', ''))), 'performance_test_fcs'); end
+end
 
-% common voltage per channel: the most frequent among the runs
+% common voltage per channel: the most frequent among the runs (performance
+% tests set their own voltages: the median)
 hvc = struct();
 for c = cfg.chans
     h = bs.hv.(c{1}); h = h(isfinite(h) & h > 0);
-    if isempty(h), hvc.(c{1}) = NaN; else, hvc.(c{1}) = mode(h); end
+    if isempty(h), hvc.(c{1}) = NaN; elseif pt, hvc.(c{1}) = round(median(h)); else, hvc.(c{1}) = mode(h); end
 end
 
 % runs: re-gate with the cruise's signature for the plots and histograms
 edges = 0:0.05:6.1;
-sig = meta.signature;
 R = cell(nr, 1);
-for i = 1:nr
+if pt
+    for i = 1:nr, R{i} = pt_run(bs, i, chans, ptdir, outdir, edges); end
+    nfcb = 0;
+else
+    sig = meta.signature;
+    nfcb = nr;
+end
+for i = 1:nfcb
     r = struct('file', char(bs.filename(i)), 'time', char(datetime(bs.time(i), 'Format', 'yyyy-MM-dd''T''HH:mm:ss')));
     [~, nm] = fileparts(r.file);
     r.frame = ['frames/' nm '.png'];
@@ -135,7 +170,14 @@ D.basepath = s.basepath;
 D.chans = cfg.chans; D.allchans = chans;
 D.bead_pop = cfg.bead_pop; D.k = cfg.k; D.hvc = hvc; D.window_days = cfg.bead_window_days;
 D.edges = [edges(1) edges(2) - edges(1) numel(edges) - 1];
-D.qc = sig.qc; D.nshift = table2struct(meta.nshift);
+D.mode = 'fcb';
+if pt
+    D.mode = 'pt'; D.qc = []; D.nshift = struct();
+    D.source = char(src); D.notes = cellstr(meta.notes); D.ptdir = ptdir;
+    D.state_usual = char(mode(categorical(bs.state))); D.filter_usual = char(mode(categorical(bs.filterset)));
+else
+    D.qc = sig.qc; D.nshift = table2struct(meta.nshift);
+end
 D.code = char(meta.code); D.processed = char(datetime(meta.processed, 'Format', 'yyyy-MM-dd HH:mm'));
 D.runs = R;
 D.excluded = cellstr(meta.excluded); % marked exclude when the page was built (references above skip them)
@@ -151,7 +193,77 @@ fclose(fid);
 html = fileread(fullfile(here, 'bead_review_template.html'));
 html = strrep(html, '__STAMP__', char(datetime('now', 'Format', 'yyyyMMddHHmmss')));
 fid = fopen(fullfile(outdir, 'index.html'), 'w', 'n', 'UTF-8'); fwrite(fid, unicode2native(html, 'UTF-8')); fclose(fid);
-fprintf('%s bead review: %d runs, %d sample files\n  %s\n', s.cruise, nr, ns, fullfile(outdir, 'index.html'))
+what = 'runs'; if pt, what = 'performance tests'; end
+fprintf('%s bead review: %d %s, %d sample files\n  %s\n', s.cruise, nr, what, ns, fullfile(outdir, 'index.html'))
+end
+
+function r = pt_run(bs, i, chans, ptdir, outdir, edges)
+% one performance test of a PT-transfer table: peaks from the table, PT peaks,
+% CVs and histograms re-measured from the test's FCS file (pt_test_peaks)
+P = {'05' '1' '6'}; PN = {'0.5' '1' '6'};
+r = struct('file', char(bs.filename(i)), 'time', char(datetime(bs.time(i), 'Format', 'yyyy-MM-dd''T''HH:mm:ss')));
+[~, nm] = fileparts(r.file);
+r.frame = ['frames/' regexprep(nm, '[^\w\-]', '_') '.png'];
+r.hv = table2struct(bs.hv(i, :));
+r.pops = cell(1, 3);
+for ip = 1:3
+    b = P{ip};
+    q = struct('name', PN{ip}, 'n', bs.(['n' b])(i), 'QC', logical(bs.(['QC' b])(i)), 'why', char(bs.(['why' b])(i)));
+    q.peak = cell2struct(num2cell(log10(table2array(bs.(['peak' b])(i, :)))), chans, 2);
+    q.med = cell2struct(num2cell(nan(1, numel(chans))), chans, 2);
+    q.rsd = q.med; q.hist = struct(); q.nnow = NaN;
+    r.pops{ip} = q;
+end
+phys = {'FSC' 'SSC' 'BL1' 'BL2' 'BL3' 'GL1' 'GL2' 'GL3' 'GL4'};
+r.pt = struct('state', char(bs.state(i)), 'filterset', char(bs.filterset(i)), 'n', NaN, 'nsing', NaN, ...
+    'pk', struct(), 'rcv', struct(), 'hist', struct(), 'top', struct());
+for c = phys, r.pt.pk.(c{1}) = NaN; r.pt.rcv.(c{1}) = NaN; end
+r.all = struct(); r.read = '';
+try
+    [d, h] = fca_readfcs(fullfile(ptdir, r.file));
+    d = double(d); names = {h.par.name};
+    tconf = attune_config('', datenum(bs.time(i))); % filter layout of the test's date
+    Pk = pt_test_peaks(d, h, tconf, phys);
+    r.pt.n = size(d, 1); r.pt.nsing = sum(Pk.sing);
+    for c = phys, r.pt.pk.(c{1}) = Pk.ch.(c{1}).pk; r.pt.rcv.(c{1}) = Pk.ch.(c{1}).rcv; end
+    fig = figure('visible', 'off', 'position', [50 50 1300 380]);
+    plot_pt_test(d, h, Pk, tconf, r.file)
+    exportgraphics(fig, fullfile(outdir, r.frame), 'resolution', 70)
+    close(fig)
+    for k = 1:numel(chans)
+        j = strcmp(names, file_param(chans{k}, tconf));
+        if ~any(j), continue, end
+        x = log10(max(d(:, j), 1));
+        r.all.(chans{k}) = histcounts(x, edges);
+        r.pt.hist.(chans{k}) = histcounts(x(Pk.sing), edges);
+        ch = extractBefore(chans{k}, '_');
+        if endsWith(chans{k}, '_H') && ~ismember(ch, {'FSC' 'SSC'})
+            r.pt.top.(chans{k}) = histcounts(x(Pk.ch.(ch).use), edges);
+        end
+    end
+catch ME
+    r.read = ME.message;
+    warning('bead_review:read', '%s: %s', r.file, ME.message)
+end
+end
+
+function T = list_fcs(fcsdir)
+% sample-file names and start times from the FCS headers ($DATE, $BTIM), when
+% the cruise has no FCSfileinfo.mat yet; bead and test files left out
+L = dir(fullfile(fcsdir, '*.fcs'));
+L = L(~contains({L.name}, {'bead' 'Bead' 'test' 'Test'}));
+t = nan(numel(L), 1);
+for i = 1:numel(L)
+    fid = fopen(fullfile(fcsdir, L(i).name));
+    txt = char(fread(fid, 20000, 'uint8')'); fclose(fid);
+    d = regexp(txt, '\$DATE/([^/]*)/', 'tokens', 'once');
+    b = regexp(txt, '\$BTIM/([^/]*)/', 'tokens', 'once');
+    if isempty(d) || isempty(b), continue, end
+    try, t(i) = datenum([d{1} ' ' b{1}], 'dd-mmm-yyyy HH:MM:SS'); catch, end
+end
+ok = isfinite(t);
+T = table({L(ok).name}', t(ok), 'VariableNames', {'fcslist' 'matdate_start'});
+fprintf('bead_review: no FCSfileinfo.mat; %d sample files listed from the FCS headers\n', height(T))
 end
 
 function nm = file_param(c, conf)
