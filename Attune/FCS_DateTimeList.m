@@ -1,117 +1,162 @@
 function [ FCSfileinfo ] = FCS_DateTimeList(fcs_path, FCSfileinfo_name)
-% modified 4/26/2021 to make output into a table, and to include quality
-% control data
-
 %function [ FCSfileinfo ] = FCS_DateTimeList(fcs_path, FCSfileinfo_name)
-%input: 
-%   fcspath - path to a directory of fcs files
-%   FCSfileinfo - optional input of existing compiled info (file with full path) if already available for append of new files
-%output: a structure called fcsfileinfo with matlab date start and stop
-%times and other fcs hdr information
+%input:
+%   fcs_path - path to a directory of fcs files
+%   FCSfileinfo_name - optional: existing FCSfileinfo.mat (full path). Files
+%       already in it are kept as they are and only new files are read. Rows
+%       without detector voltages (tables made before Nov 2026) get them from
+%       the FCS headers, so pro_measured can be recomputed.
+%output: table FCSfileinfo, one row per FCS file, in time order
+%   fcslist                  file name
+%   matdate_start, matdate_stop, date_processed, vol_analyzed
+%   trigger1_parameter, trigger1_threshhold, trigger1_hv  (same for trigger2;
+%       '' / NaN when there is no second trigger). Thresholds are in -H units.
+%   hv_FSC ... hv_GL4        detector voltages (NaN if the detector is absent)
+%   layout                   filter layout: 'v2019' before 19 Aug 2019, else 'current'
+%                            (see classifier_dev\attune_config)
+%   file_type                from the name: bead, cast, discrete, dockwater, rinse,
+%                            culture, stained, test, or sample
+%   QC_flag, QC_flowrates, QC_dataintegrity
+%       QC_flowrates: median and std of SSC-A/SSC-H for events with both > 200;
+%       QC_flag 1 (good) when median < 1.5, std < 2 and event times never decrease
+%   pro_measured, trig_SSC_eq220, trig_BL3_eq340  see attune_pro_measured
 %
 %Heidi M. Sosik, Woods Hole Oceanographic Institution, Jan 2019
+% modified 4/26/2021 to make output into a table, and to include quality control data
+% Nov 2026: append mode fixed (it used a column that does not exist); QC channels
+%   found by name; detector voltages, layout and file_type columns; pro_measured
+%   from trigger settings scaled to reference voltages (attune_pro_measured)
+%   instead of "SSC trigger below 500", which marked the Euk/Syn alternating runs
+%   of EN688, EN706 and AR78 as Pro and missed AR104's Pro runs.
 
 if ~exist('fcs_path', 'var')
-    fcs_path = uigetdir(pwd, 'Pick a Directory of FCS files')
-else
-    if ~exist(fcs_path, 'dir')
-        disp('WARNING: Directory not found. Check input path.')
-        FCSfileinfo = [];
-        return
-    end
+    fcs_path = uigetdir(pwd, 'Pick a Directory of FCS files');
+elseif ~exist(fcs_path, 'dir')
+    disp('WARNING: Directory not found. Check input path.')
+    FCSfileinfo = [];
+    return
 end
 
 fcslist = dir(fullfile(fcs_path, '*.fcs'));
 fcslist = {fcslist.name}';
 
-%first check if we are starting from scratch 
-if exist('FCSfileinfo_name', 'var') 
-    load(FCSfileinfo_name)
-        if istable('FCSfileinfo_name') %if the file is a table 
-            fcslist = setdiff(fcslist, FCSfileinfo.filelist);
-            a = length(FCSfileinfo.filelist);
-            b = length(fcslist);
-            FCSfileinfo.filelist(a+1:a+b) = fcslist;
-            FCSfileinfo.matdate_start(a+1:a+b) = NaN;
-            FCSfileinfo.matdate_stop(a+1:a+b) = NaN;
-            FCSfileinfo.vol_analyzed(a+1:a+b) = NaN;
-            FCSfileinfo.trigger1_parameter(a+1:a+b) = NaN;
-            FCSfileinfo.trigger1_threshhold(a+1:a+b) = NaN;
-            FCSfileinfo.trigger2_parameter(a+1:a+b) = NaN;
-            FCSfileinfo.trigger2_threshhold(a+1:a+b) = NaN;
-        else % the variable is old and still a structure. Needs to be converted. 
-            FCSfileinfo = struct2table(FCSfileinfo); 
-            fcslist = setdiff(fcslist, FCSfileinfo.filelist);
-            a = length(FCSfileinfo.filelist);
-            b = length(fcslist);
-            FCSfileinfo.filelist(a+1:a+b) = fcslist;
-            FCSfileinfo.matdate_start(a+1:a+b) = NaN;
-            FCSfileinfo.matdate_stop(a+1:a+b) = NaN;
-            FCSfileinfo.vol_analyzed(a+1:a+b) = NaN;
-        end
-else  %initialize
-            FCSfileinfo = table(fcslist);
-            FCSfileinfo.matdate_start = NaN(size(fcslist));
-            FCSfileinfo.matdate_stop = FCSfileinfo.matdate_start;
-            FCSfileinfo.date_processed = NaT(size(fcslist));;
-            FCSfileinfo.vol_analyzed = FCSfileinfo.matdate_start;
-            FCSfileinfo.trigger1_parameter = cell(size(FCSfileinfo.matdate_start));
-            FCSfileinfo.trigger1_threshhold = FCSfileinfo.matdate_start;
-            FCSfileinfo.trigger2_parameter = cell(size(FCSfileinfo.matdate_start));
-            FCSfileinfo.trigger2_threshhold = FCSfileinfo.matdate_start;
-            FCSfileinfo.QC_flag = FCSfileinfo.matdate_start;
-            FCSfileinfo.QC_flowrates = NaN(length(fcslist), 2);
-            FCSfileinfo.QC_dataintegrity = FCSfileinfo.matdate_start;
-            a = 0;
-            b = length(fcslist);
+old = table;
+if exist('FCSfileinfo_name', 'var') && ~isempty(FCSfileinfo_name) && exist(FCSfileinfo_name, 'file')
+    old = load(FCSfileinfo_name, 'FCSfileinfo');
+    old = old.FCSfileinfo;
+    if isstruct(old), old = struct2table(old); end
+    if ismember('filelist', old.Properties.VariableNames) && ~ismember('fcslist', old.Properties.VariableNames)
+        old = renamevars(old, 'filelist', 'fcslist');
+    end
+    old = old(ismember(old.fcslist, fcslist), :); % files no longer in the folder are dropped
+    fcslist = setdiff(fcslist, old.fcslist);
 end
 
-if b > 0 %now add to existing table
-    for ii = a+1:a+b
-        if rem(ii,20) == 0
-            disp([num2str(ii) ' of ' num2str(a+b)])
-        end
-        [fcsdat,fcshdr] = fca_readfcs(fullfile(fcs_path, fcslist{ii-a}));
-        if ~(fcshdr.TotalEvents==0)
-            FCSfileinfo.matdate_start(ii) = datenum([fcshdr.date ', ' fcshdr.starttime]);
-            FCSfileinfo.matdate_stop(ii) = datenum([fcshdr.date ', ' fcshdr.stoptime]);
-            FCSfileinfo.date_processed(ii) = datetime(fcshdr.date);
-            FCSfileinfo.vol_analyzed(ii) = fcshdr.VOL;
-            FCSfileinfo.trigger1_parameter(ii) = {fcshdr.tr1_par};
-            FCSfileinfo.trigger1_threshhold(ii) = fcshdr.tr1_level;
-            itemp = find(startsWith({fcshdr.par.name},extractAfter(fcshdr.tr1_par,'_')));
-            FCSfileinfo.trigger1_hv(ii) = fcshdr.par(itemp(1)).hv;
-            
-            if isfield(fcshdr, 'tr2_par')
-                FCSfileinfo.trigger2_parameter(ii) = {fcshdr.tr2_par};
-                FCSfileinfo.trigger2_threshhold(ii) = fcshdr.tr2_level;
-                itemp = find(startsWith({fcshdr.par.name},extractAfter(fcshdr.tr2_par,'_')));
-                FCSfileinfo.trigger2_hv(ii) = fcshdr.par(itemp(1)).hv;
-            end
-            %adding quality control flags 
-            t = find(fcsdat(:,12)>200 & fcsdat(:,3)>200);
-            QC_flowrate(1) = (median(fcsdat(t,3)./fcsdat(t,12)));
-            QC_flowrate(2) = (std(fcsdat(t,3)./fcsdat(t,12)));
-            QC_flag = 0; %default bad
-            FCSfileinfo.QC_dataintegrity(ii) = min(diff(fcsdat(:,1)));
-            if (QC_flowrate(2)<2 && QC_flowrate(1)<1.5) && FCSfileinfo.QC_dataintegrity(ii)>=0
-                QC_flag = 1; %set to good
-            end
-            FCSfileinfo.QC_flag(ii) = QC_flag; 
-            FCSfileinfo.QC_flowrates(ii,:) = QC_flowrate;
-            
-            clear QC_flag QC_flowrate t
-                        
-        end
+b = numel(fcslist);
+R = cell(b, 1);
+for ii = 1:b
+    if rem(ii, 20) == 0
+        disp([num2str(ii) ' of ' num2str(b)])
     end
+    R{ii} = read_one(fcs_path, fcslist{ii});
 end
+new = vertcat(R{:});
+if isempty(new), new = read_one('', ''); new(1, :) = []; end
+
+if ~isempty(old)
+    [old, new] = align_columns(old, new);
+    FCSfileinfo = [old; new(:, old.Properties.VariableNames)];
+    e = cellfun(@isempty, FCSfileinfo.file_type);
+    FCSfileinfo.file_type(e) = cellfun(@file_type, FCSfileinfo.fcslist(e), 'UniformOutput', false);
+    e = cellfun(@isempty, FCSfileinfo.layout) & isfinite(FCSfileinfo.matdate_start);
+    FCSfileinfo.layout(e) = {'current'};
+    FCSfileinfo.layout(e & FCSfileinfo.matdate_start < datenum(2019, 8, 19)) = {'v2019'};
+else
+    FCSfileinfo = new;
+end
+
+%detector voltages and trigger settings for rows from older tables
+FCSfileinfo = attune_pro_measured(FCSfileinfo, fcs_path);
 
 %put table in chronological order
-[~,ind] = sort(FCSfileinfo.matdate_start);
-FCSfileinfo = FCSfileinfo(ind, :); 
+FCSfileinfo = sortrows(FCSfileinfo, 'matdate_start');
+end
 
-%add a flag for runs with settings to detect Prochlorococcus 
-FCSfileinfo.pro_measured(:) = 0;
-FCSfileinfo.pro_measured(endsWith(FCSfileinfo.trigger1_parameter, "_SSC") & FCSfileinfo.trigger1_threshhold < 500) = 1;
 
+function r = read_one(fcs_path, name)
+% one row of FCSfileinfo; NaN times for an empty file (as before)
+det = {'FSC' 'SSC' 'BL1' 'BL2' 'BL3' 'GL1' 'GL2' 'GL3' 'GL4'};
+r = table({name}, NaN, NaN, NaT, NaN, {''}, NaN, NaN, {''}, NaN, NaN, ...
+    'VariableNames', {'fcslist' 'matdate_start' 'matdate_stop' 'date_processed' 'vol_analyzed' ...
+    'trigger1_parameter' 'trigger1_threshhold' 'trigger1_hv' 'trigger2_parameter' 'trigger2_threshhold' 'trigger2_hv'});
+for i = 1:numel(det), r.(['hv_' det{i}]) = NaN; end
+r.layout = {''};
+r.file_type = {file_type(name)};
+r.QC_flag = NaN; r.QC_flowrates = [NaN NaN]; r.QC_dataintegrity = NaN;
+if isempty(name), return, end
+
+[fcsdat, fcshdr] = fca_readfcs(fullfile(fcs_path, name));
+if fcshdr.TotalEvents == 0, return, end
+pn = {fcshdr.par.name};
+r.matdate_start = datenum([fcshdr.date ', ' fcshdr.starttime]);
+r.matdate_stop = datenum([fcshdr.date ', ' fcshdr.stoptime]);
+r.date_processed = datetime(fcshdr.date);
+r.vol_analyzed = fcshdr.VOL;
+r.trigger1_parameter = {fcshdr.tr1_par};
+r.trigger1_threshhold = fcshdr.tr1_level;
+r.trigger1_hv = det_hv(fcshdr, extractAfter(fcshdr.tr1_par, '_'));
+if isfield(fcshdr, 'tr2_par') && ~isempty(fcshdr.tr2_par)
+    r.trigger2_parameter = {fcshdr.tr2_par};
+    r.trigger2_threshhold = fcshdr.tr2_level;
+    r.trigger2_hv = det_hv(fcshdr, extractAfter(fcshdr.tr2_par, '_'));
+end
+for i = 1:numel(det), r.(['hv_' det{i}]) = det_hv(fcshdr, det{i}); end
+if r.matdate_start < datenum(2019, 8, 19), r.layout = {'v2019'}; else, r.layout = {'current'}; end
+
+%quality control flags
+ia = find(strcmp(pn, 'SSC-A'), 1); ih = find(strcmp(pn, 'SSC-H'), 1);
+if ~isempty(ia) && ~isempty(ih)
+    t = fcsdat(:, ih) > 200 & fcsdat(:, ia) > 200;
+    q = fcsdat(t, ia) ./ fcsdat(t, ih);
+    r.QC_flowrates = [median(q) std(q)];
+end
+r.QC_dataintegrity = min(diff(fcsdat(:, 1)));
+r.QC_flag = double(r.QC_flowrates(2) < 2 && r.QC_flowrates(1) < 1.5 && r.QC_dataintegrity >= 0);
+end
+
+
+function hv = det_hv(fcshdr, det)
+% voltage of detector det (e.g. 'SSC') from its -H parameter
+hv = NaN;
+i = find(strcmp({fcshdr.par.name}, [char(det) '-H']), 1);
+if ~isempty(i) && ~isempty(fcshdr.par(i).hv), hv = fcshdr.par(i).hv; end
+end
+
+
+function t = file_type(name)
+n = lower(name);
+types = {'bead' {'bead'}; 'cast' {'cast'}; 'discrete' {'discrete'}; 'dockwater' {'dockwater'}; ...
+    'rinse' {'rinse'}; 'culture' {'culture'}; 'stained' {'sybr' 'hbac'}; 'test' {'test' 'filter config'}};
+t = 'sample';
+for i = 1:size(types, 1)
+    if contains(n, types{i, 2}), t = types{i, 1}; return, end
+end
+end
+
+
+function [a, b] = align_columns(a, b)
+% give each table the other's missing columns (NaN, '' or NaT)
+[a, b] = add_missing(a, b);
+[b, a] = add_missing(b, a);
+end
+
+function [a, b] = add_missing(a, b)
+for v = setdiff(b.Properties.VariableNames, a.Properties.VariableNames)
+    x = b.(v{1});
+    if iscell(x), f = repmat({''}, height(a), size(x, 2));
+    elseif isdatetime(x), f = NaT(height(a), size(x, 2));
+    else, f = NaN(height(a), size(x, 2));
+    end
+    a.(v{1}) = f;
+end
 end

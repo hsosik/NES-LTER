@@ -12,6 +12,8 @@ function p = process_cruise(cruise, steps, opts)
 %
 % Steps
 %   1 files     FCS_DateTimeList -> bead_calibrated\FCSfileinfo.mat
+%               An existing FCSfileinfo.mat is extended with new files (opts.force: rebuild);
+%               pro_measured comes from attune_pro_measured (trigger settings and voltages).
 %   2 beads     bead table bead_calibrated\beadstat.mat
 %               - FCB bead cruises (attune_config fcb_beads): process_beads_PT_adjust_3.
 %                 It will not overwrite a table made another way (meta.source set)
@@ -43,7 +45,7 @@ function p = process_cruise(cruise, steps, opts)
 %              cellstr of FCS names
 %   .append    true: skip files that already have a class file (default false)
 %   .parallel  true: parfor over files in step 3 (default true when a pool can start)
-%   .force     passed to the bead step (default false)
+%   .force     passed to the bead step; step 1 rebuilds FCSfileinfo (default false)
 %   .review    true (default): build the classification review during step 3. A run on
 %              some files (.files, .append) updates their frames and keeps the rest.
 %   .bead_review  true (default): build the bead review when step 2 writes an FCB bead
@@ -107,8 +109,13 @@ write_log(p)
 
 %% 1 files
 if ismember(1, steps)
-    FCSfileinfo = FCS_DateTimeList(p.fpath);
-    save([p.outpath 'FCSfileinfo.mat'], 'FCSfileinfo')
+    fi = [p.outpath 'FCSfileinfo.mat'];
+    if exist(fi, 'file') && ~opts.force
+        FCSfileinfo = FCS_DateTimeList(p.fpath, fi); % reads only new files; fills voltages for old rows
+    else
+        FCSfileinfo = FCS_DateTimeList(p.fpath);
+    end
+    save(fi, 'FCSfileinfo')
     fprintf('step 1: %d FCS files listed\n', height(FCSfileinfo))
 end
 
@@ -194,7 +201,6 @@ function classify_step(p, c, opts)
 load([p.outpath 'FCSfileinfo.mat'], 'FCSfileinfo')
 Fi = FCSfileinfo;
 Fi = Fi(~contains(Fi.fcslist, p.filetype2exclude), :);
-if ~ismember('pro_measured', Fi.Properties.VariableNames), Fi.pro_measured = zeros(height(Fi), 1); end
 Fi = sortrows(Fi, 'matdate_start');
 if iscell(opts.files) || isstring(opts.files)
     Fi = Fi(ismember(Fi.fcslist, cellstr(opts.files)), :);
@@ -205,6 +211,11 @@ classfile = strcat(p.classpath, regexprep(Fi.fcslist, '\.fcs$', '.mat'));
 if opts.append
     have = cellfun(@(x) exist(x, 'file') == 2, classfile);
     Fi = Fi(~have, :); classfile = classfile(~have);
+end
+if ~ismember('trig_BL3_eq340', Fi.Properties.VariableNames) && height(Fi) > 0
+    % FCSfileinfo from before Nov 2026: old pro_measured rule, no voltages
+    fprintf('step 3: FCSfileinfo predates the voltage-based pro_measured rule; recomputing it for these files (rerun step 1 to save it)\n')
+    Fi = attune_pro_measured(Fi, p.fpath);
 end
 n = height(Fi);
 fprintf('step 3: classifying %d files\n', n)
