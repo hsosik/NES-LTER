@@ -6,11 +6,13 @@ function test_process_cruise(cruise, outdir, nfiles, steps)
 % the class log, the new AttuneTable columns and one class file.
 %
 % e.g. test_process_cruise('EN727', 'C:\scratch\EN727_test', 8)
+% steps: process_cruise step labels (default classify, volume, table, metadata)
 %
 % Nov 2026, processing wrapper redesign (development/testing script)
 
 if nargin < 3 || isempty(nfiles), nfiles = 8; end
-if nargin < 4 || isempty(steps), steps = [3 4 5 6]; end
+if nargin < 4 || isempty(steps), steps = ["classify" "volume" "table" "metadata"]; end
+steps = string(steps);
 addpath(fileparts(fileparts(mfilename('fullpath'))))
 s = attune_cruise_settings(cruise);
 if ~exist(outdir, 'dir'), mkdir(outdir), end
@@ -18,12 +20,12 @@ bc = fullfile(s.basepath, 'bead_calibrated');
 copyfile(fullfile(bc, 'FCSfileinfo.mat'), outdir)
 copyfile(fullfile(bc, 'beadstat.mat'), outdir)
 
-process_cruise(cruise, steps, struct('outpath', outdir, 'files', nfiles, 'parallel', nfiles > 4));
+process_cruise(cruise, Steps=steps, OutPath=outdir, Files=nfiles, Parallel=nfiles > 4);
 
-if ismember(3, steps)
+if ismember("classify", steps)
     L = load(fullfile(outdir, 'class_log.mat')); disp(L.L)
 end
-if ismember(5, steps)
+if ismember("table", steps)
     T = load(fullfile(outdir, 'AttuneTable.mat'));
     A = T.AttuneTable;
     disp(rows2vars(A(:, {'Syn_count' 'Crypto_dim_count' 'Crypto_bright_count' 'Euk_with_Syn_count' 'Syn_on_particle_count' ...

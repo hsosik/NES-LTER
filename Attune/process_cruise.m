@@ -1,58 +1,63 @@
-function p = process_cruise(cruise, steps, opts)
-% function p = process_cruise(cruise, steps, opts)
+function p = process_cruise(cruise, opt)
+% function p = process_cruise(cruise, Name=Value, ...)
 % Process one cruise of Attune data end to end, or any subset of the steps.
 % Replaces the copied process_wrapper_* scripts: every per-cruise setting
 % comes from attune_cruise_settings (attune_cruise_settings.csv plus
 % classifier_dev/attune_config), and every cruise uses the same classifier,
 % assign_class_v2.
 %
-% e.g. process_cruise('EN727')            % all main steps (1:6)
-%      process_cruise('EN727', [3 4 5])   % reclassify, volumes, table
-%      process_cruise('EN727', 3, struct('files', 5, 'outpath', 'C:\scratch\EN727\'))
+% e.g. process_cruise("EN727")                                   % core steps
+%      process_cruise("EN727", Steps=["classify" "volume" "table"])
+%      process_cruise("EN727", Steps="classify", Files=8, OutPath="C:\scratch\EN727")
+%      process_cruise("EN727", Steps="classify", NewOnly=true)   % at sea: new files only
 %
-% Steps
-%   1 files     FCS_DateTimeList -> bead_calibrated\FCSfileinfo.mat
-%               An existing FCSfileinfo.mat is extended with new files (opts.force: rebuild);
-%               pro_measured comes from attune_pro_measured (trigger settings and voltages).
-%   2 beads     bead table bead_calibrated\beadstat.mat
-%               - FCB bead cruises (attune_config fcb_beads): process_beads_PT_adjust_3.
-%                 It will not overwrite a table made another way (meta.source set)
-%                 unless opts.force.
-%               - no FCB beads (EN608 to EN627): pt_transfer\make_perf_beadstat.
-%                 EN627 keeps its PT conversion unless opts.force.
-%               A newly written table (FCB or PT transfer) also gets the bead review
-%               (classifier_dev\review\bead_review, page in bead_calibrated\bead_review\;
-%               for PT transfer it shows the performance tests) unless
-%               opts.bead_review is false. Runs or tests marked exclude there
-%               (bead_review_decisions.csv) are skipped by steps 3 and 4 (load_beadstat);
-%               after changing exclusions rerun from step 3 (without opts.append).
-%   3 classify  assign_class_v2 on every sample file -> bead_calibrated\class\<file>.mat
-%               holding class, syn_type, flag, notes, class_meta (see below), and the
-%               classification review in bead_calibrated\review\ (unless opts.review is
-%               false): one cytogram frame per file, per-file QC and index.html, a viewer
-%               that steps through the cruise, flags unusual files and saves review
-%               decisions to bead_calibrated\review_decisions.csv (classifier_dev\review)
-%   4 volume    batch_mergedSSC2volume: adds volume_cubic_microns etc. to the class files
-%   5 table     generate_attune_table -> bead_calibrated\AttuneTable.mat
-%   6 underway  match_Attune_underway_LTER -> bead_calibrated\AttuneTable_uw_match.mat
-%   7 movie     attune_lter_moviemaker (optional)
-%   8 voldists  get_cruise_voldists_fromEDItable2, Plot_Voldists_function (optional)
+% Steps (run in this order, however they are listed)
+%   files     FCS_DateTimeList -> bead_calibrated\FCSfileinfo.mat
+%             An existing FCSfileinfo.mat is extended with new files (Force: rebuild);
+%             pro_measured comes from attune_pro_measured (trigger settings and voltages).
+%   beads     bead table bead_calibrated\beadstat.mat
+%             - FCB bead cruises (attune_config fcb_beads): process_beads_PT_adjust_3.
+%               It will not overwrite a table made another way (meta.source set)
+%               unless Force.
+%             - no FCB beads (EN608 to EN627): pt_transfer\make_perf_beadstat.
+%               EN627 keeps its PT conversion unless Force.
+%             A newly written table (FCB or PT transfer) also gets the bead review
+%             (classifier_dev\review\bead_review, page in bead_calibrated\bead_review\;
+%             for PT transfer it shows the performance tests) unless Review is false.
+%             Runs or tests marked exclude there (bead_review_decisions.csv) are
+%             skipped by classify and volume (load_beadstat); after changing
+%             exclusions rerun from classify (without NewOnly).
+%   classify  assign_class_v2 on every sample file -> bead_calibrated\class\<file>.mat
+%             holding class, syn_type, flag, notes, class_meta (see below), and the
+%             classification review in bead_calibrated\review\ (unless Review is
+%             false): one cytogram frame per file, per-file QC and index.html, a viewer
+%             that steps through the cruise, flags unusual files and saves review
+%             decisions to bead_calibrated\review_decisions.csv (classifier_dev\review)
+%   volume    batch_mergedSSC2volume: adds volume_cubic_microns etc. to the class files
+%   table     generate_attune_table -> bead_calibrated\AttuneTable.mat
+%   metadata  match_Attune_underway_LTER -> bead_calibrated\AttuneTable_uw_match.mat
+%   movie     attune_lter_moviemaker (optional)
+%   voldists  get_cruise_voldists_fromEDItable2, Plot_Voldists_function (optional)
+% "core" = files beads classify volume table metadata; "all" adds movie and voldists.
 %
-% opts (all optional)
-%   .root      folder of cruise folders (default \\sosiknas1\Lab_data\Attune\cruise_data\)
-%   .outpath   output folder instead of <cruise>\bead_calibrated\ (testing). Steps 3 to 6
-%              read FCSfileinfo.mat and beadstat.mat from here, so copy them in first.
-%   .files     classify only these: a number n (n files spread through the cruise) or a
-%              cellstr of FCS names
-%   .append    true: skip files that already have a class file (default false)
-%   .parallel  true: parfor over files in step 3 (default true when a pool can start)
-%   .force     passed to the bead step; step 1 rebuilds FCSfileinfo (default false)
-%   .review    true (default): build the classification review during step 3. A run on
-%              some files (.files, .append) updates their frames and keeps the rest.
-%   .bead_review  true (default): build the bead review when step 2 writes a bead table
-%              (FCB runs, or the performance tests of a PT-transfer table)
+% Options (Name=Value, all optional)
+%   Steps     step labels, "core" (default) or "all"
+%   Sample    "underway" (default) or "preserved" (discrete samples: not implemented yet)
+%   Files     classify only these: a number n (n files spread through the cruise) or a
+%             list of FCS names (default: all sample files)
+%   NewOnly   true: classify only files without a class file (default false)
+%   Force     true: rebuild what steps would otherwise extend or protect: a fresh
+%             FCSfileinfo, a bead table replacing one not made from FCB beads
+%             (default false)
+%   OutPath   output folder instead of <cruise>\bead_calibrated\ (testing). Steps after
+%             files read FCSfileinfo.mat and beadstat.mat from here, so copy them in first.
+%   Parallel  true/false: parfor over files in classify (default: true when a pool can start)
+%   Review    true (default): build the classification and bead reviews. A run on some
+%             files (Files, NewOnly) updates their frames and keeps the rest.
+%   Root      folder of cruise folders (default \\sosiknas1\Lab_data\Attune\cruise_data\)
+% Options kept in a struct s can be passed as c = namedargs2cell(s); process_cruise(cruise, c{:})
 %
-% Class file variables written by step 3 (step 4 loads and re-saves the file, keeping them)
+% Class file variables written by classify (volume loads and re-saves the file, keeping them)
 %   class      per event, double: 0 unassigned, 1 Euk, 2 Syn, 3 dim crypto, 4 bright crypto,
 %              5 Euk with Syn, 7 Pro, 8 Syn on particle
 %   syn_type   per event, uint8: 1/2/3 Syn type A/B/C (PUB:PEB low/mid/high),
@@ -67,13 +72,31 @@ function p = process_cruise(cruise, steps, opts)
 %
 % Each run appends its settings to bead_calibrated\process_cruise_log.mat.
 %
-% Nov 2026, processing wrapper redesign (replaces process_wrapper_2024b)
+% Nov 2026, processing wrapper redesign (replaces process_wrapper_2024b);
+% 19 Nov 2026: Name=Value options and step labels replace step numbers and an opts struct
 
-if nargin < 2 || isempty(steps), steps = 1:6; end
-if nargin < 3, opts = struct(); end
-def = struct('root', '', 'outpath', '', 'files', [], 'append', false, 'parallel', [], 'force', false, 'review', true, 'bead_review', true);
-f = fieldnames(def);
-for i = 1:numel(f), if ~isfield(opts, f{i}), opts.(f{i}) = def.(f{i}); end, end
+arguments
+    cruise {mustBeTextScalar}
+    opt.Steps string = "core"
+    opt.Sample (1,1) string {mustBeMember(opt.Sample, ["underway" "preserved"])} = "underway"
+    opt.Files = []
+    opt.NewOnly (1,1) logical = false
+    opt.Force (1,1) logical = false
+    opt.OutPath (1,1) string = ""
+    opt.Parallel {mustBeScalarOrEmpty} = []
+    opt.Review (1,1) logical = true
+    opt.Root (1,1) string = ""
+end
+steps = step_list(opt.Steps);
+if opt.Sample == "preserved"
+    error('process_cruise:preserved', 'Sample="preserved" is not implemented yet')
+end
+if ~(isempty(opt.Files) || (isnumeric(opt.Files) && isscalar(opt.Files)) || iscellstr(opt.Files) || isstring(opt.Files))
+    error('process_cruise:files', 'Files must be a number of files or a list of FCS names')
+end
+opts = struct('root', char(opt.Root), 'outpath', char(opt.OutPath), 'files', {opt.Files}, ...
+    'newonly', opt.NewOnly, 'parallel', opt.Parallel, 'force', opt.Force, 'review', opt.Review);
+do = @(name) any(steps == name);
 
 here = fileparts(mfilename('fullpath'));
 addpath(here, fullfile(here, 'classifier_dev'), fullfile(here, 'classifier_dev', 'pt_transfer'), fullfile(here, 'classifier_dev', 'review'))
@@ -97,7 +120,8 @@ p.filetype2exclude = s.exclude;
 p.uw_fullname = s.underway;
 p.assign_class_function = 'assign_class_v2';
 p.config = c;
-p.steps = steps;
+p.steps = steps;          % step labels
+p.sample = opt.Sample;
 p.opts = opts;
 if strcmp(c.layout, 'v2019'), p.moviechannels = 'early'; else, p.moviechannels = 'late'; end
 p.framemaker = 'make_movieframe_density';
@@ -108,8 +132,8 @@ if ~isempty(s.notes), fprintf('  note: %s\n', s.notes); end
 if ~exist(p.classpath, 'dir'), mkdir(p.classpath); end
 write_log(p)
 
-%% 1 files
-if ismember(1, steps)
+%% files
+if do("files")
     fi = [p.outpath 'FCSfileinfo.mat'];
     if exist(fi, 'file') && ~opts.force
         FCSfileinfo = FCS_DateTimeList(p.fpath, fi); % reads only new files; fills voltages for old rows
@@ -117,13 +141,13 @@ if ismember(1, steps)
         FCSfileinfo = FCS_DateTimeList(p.fpath);
     end
     save(fi, 'FCSfileinfo')
-    fprintf('step 1: %d FCS files listed\n', height(FCSfileinfo))
+    fprintf('files: %d FCS files listed\n', height(FCSfileinfo))
 end
 
-%% 2 beads
-if ismember(2, steps)
+%% beads
+if do("beads")
     made = bead_step(p, c, opts.force);
-    if made && opts.bead_review
+    if made && opts.review
         try
             bead_review(p.cruise, struct('root', opts.root, 'beaddir', p.outpath));
         catch ME
@@ -132,35 +156,35 @@ if ismember(2, steps)
     end
 end
 
-%% 3 classify
-if ismember(3, steps)
+%% classify
+if do("classify")
     classify_step(p, c, opts)
 end
 
-%% 4 volume
-if ismember(4, steps)
+%% volume
+if do("volume")
     batch_mergedSSC2volume(p)
 end
 
-%% 5 table
-if ismember(5, steps)
+%% table
+if do("table")
     generate_attune_table(p.classpath, [p.outpath 'FCSfileinfo.mat'])
 end
 
-%% 6 underway
-if ismember(6, steps)
+%% metadata (underway match)
+if do("metadata")
     match_Attune_underway_LTER([p.outpath 'AttuneTable.mat'], p.uw_fullname);
 end
 
-%% 7 movie
-if ismember(7, steps)
+%% movie
+if do("movie")
     close all
     figure('WindowState', 'maximized')
     attune_lter_moviemaker(p.fpath, p.classpath, p.OD2setting, p.framemaker, p.moviechannels, p.stepsize)
 end
 
-%% 8 volume distributions
-if ismember(8, steps)
+%% volume distributions
+if do("voldists")
     get_cruise_voldists_fromEDItable2(p.basepath)
     Plot_Voldists_function(p.basepath, p.outpath)
 end
@@ -175,7 +199,7 @@ if c.fcb_beads
     if exist(fn, 'file')
         m = load(fn, 'meta');
         if isfield(m, 'meta') && isfield(m.meta, 'source') && ~force
-            fprintf('step 2: keeping %s (meta.source "%s"); opts.force = true to replace it with an FCB table\n', fn, m.meta.source)
+            fprintf('beads: keeping %s (meta.source "%s"); Force=true to replace it with an FCB table\n', fn, m.meta.source)
             return
         end
     end
@@ -185,12 +209,12 @@ if c.fcb_beads
 else
     try
         info = make_perf_beadstat(regexprep(p.basepath, '[\\/]+$', ''), struct('force', force, 'bead_dir', p.outpath));
-        fprintf('step 2: PT-transfer bead table from %d performance tests: %s\n', info.ntests, info.installed)
+        fprintf('beads: PT-transfer bead table from %d performance tests: %s\n', info.ntests, info.installed)
         made = strlength(string(info.installed)) > 0;
     catch ME
         if strcmp(ME.identifier, 'make_perf_beadstat:exists')
             m = load(fn, 'meta');
-            fprintf('step 2: keeping %s (meta.source "%s")\n', fn, m.meta.source)
+            fprintf('beads: keeping %s (meta.source "%s")\n', fn, m.meta.source)
         else
             rethrow(ME)
         end
@@ -210,17 +234,17 @@ elseif ~isempty(opts.files) && opts.files < height(Fi)
     Fi = Fi(unique(round(linspace(1, height(Fi), opts.files))), :);
 end
 classfile = strcat(p.classpath, regexprep(Fi.fcslist, '\.fcs$', '.mat'));
-if opts.append
+if opts.newonly
     have = cellfun(@(x) exist(x, 'file') == 2, classfile);
     Fi = Fi(~have, :); classfile = classfile(~have);
 end
 if ~ismember('trig_BL3_eq340', Fi.Properties.VariableNames) && height(Fi) > 0
     % FCSfileinfo from before Nov 2026: old pro_measured rule, no voltages
-    fprintf('step 3: FCSfileinfo predates the voltage-based pro_measured rule; recomputing it for these files (rerun step 1 to save it)\n')
+    fprintf('classify: FCSfileinfo predates the voltage-based pro_measured rule; recomputing it for these files (rerun the files step to save it)\n')
     Fi = attune_pro_measured(Fi, p.fpath);
 end
 n = height(Fi);
-fprintf('step 3: classifying %d files\n', n)
+fprintf('classify: %d files\n', n)
 if n == 0, return, end
 
 [bs, bmeta] = load_beadstat(p.outpath); % skips runs marked exclude in the bead review
@@ -284,7 +308,7 @@ L = [table(string(Fi.fcslist), t, pro, nev, ncomp, 'VariableNames', {'file' 'tim
     array2table(counts, 'VariableNames', {'n0' 'n1_euk' 'n2_syn' 'n3_crypto_dim' 'n4_crypto_bright' 'n5_euk_syn' 'n7_pro' 'n8_syn_particle' 'n_flagged'}) ...
     table(err, 'VariableNames', {'error'})];
 save([p.outpath 'class_log.mat'], 'L')
-fprintf('step 3: %d files classified, %d failed; log in %sclass_log.mat\n', sum(err == ""), sum(err ~= ""), p.outpath)
+fprintf('classify: %d files classified, %d failed; log in %sclass_log.mat\n', sum(err == ""), sum(err ~= ""), p.outpath)
 if do_review
     review_step(revdir, Q, R, p, version)
 end
@@ -312,7 +336,7 @@ decfile = fullfile(p.outpath, 'review_decisions.csv');
 err = strings(0, 1); %#ok<NASGU> same variables as review_cruise writes
 save(qf, 'Q', 'err', 'build', 'decfile')
 review_viewer(revdir, Q, R, p.cruise, decfile, build);
-fprintf('step 3: review of %d files: %s\n', numel(Q), fullfile(revdir, 'index.html'))
+fprintf('classify: review of %d files: %s\n', numel(Q), fullfile(revdir, 'index.html'))
 end
 
 
@@ -346,4 +370,19 @@ if exist(fn, 'file')
     if isfield(r, 'runs'), runs = [r.runs(:); run]; end
 end
 save(fn, 'runs')
+end
+
+
+function steps = step_list(req)
+% step labels in run order; "core" and "all" expand
+order = ["files" "beads" "classify" "volume" "table" "metadata" "movie" "voldists"];
+req = lower(strtrim(req(:)'));
+if any(req == "all"), req = [req order]; end
+if any(req == "core"), req = [req order(1:6)]; end
+req = req(~ismember(req, ["core" "all"]));
+bad = setdiff(req, order);
+if ~isempty(bad)
+    error('process_cruise:steps', 'Unknown step "%s". Steps are: %s, or "core" / "all"', bad(1), strjoin(order, ', '))
+end
+steps = order(ismember(order, req));
 end

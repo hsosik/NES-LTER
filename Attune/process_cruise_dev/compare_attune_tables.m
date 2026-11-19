@@ -1,6 +1,6 @@
 function R = compare_attune_tables(cruise, outdir, run)
 % function R = compare_attune_tables(cruise, outdir, run)
-% Process a whole cruise with process_cruise into a scratch folder (steps 3-6,
+% Process a whole cruise with process_cruise into a scratch folder (classify to metadata,
 % parallel) and compare the new AttuneTable with the existing one in the
 % cruise's bead_calibrated folder: new/old ratios of counts, biovolume and
 % carbon per file, median per-ml values of the new classes, the files with the
@@ -27,7 +27,7 @@ if run
     copyfile(fullfile(bc, 'FCSfileinfo.mat'), outdir)
     copyfile(fullfile(bc, 'beadstat.mat'), outdir)
     tic
-    process_cruise(cruise, [3 4 5 6], struct('outpath', outdir, 'parallel', true));
+    process_cruise(cruise, Steps=["classify" "volume" "table" "metadata"], OutPath=outdir, Parallel=true);
     fprintf('process_cruise: %.1f min\n', toc/60)
 end
 
