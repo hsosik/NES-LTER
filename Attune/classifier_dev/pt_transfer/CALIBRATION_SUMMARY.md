@@ -199,5 +199,10 @@ calibration. They land where the 2026 cultures do, after a filter-layout change 
 - Class-file volumes have not been regenerated for any cruise (rerun wrapper steps 5–6).
 - `compile_attune_histograms.m` still makes linear-bin modes.
 - SSC-A coefficients are not refit.
+- Possible 4th bead size for the Mie collection-cone fit (not used yet): a 9 µm bead run 11 min
+  after an FCB mix at the same settings (21 Jan 2020, current layout, OD2 on GL1, SSC 220; also
+  SSC 180 and two runs after a filter swap). `\sosiknas1\lab_data\Attune\ATX_FSC_misc_experiments\
+  bead_hv_experiment2\filter_swap_experiment\` ("filter experiment neutral.fcs" then "neutral 9um
+  beads.fcs"). Bead material/refractive index unknown; check before using.
 - Don't rerun wrapper step 4 on EN608, AR28B, AR29, EN617 or AR31A: it would overwrite the
   installed bead tables. Rebuild them with `classifier_dev/pt_transfer/make_perf_beadstat.m`.

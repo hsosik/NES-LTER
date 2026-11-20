@@ -89,3 +89,24 @@ These are relevant to what is worth keeping.
 - **EN627:** the PT scatter (FSC, SSC) moves between runs by up to ~0.5 log, which looks like a real change in instrument state (cleaning). The synthetic FSC and SSC therefore vary too (SD 0.19, 0.09); fluorescence varies 0.02–0.06.
 - **GL1:** no green scatter channel before Aug 2019, so there is no GL1 reference. `bead_reference` now warns and returns NaN for a channel without QC'd runs.
 - **Outputs:** calibration and per-cruise tables in `output/pt_conversion.mat`.
+
+## Between-cruise bead checks (Nov 2026)
+
+`generate_between_beadstats.m` writes `cruise_data\beads\FCB_bead_mix_experiment_settings\between_cruises\beadstat_2026\beadstat.mat`, plus a gating plot per run and `bead_timeseries.png`. It covers 297 FCB runs from 2019–2026 that are not in any cruise's table, grouped by year and split at the Aug 2019 filter-layout change and the Dec 2024 bead mix. It adds the columns `folder`, `group` and `bead_lot`. The old `between_cruises\outputs\beadstat.mat` (2021 format, still read by `Process_Preserved_AllSteps*`) is untouched.
+
+- **QC good:** 0.5 µm 284, 1 µm 269, 6 µm 229. Most failures are 6 µm runs in 2022–2023 with too few or no 6 µm beads.
+- **New FCB bead mix (11 Dec 2024):** comparing the old mix (3–6 Dec 2024, 5 runs) with the new mix (11–17 Dec, 10 runs), new − old in log10:
+
+  | Bead | Channel | Shift |
+  |---|---|---|
+  | 0.5 µm | BL2 | +0.06 |
+  | 0.5 µm | GL2 | +0.06 |
+  | 0.5 µm | GL4 | +0.02 |
+  | 1 µm | FSC | −0.01 |
+  | 1 µm | SSC | −0.02 |
+  | 1 µm | GL1 | −0.02 |
+  | 1 µm | BL1 | −0.05 |
+  | 1 µm | BL3 | −0.08 |
+  | 6 µm | GL3 | +0.02 |
+
+  Bead-normalized values therefore step at the lot change unless a per-lot correction is applied. The new-mix runs also vary more in their first week (SD 0.02–0.04 on fluorescence).
