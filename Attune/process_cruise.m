@@ -46,8 +46,10 @@ function p = process_cruise(cruise, opt)
 %             output in <cruise>\preserved\bead_calibrated\. Built so far: files (adds
 %             cast, niskin, runtype: preserved_fileinfo), beads (lab bead runs:
 %             preserved_bead_step), metadata (CTD bottles / event log:
-%             preserved_metadata, writes BottleMetadata.mat). classify, volume and table
-%             are skipped for now.
+%             preserved_metadata, writes BottleMetadata.mat), classify (by run type:
+%             assign_class_discrete for CHL/PE/pro runs, assign_class_hbac for SYBR runs;
+%             same-day lab beads, discrete_bead_reference; per-event time_gate mask).
+%             volume and table are skipped for now.
 %   Files     classify only these: a number n (n files spread through the cruise) or a
 %             list of FCS names (default: all sample files)
 %   NewOnly   true: classify only files without a class file (default false)
@@ -153,7 +155,7 @@ end
 if ~isempty(s.notes), fprintf('  note: %s\n', s.notes); end
 if ~exist(p.classpath, 'dir'), mkdir(p.classpath); end
 write_log(p)
-notyet = ["classify" "volume" "table"];
+notyet = ["volume" "table"];
 if pres && any(ismember(steps, notyet))
     fprintf('preserved samples: %s not built yet, skipped\n', strjoin(steps(ismember(steps, notyet)), ', '))
     steps = setdiff(steps, notyet, 'stable');
@@ -260,6 +262,8 @@ function classify_step(p, c, opts)
 load([p.outpath 'FCSfileinfo.mat'], 'FCSfileinfo')
 Fi = FCSfileinfo;
 Fi = Fi(~contains(Fi.fcslist, p.filetype2exclude), :);
+pres = isfield(p, 'sample') && p.sample == "preserved";
+if pres, Fi = Fi(~strcmp(Fi.runtype, 'other'), :); end
 Fi = sortrows(Fi, 'matdate_start');
 if iscell(opts.files) || isstring(opts.files)
     Fi = Fi(ismember(Fi.fcslist, cellstr(opts.files)), :);
@@ -271,7 +275,7 @@ if opts.newonly
     have = cellfun(@(x) exist(x, 'file') == 2, classfile);
     Fi = Fi(~have, :); classfile = classfile(~have);
 end
-if ~ismember('trig_BL3_eq340', Fi.Properties.VariableNames) && height(Fi) > 0
+if ~pres && ~ismember('trig_BL3_eq340', Fi.Properties.VariableNames) && height(Fi) > 0
     % FCSfileinfo from before Nov 2026: old pro_measured rule, no voltages
     fprintf('classify: FCSfileinfo predates the voltage-based pro_measured rule; recomputing it for these files (rerun the files step to save it)\n')
     Fi = attune_pro_measured(Fi, p.fpath);
@@ -282,9 +286,16 @@ if n == 0, return, end
 
 [bs, bmeta] = load_beadstat(p.outpath); % skips runs marked exclude in the bead review
 bexcl = bmeta.excluded;
-cfg = classifier_config();
-cfg.gl1_is_od2_scatter = strcmp(c.OD2, 'GL1');
-cfg.cruise = p.cruise; %bead_reference: OD2 placement (ref.OD2) and channel map from attune_config
+if pres
+    % preserved samples: lab runs (current layout, OD2 on GL1), preserved-sample settings
+    cfg = discrete_config();
+    cfg.gl1_is_od2_scatter = true;
+    cfg.cruise = 'LAB'; %bead_reference: attune_config('LAB') = OD2 on GL1, current layout
+else
+    cfg = classifier_config();
+    cfg.gl1_is_od2_scatter = strcmp(c.OD2, 'GL1');
+    cfg.cruise = p.cruise; %bead_reference: OD2 placement (ref.OD2) and channel map from attune_config
+end
 [~, h] = system(['git -C "' fileparts(mfilename('fullpath')) '" rev-parse --short HEAD']);
 [~, dirty] = system(['git -C "' fileparts(mfilename('fullpath')) '" status --porcelain -- classifier_dev']);
 version = strtrim(h);
@@ -295,7 +306,14 @@ if isfield(bmeta, 'source'), src = string(bmeta.source); end
 codes = class_codes();
 fcsfile = strcat(p.fpath, Fi.fcslist);
 names = Fi.fcslist; t = Fi.matdate_start; pro = Fi.pro_measured;
-nev = nan(n, 1); ncomp = nan(n, 1); counts = nan(n, 9); err = strings(n, 1);
+nev = nan(n, 1); ncomp = nan(n, 1); counts = nan(n, 10); err = strings(n, 1);
+tgf = 0.8; % preserved: count only the last 80% of acquisition time (as the hand gates)
+if pres
+    rt = Fi.runtype; pmeta = table2struct(Fi(:, {'cast' 'niskin' 'sample_label' 'repeat' 'sizefrac' 'vol_analyzed'}));
+    codes.class = codes.class + "; 9 = heterotrophic bacteria (SYBR-stained runs; Pro there are 7)";
+else
+    rt = repmat({''}, n, 1); pmeta = repmat(struct(), n, 1);
+end
 % classification review: frame and QC per file in the loop, viewer after it
 do_review = opts.review; revdir = fullfile(p.outpath, 'review'); R = []; Q = cell(n, 1);
 if do_review
@@ -309,20 +327,50 @@ M = 0; if use_par, M = Inf; end
 parfor (k = 1:n, M)
     try
         [fcsdat, fcshdr] = fca_readfcs(fcsfile{k});
-        ref = bead_reference(bs, t(k), cfg);
-        [cls, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, pro(k));
+        if pres
+            ref = discrete_bead_reference(bs, t(k), cfg);
+            if isempty(ref), error('process_cruise:nobeads', 'no lab bead run on %s', datestr(t(k), 'dd-mmm-yyyy')), end
+            if strcmp(rt{k}, 'hbac')
+                classifier = "assign_class_hbac"; [cls, info] = assign_class_hbac(fcsdat, fcshdr, ref, cfg);
+            else
+                classifier = "assign_class_discrete"; [cls, info] = assign_class_discrete(fcsdat, fcshdr, ref, cfg, rt{k});
+            end
+        else
+            ref = bead_reference(bs, t(k), cfg);
+            classifier = "assign_class_v2"; [cls, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, pro(k));
+        end
         o = struct();
-        o.class = double(cls);
-        o.syn_type = field_or(info, 'syn_type', zeros(size(cls), 'uint8'));
-        o.flag = field_or(info, 'flag', zeros(size(cls), 'uint8'));
-        o.notes = [codes.class; "assign_class_v2"; string(datetime('now')); codes.syn_type; codes.flag];
-        o.class_meta = struct('classifier', "assign_class_v2", 'date', datetime('now'), 'version', version, ...
+        o.class = double(cls(:));
+        o.syn_type = field_or(info, 'syn_type', zeros(numel(cls), 1, 'uint8'));
+        o.flag = field_or(info, 'flag', zeros(numel(cls), 1, 'uint8'));
+        o.notes = [codes.class; classifier; string(datetime('now')); codes.syn_type; codes.flag];
+        o.class_meta = struct('classifier', classifier, 'date', datetime('now'), 'version', version, ...
             'cruise', p.cruise, 'config', c, 'bead_source', src, 'bead_excluded', bexcl, 'ref', ref, 'cfg', cfg, ...
             'pro_measured', pro(k), 'pro_near_trigger_frac', pro_near_trigger(cls, info, pro(k)), ...
-            'ncomp', info.ncomp, 'comp', info.comp, ...
-            'trigger_edges', field_or(info, 'trigger_edges', struct()));
+            'ncomp', field_or(info, 'ncomp', NaN), 'comp', field_or(info, 'comp', table), ...
+            'trigger_edges', field_or(info, 'trigger_edges', field_or(info, 'edges', struct()))); % hbac: info.edges
+        if pres
+            o.time_gate = time_gate(fcsdat, fcshdr, tgf);
+            o.notes(6) = "time_gate: events in the last " + 100*tgf + "% of acquisition time; " + ...
+                "counts per ml use time_gate events and class_meta.vol_analyzed_ml";
+            m = pmeta(k);
+            o.class_meta.sample = "preserved";
+            o.class_meta.runtype = string(rt{k});
+            o.class_meta.cast = m.cast; o.class_meta.niskin = m.niskin;
+            o.class_meta.sample_label = string(m.sample_label); o.class_meta.repeat = m.repeat;
+            o.class_meta.sizefrac = string(m.sizefrac);
+            o.class_meta.time_gate_fraction = tgf;
+            o.class_meta.vol_analyzed_ml = tgf * m.vol_analyzed / 1e6;
+            o.class_meta.bead_fallback_days = field_or(ref, 'fallback', struct());
+            o.class_meta.pro = field_or(info, 'pro', struct()); % lower_bound used from CHL runs only (n: Pro count)
+            o.class_meta.large_pro = field_or(info, 'large_pro', struct());
+            o.class_meta.euk_autofluor = field_or(info, 'euk_autofluor', struct());
+            o.class_meta.discrete_cfg = field_or(info, 'discrete_cfg', struct()); % settings used (version tag)
+            if strcmp(rt{k}, 'hbac'), o.class_meta.hbac = struct('n_core', field_or(info, 'n_core', NaN), ...
+                    'chlx', field_or(info, 'chlx', []), 'pex', field_or(info, 'pex', [])); end
+        end
         save_classfile(classfile{k}, o)
-        if do_review
+        if do_review && ~strcmp(rt{k}, 'hbac') % SYBR runs: no review frame yet
             try
                 warning('off', 'stats:statrobustfit:IterationLimit')
                 Q{k} = review_sample(fcsdat, fcshdr, cls, info, [], revdir, names{k}, t(k), pro(k), R);
@@ -330,17 +378,18 @@ parfor (k = 1:n, M)
                 warning('process_cruise:review', '%s: review frame failed: %s', names{k}, ME.message)
             end
         end
-        nev(k) = numel(cls); ncomp(k) = info.ncomp;
+        nev(k) = numel(cls); ncomp(k) = field_or(info, 'ncomp', NaN);
         counts(k, :) = [sum(cls == 0) sum(cls == 1) sum(cls == 2) sum(cls == 3) sum(cls == 4) ...
-            sum(cls == 5) sum(cls == 7) sum(cls == 8) sum(o.flag > 0)];
+            sum(cls == 5) sum(cls == 7) sum(cls == 8) sum(cls == 9) sum(o.flag > 0)];
     catch ME
         err(k) = string(ME.identifier) + ": " + string(ME.message);
         warning('process_cruise:classify', '%s: %s', Fi.fcslist{k}, ME.message)
     end
 end
 L = [table(string(Fi.fcslist), t, pro, nev, ncomp, 'VariableNames', {'file' 'time' 'pro_measured' 'n_events' 'ncomp'}) ...
-    array2table(counts, 'VariableNames', {'n0' 'n1_euk' 'n2_syn' 'n3_crypto_dim' 'n4_crypto_bright' 'n5_euk_syn' 'n7_pro' 'n8_syn_particle' 'n_flagged'}) ...
+    array2table(counts, 'VariableNames', {'n0' 'n1_euk' 'n2_syn' 'n3_crypto_dim' 'n4_crypto_bright' 'n5_euk_syn' 'n7_pro' 'n8_syn_particle' 'n9_bact' 'n_flagged'}) ...
     table(err, 'VariableNames', {'error'})];
+if pres, L.runtype = string(rt); end
 save([p.outpath 'class_log.mat'], 'L')
 fprintf('classify: %d files classified, %d failed; log in %sclass_log.mat\n', sum(err == ""), sum(err ~= ""), p.outpath)
 if do_review
@@ -383,6 +432,16 @@ codes.syn_type = "syn_type (classes 2, 5, 8): 1 = type A (low PUB:PEB), 2 = type
 codes.flag = "flag (class 0 only): 1 = Syn-pigment particle with low chl (degraded Syn/Euk, grazer, detritus), " + ...
     "2 = below the Euk chl gap, 3 = trigger-noise pile at the chl edge (pre-2019 files), " + ...
     "4 = Pro-like (no PE, no larger than Syn) in a file run without Pro settings: Pro lower bound, 0 = none";
+end
+
+
+function g = time_gate(fcsdat, fcshdr, frac)
+% preserved samples: events in the last frac of the acquisition time (the hand-gated
+% analysis left out the first 20% of each run; ApplyAWSgates_hierarchical)
+it = find(strcmpi({fcshdr.par.name}, 'Time'), 1);
+if isempty(it), it = 1; end
+full = 1000 * etime(datevec([fcshdr.date ' ' fcshdr.stoptime]), datevec([fcshdr.date ' ' fcshdr.starttime]));
+g = fcsdat(:, it) <= full & fcsdat(:, it) > full * (1 - frac);
 end
 
 
