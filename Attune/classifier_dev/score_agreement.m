@@ -12,6 +12,8 @@ function A = score_agreement(cruisedir, nfiles, outdir)
 addpath(fullfile(fileparts(mfilename('fullpath')), '..'))
 root = '\\sosiknas1\lab_data\Attune\cruise_data\';
 cfg = classifier_config();
+cfg.cruise = extractAfter(cruisedir, '_'); %cruise settings from attune_config, as the processing wrapper does
+cfg.gl1_is_od2_scatter = strcmpi(attune_config(cfg.cruise).OD2, 'GL1');
 cpath = fullfile(root, cruisedir);
 bp = fullfile(cpath, 'bead_calibrated');
 bs = load_beadstat(bp);
@@ -36,7 +38,7 @@ for k = pick
         sum(old == new & old ~= 0) / sum(either), sum(old == 0 & new ~= 0), sum(old ~= 0 & new == 0), sum(old ~= 0 & new ~= 0 & old ~= new), ...
         sum(old == 1), sum(new == 1), sum(old == 2), sum(new == 2), sum(old == 3), sum(new == 3), sum(old == 4), sum(new == 4), sum(new == 5), sum(new == 8), sum(o34 == n34 & o34 ~= 0) / sum(either), sum(st == 1), sum(st == 2), sum(st == 3), sum(st == 9), info.euk_chl_gap - getedge(info), info.n_euk_below_gap, sum(info.flag == 1), sum(info.flag == 2), sum(info.flag == 3), ...
         'VariableNames', {'cruise' 'file' 'time' 'pro_measured' 'n_phyto' 'agreement' 'n_added' 'n_dropped' 'n_relabelled' ...
-        'old_euk' 'new_euk' 'old_syn' 'new_syn' 'old_peeuk' 'new_peeuk' 'old_peeuk4' 'new_peeuk4' 'new_euksyn' 'new_synpart' 'agreement_pe_merged' 'new_synA' 'new_synB' 'new_synC' 'new_syn_untyped' 'euk_gap_above_edge' 'n_euk_below_gap' 'flag_synpig' 'flag_below_gap' 'flag_pro_tail'})]; %#ok<AGROW>
+        'old_euk' 'new_euk' 'old_syn' 'new_syn' 'old_peeuk' 'new_peeuk' 'old_peeuk4' 'new_peeuk4' 'new_euksyn' 'new_synpart' 'agreement_pe_merged' 'new_synA' 'new_synB' 'new_synC' 'new_syn_untyped' 'euk_gap_above_edge' 'n_euk_below_gap' 'flag_synpig' 'flag_below_gap' 'flag_edge_pile'})]; %#ok<AGROW>
     fprintf('%s agreement %.3f (added %d, dropped %d, relabelled %d)\n', fn, A.agreement(end), A.n_added(end), A.n_dropped(end), A.n_relabelled(end));
 end
 save(fullfile(outdir, ['agreement_' extractAfter(cruisedir, '_') '.mat']), 'A')

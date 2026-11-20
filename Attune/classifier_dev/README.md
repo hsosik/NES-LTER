@@ -231,6 +231,7 @@ Candidate fixes:
   - Refitting with the chosen K from other starts did not separate it (CV 0.14 vs 0.13 for a real file); the instability came from BIC picking different K, and redoing that triples run time.
 - **AR95 21Oct AltPro(24) Pro(10):** v2 finds a stable, compact Pro cluster (~1,000 events, chl 0.9 below Syn, smaller, no PE) that the old classes do not have.
 - **Pro tail in Euk-setting files.** In files run without Pro settings, the bright tail of Pro piles up on the chl trigger edge. No-PE events within 0.4 of the BL3 edge and no larger than the file's Syn (+0.1) are left unassigned (`edge_pro_band`, `edge_pro_size_above_syn`). AR95 19Oct AltPro(19) Euk(20): v2 Euk 6,147 → 5,390 (old 5,422); HRS2609 17Aug(6) Euk(8): 2,347 → 1,839 (old 1,815). The band of 0.4 removes none of the old-class Euks in the AR95 file.
+  - *Removed later (Nov 2026): it sliced the bottom off real small-Euk clusters in summer files. See "Early cruises (before Aug 2019)" at the end.*
 - 60 files after these: median agreement AR92 0.979, AR95 0.952, EN727 0.924, HRS2609 0.971.
 
 ## Low-PE (3) and high-PE (4) euks
@@ -260,7 +261,7 @@ Candidate fixes:
 ## Dim crypto (3), bright crypto (4), Euk with Syn (5)
 
 Replaces the low-/high-PE split above. The old scripts intended 3 = dim cryptos (possibly with Syn grazers) and 4 = bright cryptos.
-- **5 = Euk with Syn:** Syn-like PE spectrum, PE ~1–1.6 Syn equivalents, chl normal for Euks of that size (`examine_lowpe.m`). Not chance coincidences (low-PE per Euk does not scale with Syn abundance across files). Possible grazers with ingested Syn, or Syn attached; cytometry cannot tell which. Counts as Euk.
+- **5 = Euk with Syn:** Syn-like PE spectrum, PE ~1–1.6 Syn equivalents, chl normal for Euks of that size (`examine_lowpe.m`). Not chance coincidences (low-PE per Euk does not scale with Syn abundance across files). Possible grazers with ingested Syn, or Syn attached; cytometry cannot tell which. Not included in Euk totals: classes are mutually exclusive, and any sums are decided case by case downstream (decision Nov 2026).
   - Events more than 0.5 log10 below the file's Euk chl-size line go to 8 (Syn on a particle): two groups in EN727 (1.2 and 0.24 below) and AR92 (0.8 below, 22%) (`examine_euksyn_en727.m`).
 - **3 = dim crypto, 4 = bright crypto:** cryptophyte-type spectrum (BL2:GL3 > 0.3 below Syn). In EN727/AR95 two compact groups: dim (PE ~0.25–0.75 above Syn, BL2:GL3 ~0.85–1.0 below Syn, side scatter ~0) and bright (PE 1.2–2.2, BL2:GL3 ~0.6 below, side scatter 0.2–1.2) (`output/crypto_groups.png`).
   - Per-file 2-group fit on [PE in Syn equivalents, BL2:GL3 − Syn], accepted only if each group ≥15 events, compact (PE SD ≤ 0.4, BL2:GL3 SD ≤ 0.2), ≥3 pooled SDs apart, and the dimmer group more red-shifted. Accepted in all 3 crypto-rich EN727 test files and AR95 22Oct(10); not in summer.
@@ -305,7 +306,7 @@ Replaces the low-/high-PE split above. The old scripts intended 3 = dim cryptos 
 ## Catch-all for cell-like events
 
 - Principle (Nov 2026): events with PE like a cell and/or chl like a cell for their size should not end up unassigned.
-- Final step in `assign_class_v2`: unassigned events with cell-like PE (GL2 no more than 0.5 below the file's median Syn GL2, ~1/3 of a Syn; `cell_PE_below_syn`) or cell-like chl (above the detritus cut and, for particles well larger than Syn, above the file's Euk chl:size cut) take the majority class of their 10 nearest assigned neighbours (standardized size, chl, GL2, BL2, GL3), only if they meet that class's own rules: Euk/Euk-with-Syn no more than 0.5 smaller than Syn; Syn inside the Syn size window; cryptos larger than Syn + 0.6; Pro only in Pro files; Syn-on-particle above its size cut. Otherwise they stay unassigned. The Pro tail at the chl trigger in non-Pro files stays unassigned.
+- Final step in `assign_class_v2`: unassigned events with cell-like PE (GL2 no more than 0.5 below the file's median Syn GL2, ~1/3 of a Syn; `cell_PE_below_syn`) or cell-like chl (above the detritus cut and, for particles well larger than Syn, above the file's Euk chl:size cut) take the majority class of their 10 nearest assigned neighbours (standardized size, chl, GL2, BL2, GL3), only if they meet that class's own rules: Euk/Euk-with-Syn no more than 0.5 smaller than Syn; Syn inside the Syn size window; cryptos larger than Syn + 0.6; Pro only in Pro files; Syn-on-particle above its size cut. Otherwise they stay unassigned. The Pro tail at the chl trigger in non-Pro files stays unassigned. *(Later: the Pro-tail cut is gone; the catch-all now keeps out the capped trigger-noise pile instead, and catch-all Euks may not carry Syn-like PE. See "Early cruises (before Aug 2019)".)*
 - First version counted any detected PE as cell-like and ignored the class rules: in EN727 it added ~500 faint-PE non-phyto particles per file and ~2,300 tiny signals (size −3 to −2) as Euk/Syn; EN727 median agreement fell 0.908 → 0.822.
 - Syn size window now capped at 0.8 below the Syn median (`syn_size_max_below`): the mixture had put tiny PE signals in a Syn component, widening the robust-SD window. EN727 26Jan(13) Syn: 1,811 → 1,135 (old 1,093).
 - Open: EN727 24Jan(1) Sample(1) Syn 1,172 vs old 785 (winter Syn smear file).
@@ -500,6 +501,7 @@ The old dim crypto class is known to be a mixture, so agreement with it is not a
   | 3 | Pro tail at the chl trigger (non-Pro files) | 376 | 0–4 |
 
   `score_agreement` reports per-file counts as `flag_synpig`, `flag_below_gap` and `flag_pro_tail`.
+  - *Flag 3 now means the trigger-noise pile at the chl trigger in capped files (before Aug 2019), since the Pro-tail cut was removed. The `score_agreement` column is now `flag_edge_pile`; agreement files saved before Nov 2026 still have `flag_pro_tail`.*
 - **Planned for integration.** The per-sample class files would carry `syn_type` and `flag` as extra per-event variables next to `class`, with `notes` describing the codes. Code that reads only `class` is unaffected.
 
 ### New hv exponents and bead stats; Pro chl:scatter rule (Nov 2026)
@@ -537,3 +539,123 @@ The old dim crypto class is known to be a mixture, so agreement with it is not a
   | HRS2609 | 83,842 → 88,728 | 15,222 → 18,563 | 112,673 → 129,516 |
 
 - **Other changes in this rescore.** Small class changes also appeared, for example AR95 18Oct AltPro(11) Pro(8) 0.938 → 0.922 and HRS2609 below-gap flags 2,819 → 2,246. They come from concurrent edits to `assign_class_v2.m` by the pre-2019 channel-mapping session, not from the typing change.
+
+## Early cruises (before Aug 2019)
+
+### Channel map from `attune_config` (Nov 2026)
+
+- **Problem.** Before the 16 Aug 2019 filter change (`attune_config(...).layout == 'v2019'`: EN608, AR28B, AR29, EN617, AR31A, EN627, AR34B, RB1904, TN368) the green-laser parameters are shifted, and there is no green side scatter:
+
+  | Physical channel | File parameter before Aug 2019 |
+  |---|---|
+  | GL1 (530/30 + OD2 green scatter) | none |
+  | GL2 (575/36, PE) | `GL1-H` |
+  | GL3 (620/15) | `GL2-H` |
+  | GL4 (680/40) | `GL3-H` |
+
+  v2 read raw `<ch>-H` names, so on these cruises it read the wrong channels.
+- **Fix.**
+  - `bead_reference` stores `ref.chan` and `ref.layout` from `attune_config` for the sample time, plus `ref.OD2` when `cfg.cruise` is set.
+  - `attune_features` reads each physical channel through `ref.chan`. A missing channel (physical GL1 before 2019) becomes a NaN column with no floor. Trigger names are translated too (file `OR_GL1` is physical GL2 before 2019; raw names in `info.trigger_file`). New `info.col` gives the file column for each physical channel; the saturation checks use it.
+  - The GL1 size merge runs only if `cfg.gl1_is_od2_scatter` is true, GL1 has values, and `ref.OD2` (when known) is `'GL1'`; `info.size_from_gl1` records it. Callers set `cfg.cruise = cruise` and `cfg.gl1_is_od2_scatter = strcmpi(attune_config(cruise).OD2, 'GL1')`.
+  - `beadstat` needed no change: the FCB bead pipeline and the PT transfer already write physical channel names (GL1 = NaN before 2019).
+- **Effect.** After 2019 every class, Syn type and flag is identical. Early-cruise agreement with the old classes, median over 12 files: TN368 0.69 → 0.89, AR34B 0.77 → 0.82, RB1904 0.76 → 0.93, EN627 0.54 → 0.90 (raw names → channel map).
+
+### Trigger-noise pile and rare Syn (Nov 2026)
+
+- **Problem.** In AR34B, RB1904 and EN627 (no OD2, low trigger thresholds), no-PE events within 0.4 of the chl trigger are 60–98% of the chl-bearing events (non-Pro files after 2019: under 25%; `measure_edge_pile.m`). The mixture spent its components on them: real Syn were absorbed, and a few bright cryptos were named Syn. Some files fell to 0.03–0.25.
+- **Changes in `assign_class_v2`:**
+  1. **Capped fit.** In non-Pro files where the pile is over `edge_pile_max_frac` (0.5) of chl events, it enters the fit sample at most `edge_pile_fit_ratio` (1) times the other events, with enough events left to fit the largest mixture (`info.edge_pile_frac`, `info.edge_pile_capped`).
+  2. **Pile labels.** In those files pile events may only be Euk or unassigned and stay out of the catch-all. Euk-labelled pile events are unassigned at any size, as the old per-cruise classifiers did (raw BL3 < 200 with a trigger of 100). Flag 3.
+  3. **Rare Syn.** If no component is named Syn, events with PE, a Syn-type spectrum, and PE:chl and size near the `cfg` Syn defaults start as Syn (at least `syn_rescue_min_n`, 20), then pass the usual Syn checks (`info.syn_rescued`). They must have chl above the chl trigger + 0.4: in RB1904 12May Sample(1) the PE-triggered pile below the chl trigger otherwise became the Syn reference (2,187 false Syn on particle; saturated bright cryptos called dim).
+  4. **Syn PE gap.** The gap search uses only Syn-named events no larger than Syn + `syn_size_tol`. A bright-crypto component named Syn had put the gap above the real Syn and removed every one of them (AR34B 16Apr c, 22Apr d).
+  5. **Guards.** If no mixture can be fitted, v2 returns all 0 instead of crashing (AR28B 03Apr2018A Sample(10) is 100% pile). Both "nothing to classify" exits now set `info.syn_type`, `info.flag` and `info.features`.
+- **Effect.** Median (lowest) agreement over 12 files: AR34B 0.92 (0.78), EN627 0.92 (0.83), RB1904 0.93 (0.86), TN368 0.89 (0.56). Changes 1–3 never trigger after 2019; change 4 moved 1–3 events in 3 of 48 files there.
+
+### Pro-tail cut removed; Euks carry no Syn-like PE (Nov 2026)
+
+- **Why.** In summer files the small no-PE events near the chl trigger are a real Euk cluster that peaks 0.4–0.9 above the trigger, and the Pro-tail cut sliced off its lower part: about 3,500 old-class Euks in 12 TN368 files, and some in AR92 and HRS2609 (`measure_pro_tail.m`, `assess_pro_tail_removal.m`). In winter files the Euk-gap rule already handles most of the pile.
+- **What the cut was also doing.** Outside EN727 most of the events it removed were faint Syn-like events detected by the PE trigger alone (chl below the chl trigger, PE:chl like Syn) that a Euk component had absorbed (AR95, HRS2609, AR34B, RB1904: 40–90 per file; `show_pro_tail_examples.m`).
+- **Changes.**
+  - The Pro-tail cut is removed (`edge_pro_size_above_syn` gone; `edge_pro_band` stays for the pile and the Syn rescue).
+  - New rule: an event named Euk that has PE with PE:chl above the file's Syn PE:chl minus `syn_PEchl_tol` is unassigned, in the main rules and the catch-all (`info.n_euk_synpe`, `info.rules.euk_synpe_PEchl`).
+  - Flag 3 now marks only the capped trigger-noise pile; `score_agreement` reports it as `flag_edge_pile`.
+  - `score_agreement` now sets `cfg.cruise` and `cfg.gl1_is_od2_scatter` from `attune_config`, as the processing wrapper will.
+- **Effect.** Median agreement on 96 non-Pro files (`rescore_euk_pe_rule.m`), before → now: TN368 0.886 → 0.909 (lowest 0.56 → 0.62), AR92 0.983 → 0.987, others within 0.002 (AR34B 0.922 → 0.921, EN727 0.930 → 0.928, AR95 0.971 → 0.970). No file is worse by more than 0.005. Pro-setting files: 19 of 24 identical, the rest within 4–33 events.
+- **Left as Euk.** No-PE events at the chl trigger that the old classes left out (`scan_edge_euks.m`, `show_edge_euk_examples.m`): 57 of 6,781 Euks in EN727 25Jan(9), where the pile has no gap deep enough for the gap rule; 0–9 in every other file.
+
+### Syn on particle needs chl above the chl trigger (Nov 2026)
+
+- **Problem.** In EN617 20Jul2018A Sample(1) the chl trigger cuts the Syn cluster in half (53% of Syn have chl below it). 2,201 of 2,269 Syn on particle there had chl below the chl trigger: a band of faint large events detected by the PE trigger alone, two thirds of them also within 0.3 of the PE trigger. Their chl is not measured, so "less chl than one Syn plus a Euk" cannot be judged.
+- **Change.** `synpart_rule` also requires chl above the chl trigger edge (`F.BL3 > edge.BL3`, where a chl trigger exists).
+- **Effect** (`compare_synpart_edge.m`, `output/early_layout_robust/synpart_edge.mat`; 96 non-Pro files, 24 Pro-setting files, 6 EN617 files):
+  - 33 of 126 files change; none gets worse; the largest gain is +0.0095 (HRS2609 SummerSyn(12) Euk(9)). Median agreement: TN368 0.909 → 0.910 (lowest 0.617 → 0.626), AR92 0.987 → 0.987; others unchanged.
+  - Syn on particle, total before → after: TN368 940 → 496, HRS2609 5,118 → 4,559, AR92 846 → 738, AR34B 326 → 297, RB1904 2,310 → 2,242, EN617 4,420 → 2,133. Pro-setting files, EN627, EN727 and AR95 are unchanged.
+  - EN617 20Jul A: 2,269 → 65; the band is now unassigned. The 65 left are its upper fringe just above the chl trigger (scatter 1–2 log10). EN617 25Jul A Sample(99) keeps all 1,825, which are well clear of both triggers, with Syn PE:chl and Euk-like FSC-W; they look genuine.
+
+### Validation and review scripts
+
+| script | what it does |
+|---|---|
+| `validate_early_layout.m` | agreement with the old classes for one early cruise, with the `attune_config` cruise settings; optional second classifier for before/after |
+| `run_early_layout_validation.m` | runs the above for all early cruises; `'regress'` compares post-2019 files event by event |
+| `summarize_early_layout.m` | one row per cruise from an output folder |
+| `review_early_file.m` | review cytograms (`plot_class_cytograms`) and rule panels (`plot_v2_rules`) for one early-cruise file |
+| `measure_edge_pile.m` | trigger-noise pile fraction per file |
+
+Results: `output/early_layout/` (channel map only), `output/early_layout_robust/` (review figures in `review/`). There, `agreement_<CRUISE>_layout.mat` for TN368, AR34B, RB1904 and EN627 predate the Pro-tail removal; their scores with the final code are in `euk_pe_rule.mat`. No old class files exist for EN608, AR28B, AR29, EN617 and AR31A, so those have counts only, re-run with the final code (6 files each, no errors). EN617 Syn on particle is reviewed in the section above (`review/EN617_*`).
+
+### Pro-like small Euks; event-level Pro pick tried and switched off (Nov 2026)
+
+- **Pro-like events are no longer Euk.** No-PE events that are smaller than the Syn peak and dimmer than `pro_max_BL3` are now Pro-like, not Euk (`info.trace.euk_prolike`); the catch-all may not re-add them as Euk.
+  - In files run without Pro settings they become class 0, and flag 4 (Pro-like) when at or above the chl edge. That feeds the Pro lower bound.
+  - Small Euks brighter than Pro can be are kept, which protects Ostreococcus-like cells.
+  - In AR104 wPro runs, 17–71 Euks per file move out.
+  - 60-file Euk v2/old ranges: AR92 0.96–1.06 → 0.96–1.00, AR95 0.98–1.05 → 0.98–1.01.
+- **Event-level Pro pick: tried, now OFF** (`pro_pick_min_n` = Inf). It applies only to Pro-setting files where the mixture names no Pro. It picks small no-PE, low-chl events with chl:scatter within 1.0 of Syn, if their size distribution has its own peak.
+  - In AR104 wPro runs (run as Pro settings) there is no such peak. About 1,300 small faint events per file spread evenly into the trigger pile, mostly 1.1–1.5 below Syn in chl:scatter, so the pick correctly found nothing. Plot: `output/examples/ar104_wpro3_rules.png`.
+  - In AR95 it invented Pro where the old classes have none: 677 in 19Oct AltPro(30), the faint-detritus case judged not Pro, and 493 in 18Oct AltPro(11).
+- **AR104 Pro flag.** `FCSfileinfo` on the NAS has pro_measured = 0 for 2,848 of 2,856 files. It predates the voltage-based `attune_pro_measured` rule, under which the wPro runs (AND_SSC 500 at 240 V / AND_BL3 300 at 410 V) count as Pro-capable.
+- **Concurrent change from another session.** Syn on particle now requires chl above the chl trigger edge (uncommitted edit by the pre-2019 / wrapper sessions, for EN617). That is why Syn on particle fell in OR_BL3-triggered summer files: AR92 1,094 → 950, HRS2609 2,025 → 1,817.
+
+### Pro components judged against Syn: size and chl:scatter (Nov 2026)
+
+- **Survey.** `survey_pro.m` classified 12 Pro-capable Pro-named files per cruise (voltage rule, `attune_pro_measured`) in AR79, AR82A, AE2426, AR92, AR95, HRS2609 and AR104, and listed every mixture component that is dim and has no PE (`output/pro_survey_base.mat` before, `output/pro_survey.mat` after). `comp_detail.m` lists all components of chosen files.
+  - Real Pro components (holding the old-class Pro) sit **0.12–1.0 smaller than the Syn components** and **0.1–1.0 below Syn in chl:scatter**.
+  - Summer Pro (AR92, HRS2609) are 0.25–0.7 smaller than Syn, with size −1.5 to −2.0. Fall and spring Pro (AR79, AR82A, AE2426, AR104 offshore) are often only 0.15–0.5 smaller, with size about −1.40.
+- **The AR104 problem was the fixed size cut, not chl:scatter.** A component could be Pro only if its size was below `pro_max_SSC` (−1.44). Fall/spring Pro clusters at −1.38 to −1.43 were named Euk, then removed as Pro-like Euks, and the catch-all gave back only part of them.
+  - AR104 23Oct wPro(1): the Pro cluster (half the chl events, 0.8–0.9 below Syn in chl:scatter, well within the 1.0 rule) gave 0–4,900 Pro per file.
+  - AR82A 06Apr alternating_shelf_pro: 0 v2 Pro against 19,375 old.
+- **Change** (`assign_class_v2`, after `name_components`):
+  - `name_components` names any compact, dim, no-PE component a Pro candidate, whatever its size.
+  - Candidates are then judged against the file's Syn components (weighted means):
+    - size at least `pro_min_size_below_syn` (0.1) below Syn, else Euk as before;
+    - size no more than `pro_max_size_below_syn` (1.1) below Syn;
+    - chl:scatter below Syn's (`pro_max_chlSSC_above_syn` = 0);
+    - chl:scatter within `pro_max_chlSSC_below_syn` (1.0) of Syn, unchanged.
+  - Rejected candidates: `info.pro_comp_rejected`. Files without a Syn component keep the fixed `pro_max_SSC` window.
+  - Catch-all Pro must be smaller than the Syn peak (was SSC < `pro_max_SSC`).
+  - The two new upper limits remove tiny high-chl artifacts: 1.2–1.5 smaller than Syn, at or above Syn in chl:scatter. They were named Pro in AR104 23Oct wPro(9) Sample(1) (9,154 Pro) and gave 300–430 Pro per file in AR79.
+- **Effect.**
+  - **60-file check** (AR92, AR95, EN727, HRS2609): median and lowest agreement per cruise unchanged. 5 files change by at most 0.0005 and 23 Pro.
+  - **Survey files.** Pro-setting files whose Pro the size cut had lost now match the old classes:
+
+    | file | old | before | after |
+    |---|---|---|---|
+    | AR82A 06Apr alternating_shelf_pro | 19,375 | 0 | 20,035 |
+    | AR82A 07Apr Pro_only(2) Sample(34) | 19,204 | 7,540 | 18,378 |
+    | AR82A 09Apr alternating_shelf_pro(3) Pro(5) | 14,956 | 9,431 | 16,124 |
+    | AR82A 08Apr alternating_shelf_pro(9) Pro(16) | 4,202 | 2,636 | 4,655 |
+    | AE2426 08Nov alternating_shelf_pro(7) | 3,729 | 1,886 | 4,270 |
+
+    AR79 10Nov Pro(14) goes 11,905 → 15,984, with old 0, as in the first file of the run. Summer files are unchanged.
+  - **AR104 offshore** (3 files per Pro-run group, `output/ar104_pro_scan.mat`):
+    - 23 Oct 05:00 to 24 Oct 00:00 is now a continuous 15,000–33,000 Pro per file. Before, about 10 files there fell to 0–7,600 (23Oct wPro(1) Sample(50): 0 → 19,106; 22Oct wPro(13) Sample(14): 5,965 → 16,256).
+    - 20 Oct 01:00–06:00 is unchanged (about 500–5,800).
+    - The shelf (22 Oct) and 24 Oct after 01:00 stay at 0.
+  - **Cases not to count:** AR95 19Oct AltPro(30) Pro(10) stays at 0 Pro (the false group is 1.13 below Syn in chl:scatter, 0.20 above the chl edge). AR95 21Oct AltPro(24) keeps its real cluster (about 1,100).
+- **Chl:scatter limit not loosened.** With the size fix, no AR104 offshore Pro component falls outside the 1.0 limit. The components that do are near-edge groups (0.1–0.3 above the chl trigger, 1.0–1.2 below Syn) with no old-class Pro, in AE2426, AR95 and HRS2609. A cruise-level Pro reference is not needed for these files.
+- **Open (unchanged by this change; old classes have 0 Pro):**
+  - AR95 18Oct AltPro(11): 350–550 Pro in about a third of its files, from a small compact group 0.6–0.8 smaller than Syn, 0.6–0.8 below in chl:scatter, 0.2–0.7 above the edge.
+  - Similar small groups of 360–1,600 Pro in AR95 18Oct AltPro(7) and 19Oct AltPro(29), AE2426 08Nov (5)/(9) and 09Nov (3)/(12), AR92 18Aug ProAlt(15) Pro(6), and HRS2609 less_sensitive (6).
+  - AR79 09Nov Pro(11): 553 old Pro, 0 in v2. They sit in a broad mixed component (size SD 1.0).

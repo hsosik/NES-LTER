@@ -73,6 +73,7 @@ info.n_has_chl = sum(has_chl);
 if size(X, 1) < 50
     info.ncomp = 0; info.comp = table;
     info.syn_type = zeros(n, 1, 'uint8'); info.flag = zeros(n, 1, 'uint8'); info.features = F; %nothing assigned
+    info.euk_chl_gap = -Inf; info.n_euk_below_gap = 0; info.syn_rescued = 0; info.n_euk_synpe = 0;
     return
 end
 
@@ -120,6 +121,7 @@ end
 if isempty(best) %no mixture could be fitted (too few events): nothing assigned
     info.ncomp = 0; info.comp = table;
     info.syn_type = zeros(n, 1, 'uint8'); info.flag = zeros(n, 1, 'uint8'); info.features = F; %nothing assigned
+    info.euk_chl_gap = -Inf; info.n_euk_below_gap = 0; info.syn_rescued = 0; info.n_euk_synpe = 0;
     return
 end
 info.ncomp = best.NumComponents;
@@ -127,13 +129,38 @@ info.gmm = best;
 
 % name components from their means
 mu = name_components(best, finfo, sig, pe_min, pro_measured);
-% Pro components must have chl per scatter close to the file's Syn components
-% (real Pro clusters in 14 Pro-setting files: 0.28-0.82 below Syn); a compact
-% group far lower is faint detritus / small particles at the bottom of the
-% background smear (AR95 19Oct AltPro(30) Pro(10): 1.2 below), not Pro
-if any(mu.label == 7) && any(mu.label == 2)
-    sync = sum(mu.chlSSC(mu.label == 2) .* mu.weight(mu.label == 2)) / sum(mu.weight(mu.label == 2));
-    mu.label(mu.label == 7 & mu.chlSSC < sync - sig.pro_max_chlSSC_below_syn) = 0;
+% Pro candidates (compact, dim, no PE) are judged against this file's Syn
+% components (Nov 2026; survey of 108 Pro-setting files in 9 cruises,
+% survey_pro / comp_detail in the README):
+%  size: smaller than Syn by more than pro_min_size_below_syn. The fixed
+%    pro_max_SSC (-1.44) named fall/spring Pro clusters only 0.15-0.5 smaller than
+%    Syn (size about -1.40) as Euk (AR104 23Oct wPro(1), AR82A, AE2426, AR79),
+%    leaving them to the catch-all; candidates that are not smaller go back to Euk.
+%    And no more than pro_max_size_below_syn smaller: tiny high-chl artifacts
+%    1.2-1.5 below Syn (AR104 23Oct wPro(9) Sample(1), AR79) are not Pro (real Pro
+%    0.1-1.0 below)
+%  chl per scatter: below Syn's (real Pro 0.1-1.0 below; the artifacts sit at or
+%    above Syn), and within pro_max_chlSSC_below_syn of Syn; a compact group far
+%    lower is faint detritus / small particles at the bottom of the background
+%    smear (AR95 19Oct AltPro(30) Pro(10): 1.1-1.2 below), not Pro
+% Files with no Syn component keep the fixed size window
+info.pro_comp_rejected = zeros(0, 1);
+if any(mu.label == 7)
+    if any(mu.label == 2)
+        ws = mu.weight(mu.label == 2);
+        sync = sum(mu.chlSSC(mu.label == 2) .* ws) / sum(ws);
+        syns = sum(mu.SSC(mu.label == 2) .* ws) / sum(ws);
+        cand = mu.label == 7;
+        too_big = cand & mu.SSC >= syns - sig.pro_min_size_below_syn;
+        bad = cand & ~too_big & (mu.SSC < syns - sig.pro_max_size_below_syn | ...
+            mu.chlSSC > sync + sig.pro_max_chlSSC_above_syn | mu.chlSSC < sync - sig.pro_max_chlSSC_below_syn);
+        mu.label(too_big) = 1;
+        mu.label(bad) = 0;
+        info.pro_comp_rejected = find(bad);
+    else
+        too_big = mu.label == 7 & mu.SSC >= sig.pro_max_SSC;
+        mu.label(too_big) = 1;
+    end
 end
 info.comp = mu;
 
@@ -285,6 +312,12 @@ end
 % no known Euks are much smaller than Syn (Ostreococcus is only slightly smaller);
 % smaller chlorophyll-bearing particles without PE are Pro only in Pro-setting files
 class(class == 1 & F.size < syn_size - sig.euk_min_size_below_syn) = 0;
+% ... and Euks smaller than the Syn peak must be brighter in chl than Pro can be:
+% small no-PE events dimmer than pro_max_BL3 are Pro-like (bright Pro in files run
+% without Pro settings, or Pro the mixture did not separate), not Euks (Nov 2026)
+euk_prolike = ~has_pe & F.size < syn_size & F.BL3 < sig.pro_max_BL3;
+class(class == 1 & euk_prolike) = 0;
+info.trace.euk_prolike = euk_prolike;
 % Euks carry no PE: events named Euk that have PE with about the PE:chl of this file's
 % Syn are not Euks (Nov 2026). In OR-trigger files faint Syn-like events detected by
 % the PE trigger alone (chl below the chl edge) were put in Euk components (AR95,
@@ -380,6 +413,41 @@ if isfield(edge, 'BL3')
     class(class == 1 & euk_below_gap) = 0;
 end
 info.n_euk_below_gap = sum(euk_below_gap & info.trace.after_gmm == 1);
+% event-level Pro pick (Nov 2026): in Pro-setting files the mixture can merge Pro
+% into the pile of faint low-chl particles at the trigger and form no Pro component
+% (AR104 wPro runs). If no Pro were named, take small no-PE events dimmer than
+% pro_max_BL3 whose chl:scatter is within pro_max_chlSSC_below_syn of Syn (not the
+% faint detritus of AR95 19Oct AltPro(30)), but only if their size distribution
+% has its own peak below the Syn peak, separated by a minimum from the larger
+% particles of the trigger pile; Pro = candidates smaller than that minimum
+info.pro_pick = struct('used', false, 'n', 0, 'size_cut', NaN);
+if pro_measured && ~any(class == 7) && any(class == 2)
+    sync = median(F.chlSSC(class == 2));
+    lowc = ismember(class, [0 1]) & ~has_pe & F.BL3 < sig.pro_max_BL3 & F.BL3 > chl_min & F.SSC > finfo.floor.SSC + 0.1;
+    cand = lowc & F.size < syn_size & F.chlSSC > sync - sig.pro_max_chlSSC_below_syn;
+    if sum(cand) >= sig.pro_pick_min_n
+        [fk, gk] = ksdensity(F.size(lowc), 'NumPoints', 400, 'Bandwidth', sig.pro_pick_bw);
+        % smallest substantial size mode below the Syn peak
+        pk = find(islocalmax(fk) & fk > sig.pro_pick_min_peak * max(fk) & gk < syn_size);
+        if ~isempty(pk)
+            p1 = pk(1);
+            above = find(islocalmax(fk) & gk > gk(p1) & fk > sig.pro_pick_min_peak * max(fk), 1);
+            if isempty(above)
+                cut = syn_size;
+            else
+                [fmin, jm] = min(fk(p1:above)); jm = p1 - 1 + jm;
+                if fmin < sig.pro_pick_max_dip * fk(p1), cut = min(gk(jm), syn_size); else, cut = NaN; end
+            end
+            if isfinite(cut)
+                pp = cand & F.size < cut;
+                if sum(pp) >= sig.pro_pick_min_n && 1.4826 * mad(F.BL3(pp), 1) <= sig.pro_max_sd_BL3
+                    class(pp) = 7;
+                    info.pro_pick = struct('used', true, 'n', sum(pp), 'size_cut', cut);
+                end
+            end
+        end
+    end
+end
 % Pro have no PE: GL2 must be at the noise level seen in this file's Euks
 % (which also lack PE), else the file's GL2 floor plus a default
 pro = class == 7;
@@ -592,6 +660,11 @@ if any(class == 2)
         abs(F.PEchl - syn_PEchl) < sig.synpart_PEchl_tol & (~gl3ok | (F.GL2GL3 > syn_range(1) - sig.synpart_GL2GL3_tol & F.GL2GL3 < syn_range(2) + sig.synpart_GL2GL3_tol)) & ...
         F.BL3 > syn_BL3 - sig.synpart_BL3_below & F.BL3 < syn_BL3 + sig.synpart_BL3_above & ...
         F.size > synpart_cut & below_trend;
+    % ... with chl above the chl trigger edge: about one Syn's chl must be measured, not
+    % cut by the trigger. Where the chl trigger cuts through the Syn cluster, PE-triggered
+    % large particles with faint PE at the trigger limits formed a band of false Syn on
+    % particle (EN617 20Jul2018A Sample(1): 2,201 of 2,269 below the chl edge) (Nov 2026)
+    if isfield(edge, 'BL3'), synpart_rule = synpart_rule & F.BL3 > edge.BL3; end
     synpart = ismember(class, [0 2]) & synpart_rule;
     class(synpart) = 8;
     info.trace.synpart_main = synpart; %(trace only)
@@ -634,6 +707,7 @@ if any(left) && sum(refset) >= 50
     smin_euk = syn_size - sig.euk_min_size_below_syn;
     ok = false(size(nl));
     ok(nl == 1 | nl == 5) = fz.size(nl == 1 | nl == 5) > smin_euk;
+    ep = euk_prolike(left); ok((nl == 1 | nl == 5) & ep) = false; %small, dim, no PE: Pro-like, not Euk
     % catch-all Euks carry no Syn-like PE either (rule above)
     hpz = has_pe(left);
     ok(nl == 1) = ok(nl == 1) & ~(hpz(nl == 1) & fz.PEchl(nl == 1) > syn_PEchl - sig.syn_PEchl_tol);
@@ -656,11 +730,12 @@ if any(left) && sum(refset) >= 50
         fz.GL2(nl == 2) >= syn_PE_floor & fz.PEchl(nl == 2) > syn_PEchl - sig.syn_PEchl_tol & fz.PEchl(nl == 2) < syn_PEchl + max(sig.syn_PEchl_tol, sig.syn_PEchl_sd * syn_PEchl_sdv);
     ok(nl == 3 | nl == 4) = fz.size(nl == 3 | nl == 4) > syn_size + sig.peeuk_size_above_syn;
     ok(nl == 7) = logical(pro_measured);
-    % ... and the Pro rules: no PE above the file's Pro ceiling, smaller and dimmer than
-    % Syn (pro_max_SSC / pro_max_BL3), chl:scatter close to the file's Pro
+    % ... and the Pro rules: no PE above the file's Pro ceiling, smaller than the Syn
+    % peak (Nov 2026: was SSC < pro_max_SSC, which fall Pro just smaller than Syn
+    % fail) and dimmer than pro_max_BL3, chl:scatter close to the file's Pro
     if exist('pro_GL2_max', 'var') && any(class == 7)
         pc = median(F.chlSSC(class == 7)); ps = max(1.4826 * mad(F.chlSSC(class == 7), 1), 0.05);
-        ok(nl == 7) = ok(nl == 7) & fz.GL2(nl == 7) <= pro_GL2_max & fz.SSC(nl == 7) < sig.pro_max_SSC & fz.BL3(nl == 7) < sig.pro_max_BL3 & ...
+        ok(nl == 7) = ok(nl == 7) & fz.GL2(nl == 7) <= pro_GL2_max & fz.size(nl == 7) < syn_size & fz.BL3(nl == 7) < sig.pro_max_BL3 & ...
             abs(fz.chlSSC(nl == 7) - pc) < sig.pro_chlSSC_sd * ps;
     else
         ok(nl == 7) = false;
@@ -788,14 +863,15 @@ for c = 1:height(mu)
         mu.label(c) = 2;                      %Syn PE spectrum
     elseif comp_pe
         mu.label(c) = 3;                      %cryptophyte-type PE
+    elseif pro_measured && m.BL3 < sig.pro_max_BL3 && sqrt(g.Sigma(2, 2, c)) <= sig.pro_max_sd_BL3
+        % Pro candidate: dim, no PE, and a compact cluster in chl. Its size is
+        % judged against this file's Syn after naming (assign_class_v2, Nov 2026);
+        % candidates too large for Pro go back to Euk there
+        mu.label(c) = 7;
     elseif pro_measured && m.SSC < sig.pro_max_SSC && m.BL3 < sig.pro_max_BL3
-        % Pro need a compact cluster: a diffuse component that happens to fall in
-        % the Pro size/chl window (small Euks and noise in cold water) is left unassigned
-        if sqrt(g.Sigma(2, 2, c)) <= sig.pro_max_sd_BL3
-            mu.label(c) = 7;
-        else
-            mu.label(c) = 0;
-        end
+        % a diffuse component in the Pro size/chl window (small Euks and noise in
+        % cold water) is left unassigned
+        mu.label(c) = 0;
     else
         mu.label(c) = 1;
     end

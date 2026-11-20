@@ -17,15 +17,25 @@ cfg.gl1_is_od2_scatter = strcmpi(attune_config(cruise).OD2, 'GL1');
 cpath = fullfile(root, cruisedir);
 bp = fullfile(cpath, 'bead_calibrated');
 bs = load_beadstat(bp);
-load(fullfile(bp, 'FCSfileinfo.mat'), 'FCSfileinfo')
-k = find(strcmp(FCSfileinfo.fcslist, fcsname));
-pm = 0;
-if ismember('pro_measured', FCSfileinfo.Properties.VariableNames), pm = FCSfileinfo.pro_measured(k); end
 [fcsdat, fcshdr] = fca_readfcs(fullfile(cpath, 'FCS', fcsname));
-ref = bead_reference(bs, FCSfileinfo.matdate_start(k), cfg);
+pm = 0;
+if isfile(fullfile(bp, 'FCSfileinfo.mat'))
+    load(fullfile(bp, 'FCSfileinfo.mat'), 'FCSfileinfo')
+    k = find(strcmp(FCSfileinfo.fcslist, fcsname));
+    if ismember('pro_measured', FCSfileinfo.Properties.VariableNames), pm = FCSfileinfo.pro_measured(k); end
+    t = FCSfileinfo.matdate_start(k);
+else %(2018 cruises: time from the FCS header)
+    t = datenum([fcshdr.date ' ' fcshdr.starttime]); %#ok<DATNM>
+end
+ref = bead_reference(bs, t, cfg);
 [new, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, pm);
-c = load(fullfile(bp, 'class', regexprep(fcsname, '\.fcs$', '.mat')), 'class');
-old = c.class(:, 1); old(~ismember(old, [0 1 2 3 4 7])) = 0;
+cf = fullfile(bp, 'class', regexprep(fcsname, '\.fcs$', '.mat'));
+if isfile(cf)
+    c = load(cf, 'class'); old = c.class(:, 1);
+else %no old class file (EN608, AR28B, AR29, EN617, AR31A): existing-class row stays empty
+    old = zeros(size(new)); c.class = old;
+end
+old(~ismember(old, [0 1 2 3 4 7])) = 0;
 either = old ~= 0 | new ~= 0;
 ag = sum(old == new & old ~= 0) / sum(either);
 ttl = sprintf('%s   agreement %.3f   v2 adds %d, drops %d, relabels %d of %d phyto events   trigger %s %g, %s %g (file names; physical edges %s)   noise pile %.2f%s', ...
