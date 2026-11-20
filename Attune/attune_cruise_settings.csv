@@ -1,7 +1,7 @@
 cruise,folder,underway_source,exclude_extra,notes,bottle_format,bottle_source,elog_source,exclude_extra_preserved
 EN608,20180131_EN608,,,,,,,
 AR28B,20180404_AR28B,,,,,,,
-AR29,20180414_AR29,\\sosiknas1\Lab_data\SPIROPA\20180414_AR29\underway\procAR29_underway_all.mat,,,,,,
+AR29,20180414_AR29,\\sosiknas1\Lab_data\SPIROPA\20180414_AR29\underway\proc\AR29_underway_all.mat,,,,,,
 EN617,20180720_EN617,,,,,,,
 SR1812,20180810_SR1812,,,not in attune_config cruise lists: check OD2/layout before processing,exports,\\sosiknas1\Lab_data\EXPORTS\SallyRideSIOBottleFiles_v6.csv,\\sosiknas1\Lab_data\EXPORTS\SR1812\share\R2R_ELOG_SR1812_FINAL_EVENTLOG_20180913_022931_edited_Sosik_postcruise.csv,
 AR31A,20181020_AR31A,,,,,,,

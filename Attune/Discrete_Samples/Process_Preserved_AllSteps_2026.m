@@ -27,7 +27,7 @@ step = zeros(1,7);
 step(steps2do) = 1;
 
 basepath_temp =  '\\sosiknas1\Lab_data\Attune\cruise_data\';
-basepath_temp = '\\sosiknas1\Lab_data\Attune\2026_settings_evaluation\'
+%basepath_temp = '\\sosiknas1\Lab_data\Attune\2026_settings_evaluation\'
 temp = dir([basepath_temp '*' cruise]);
 if ~isempty(temp)
     p.basepath = [basepath_temp temp.name filesep 'preserved'];
