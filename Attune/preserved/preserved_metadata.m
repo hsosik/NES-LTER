@@ -55,6 +55,14 @@ fprintf('metadata: %d samples, %d matched to bottles, %d to the event log, %d un
 if ~isempty(unmatched)
     fprintf('  unmatched: %s\n', strjoin(string(unmatched.sample_label), ', '))
 end
+% the per-Niskin table (table step) gets the metadata
+tf = [p.outpath 'DiscreteTable.mat'];
+if exist(tf, 'file')
+    D = load(tf, 'T', 'table_metadata');
+    T = preserved_join_metadata(D.T, p); table_metadata = D.table_metadata; %#ok<NASGU>
+    save(tf, 'T', 'table_metadata')
+    fprintf('metadata: added to %s\n', tf)
+end
 end
 
 

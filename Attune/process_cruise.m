@@ -48,8 +48,10 @@ function p = process_cruise(cruise, opt)
 %             preserved_bead_step), metadata (CTD bottles / event log:
 %             preserved_metadata, writes BottleMetadata.mat), classify (by run type:
 %             assign_class_discrete for CHL/PE/pro runs, assign_class_hbac for SYBR runs;
-%             same-day lab beads, discrete_bead_reference; per-event time_gate mask).
-%             volume and table are skipped for now.
+%             same-day lab beads, discrete_bead_reference; per-event time_gate mask),
+%             volume (preserved_volume: same calibration, beads from class_meta.ref),
+%             table (preserved_table: per-Niskin DiscreteTable.mat, each group from one
+%             run type; joined with BottleMetadata by the metadata step).
 %   Files     classify only these: a number n (n files spread through the cruise) or a
 %             list of FCS names (default: all sample files)
 %   NewOnly   true: classify only files without a class file (default false)
@@ -155,12 +157,6 @@ end
 if ~isempty(s.notes), fprintf('  note: %s\n', s.notes); end
 if ~exist(p.classpath, 'dir'), mkdir(p.classpath); end
 write_log(p)
-notyet = ["volume" "table"];
-if pres && any(ismember(steps, notyet))
-    fprintf('preserved samples: %s not built yet, skipped\n', strjoin(steps(ismember(steps, notyet)), ', '))
-    steps = setdiff(steps, notyet, 'stable');
-    do = @(name) any(steps == name);
-end
 
 %% files
 if do("files")
@@ -195,12 +191,17 @@ if do("classify")
 end
 
 %% volume
-if do("volume")
+if do("volume") && pres
+    use_par = opts.parallel; if isempty(use_par), use_par = license('test', 'Distrib_Computing_Toolbox'); end
+    preserved_volume(p, use_par); % bead reference from class_meta (same-day lab beads)
+elseif do("volume")
     batch_mergedSSC2volume(p)
 end
 
 %% table
-if do("table")
+if do("table") && pres
+    preserved_table(p); % per-Niskin DiscreteTable.mat
+elseif do("table")
     generate_attune_table(p.classpath, [p.outpath 'FCSfileinfo.mat'])
 end
 
