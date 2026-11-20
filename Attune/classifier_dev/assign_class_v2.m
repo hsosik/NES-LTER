@@ -726,13 +726,22 @@ info.syn_type = st;
 % 1 = Syn-pigment particle with low chl (Euk-with-Syn-like but far below the Euk
 %     chl-size line: detritus or grazers with partly degraded Syn and/or Euks)
 % 2 = faint particle below the chl gap at the bottom of the Euks
-% 3 = Pro tail at the chl trigger in files run without Pro settings
+% 3 = trigger-noise pile at the chl edge (capped files, pre-2019)
+% 4 = Pro-like event in a file run without Pro settings: no PE, chl at or above the
+%     chl trigger edge, no larger than the file's Syn (peak size). Such files do not
+%     get class 7, and their chl trigger cuts off dim Pro, so these events count
+%     only as a lower bound for Pro (Nov 2026)
 fl = zeros(n, 1, 'uint8');
 if isfield(info.trace, 'euksyn_lowchl'), fl(class == 0 & info.trace.euksyn_lowchl) = 1; end
 fl(class == 0 & fl == 0 & euk_below_gap) = 2;
 fl(class == 0 & fl == 0 & pile_cut) = 3;
+if ~pro_measured
+    if isfield(edge, 'BL3'), at_chl = F.BL3 >= edge.BL3; else, at_chl = F.BL3 > sig.chl_min; end
+    fl(class == 0 & fl == 0 & ~has_pe & at_chl & F.size <= syn_size & F.SSC > finfo.floor.SSC + 0.1) = 4;
+end
 info.flag = fl;
-info.flag_names = {'Syn-pigment particle, low chl (degraded Syn/Euk, grazer, detritus)' 'below Euk chl gap' 'trigger-noise pile at the chl edge (capped files)'};
+info.flag_names = {'Syn-pigment particle, low chl (degraded Syn/Euk, grazer, detritus)' 'below Euk chl gap' ...
+    'trigger-noise pile at the chl edge (capped files)' 'Pro-like (no PE, no larger than Syn) in a file without Pro settings: Pro lower bound'};
 info.syn_type_names = sig.syn_type_names; info.syn_type_edges = sig.syn_type_edges;
 info.features = F;
 end

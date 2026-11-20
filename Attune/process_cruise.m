@@ -42,7 +42,12 @@ function p = process_cruise(cruise, opt)
 %
 % Options (Name=Value, all optional)
 %   Steps     step labels, "core" (default) or "all"
-%   Sample    "underway" (default) or "preserved" (discrete samples: not implemented yet)
+%   Sample    "underway" (default) or "preserved": discrete samples from <cruise>\preserved\FCS,
+%             output in <cruise>\preserved\bead_calibrated\. Built so far: files (adds
+%             cast, niskin, runtype: preserved_fileinfo), beads (lab bead runs:
+%             preserved_bead_step), metadata (CTD bottles / event log:
+%             preserved_metadata, writes BottleMetadata.mat). classify, volume and table
+%             are skipped for now.
 %   Files     classify only these: a number n (n files spread through the cruise) or a
 %             list of FCS names (default: all sample files)
 %   NewOnly   true: classify only files without a class file (default false)
@@ -63,12 +68,15 @@ function p = process_cruise(cruise, opt)
 %   syn_type   per event, uint8: 1/2/3 Syn type A/B/C (PUB:PEB low/mid/high),
 %              9 Syn-bearing but spectrum not usable, 0 not Syn-bearing (classes 2, 5, 8 only)
 %   flag       per event, uint8, only on class 0: 1 Syn-pigment particle with low chl
-%              (degraded Syn/Euk, grazer, detritus), 2 below the Euk chl gap, 3 Pro tail
-%              at the chl trigger
+%              (degraded Syn/Euk, grazer, detritus), 2 below the Euk chl gap, 3 trigger-
+%              noise pile at the chl edge (pre-2019), 4 Pro-like event in a file without
+%              Pro settings (Pro lower bound)
 %   notes      string: (1) class codes, (2) classifier name, (3) date, (4) syn_type codes,
 %              (5) flag codes
 %   class_meta struct: classifier, date, code version, cruise configuration, bead
-%              reference used, classifier settings, mixture components
+%              reference used, classifier settings, mixture components,
+%              pro_near_trigger_frac (Pro-setting files: share of Pro within 0.1 log of
+%              the SSC or chl trigger edge)
 %
 % Each run appends its settings to bead_calibrated\process_cruise_log.mat.
 %
@@ -88,8 +96,9 @@ arguments
     opt.Root (1,1) string = ""
 end
 steps = step_list(opt.Steps);
-if opt.Sample == "preserved"
-    error('process_cruise:preserved', 'Sample="preserved" is not implemented yet')
+pres = opt.Sample == "preserved";
+if pres && any(ismember(steps, ["movie" "voldists"]))
+    error('process_cruise:preserved', 'movie and voldists are not used for preserved samples')
 end
 if ~(isempty(opt.Files) || (isnumeric(opt.Files) && isscalar(opt.Files)) || iscellstr(opt.Files) || isstring(opt.Files))
     error('process_cruise:files', 'Files must be a number of files or a list of FCS names')
@@ -99,15 +108,23 @@ opts = struct('root', char(opt.Root), 'outpath', char(opt.OutPath), 'files', {op
 do = @(name) any(steps == name);
 
 here = fileparts(mfilename('fullpath'));
-addpath(here, fullfile(here, 'classifier_dev'), fullfile(here, 'classifier_dev', 'pt_transfer'), fullfile(here, 'classifier_dev', 'review'))
+addpath(here, fullfile(here, 'preserved'), fullfile(here, 'classifier_dev'), fullfile(here, 'classifier_dev', 'pt_transfer'), ...
+    fullfile(here, 'classifier_dev', 'review'), fullfile(here, 'classifier_dev', 'discrete'))
 
 %% settings
 s = attune_cruise_settings(cruise, opts.root);
 c = s.config;
+if pres
+    % preserved samples are run in the lab after the cruise: current layout, OD2 on GL1
+    c = attune_config('LAB');
+end
 p.cruise = s.cruise;
 p.basepath = [s.basepath filesep];
 p.fpath = fullfile(s.basepath, 'FCS', filesep);
-if isempty(opts.outpath)
+if pres, p.fpath = fullfile(s.preserved_path, 'FCS', filesep); end
+if isempty(opts.outpath) && pres
+    p.outpath = fullfile(s.preserved_path, 'bead_calibrated', filesep);
+elseif isempty(opts.outpath)
     p.outpath = fullfile(s.basepath, 'bead_calibrated', filesep);
 else
     p.outpath = [regexprep(char(opts.outpath), '[\\/]+$', '') filesep];
@@ -117,6 +134,7 @@ p.OD2setting = c.OD2;      % read by batch_mergedSSC2volume and the movie maker
 p.SSCDIM = 'H';            % batch_mergedSSC2volume: height channels
 p.beadfiles2include = {'FCB_bead' 'fcb_bead'};
 p.filetype2exclude = s.exclude;
+if pres, p.filetype2exclude = s.exclude_preserved; end
 p.uw_fullname = s.underway;
 p.assign_class_function = 'assign_class_v2';
 p.config = c;
@@ -127,10 +145,20 @@ if strcmp(c.layout, 'v2019'), p.moviechannels = 'early'; else, p.moviechannels =
 p.framemaker = 'make_movieframe_density';
 p.stepsize = 1;
 
-fprintf('%s: %s\n  OD2 on %s, layout %s, FCB beads %d\n', p.cruise, p.basepath, c.OD2, c.layout, c.fcb_beads)
+if pres
+    fprintf('%s preserved samples: %s\n', p.cruise, p.fpath)
+else
+    fprintf('%s: %s\n  OD2 on %s, layout %s, FCB beads %d\n', p.cruise, p.basepath, c.OD2, c.layout, c.fcb_beads)
+end
 if ~isempty(s.notes), fprintf('  note: %s\n', s.notes); end
 if ~exist(p.classpath, 'dir'), mkdir(p.classpath); end
 write_log(p)
+notyet = ["classify" "volume" "table"];
+if pres && any(ismember(steps, notyet))
+    fprintf('preserved samples: %s not built yet, skipped\n', strjoin(steps(ismember(steps, notyet)), ', '))
+    steps = setdiff(steps, notyet, 'stable');
+    do = @(name) any(steps == name);
+end
 
 %% files
 if do("files")
@@ -140,12 +168,15 @@ if do("files")
     else
         FCSfileinfo = FCS_DateTimeList(p.fpath);
     end
+    if pres, FCSfileinfo = preserved_fileinfo(FCSfileinfo); end % cast, niskin, runtype...
     save(fi, 'FCSfileinfo')
     fprintf('files: %d FCS files listed\n', height(FCSfileinfo))
 end
 
 %% beads
-if do("beads")
+if do("beads") && pres
+    preserved_bead_step(p, opts.force); % lab bead runs (bead review page: not yet for lab tables)
+elseif do("beads")
     made = bead_step(p, c, opts.force);
     if made && opts.review
         try
@@ -171,8 +202,10 @@ if do("table")
     generate_attune_table(p.classpath, [p.outpath 'FCSfileinfo.mat'])
 end
 
-%% metadata (underway match)
-if do("metadata")
+%% metadata (underway match; bottle match for preserved samples)
+if do("metadata") && pres
+    preserved_metadata(p, s);
+elseif do("metadata")
     match_Attune_underway_LTER([p.outpath 'AttuneTable.mat'], p.uw_fullname);
 end
 
@@ -285,7 +318,8 @@ parfor (k = 1:n, M)
         o.notes = [codes.class; "assign_class_v2"; string(datetime('now')); codes.syn_type; codes.flag];
         o.class_meta = struct('classifier', "assign_class_v2", 'date', datetime('now'), 'version', version, ...
             'cruise', p.cruise, 'config', c, 'bead_source', src, 'bead_excluded', bexcl, 'ref', ref, 'cfg', cfg, ...
-            'pro_measured', pro(k), 'ncomp', info.ncomp, 'comp', info.comp, ...
+            'pro_measured', pro(k), 'pro_near_trigger_frac', pro_near_trigger(cls, info, pro(k)), ...
+            'ncomp', info.ncomp, 'comp', info.comp, ...
             'trigger_edges', field_or(info, 'trigger_edges', struct()));
         save_classfile(classfile{k}, o)
         if do_review
@@ -347,7 +381,25 @@ codes.class = "class: 0 = unassigned, 1 = Euk (no PE), 2 = Syn, 3 = dim crypto (
 codes.syn_type = "syn_type (classes 2, 5, 8): 1 = type A (low PUB:PEB), 2 = type B (mid), 3 = type C (high PUB:PEB), " + ...
     "9 = spectrum not usable, 0 = not Syn-bearing";
 codes.flag = "flag (class 0 only): 1 = Syn-pigment particle with low chl (degraded Syn/Euk, grazer, detritus), " + ...
-    "2 = below the Euk chl gap, 3 = Pro tail at the chl trigger, 0 = none";
+    "2 = below the Euk chl gap, 3 = trigger-noise pile at the chl edge (pre-2019 files), " + ...
+    "4 = Pro-like (no PE, no larger than Syn) in a file run without Pro settings: Pro lower bound, 0 = none";
+end
+
+
+function f = pro_near_trigger(cls, info, pro)
+% Pro-setting files: fraction of Pro (class 7) within 0.1 log of the SSC or chl (BL3)
+% trigger edge, i.e. where the trigger may be cutting off small, dim Pro (a quality
+% flag, not a correction). NaN for other files or without Pro
+f = NaN;
+p = cls == 7;
+if ~pro || ~any(p) || ~isfield(info, 'features') || ~isfield(info, 'trigger_edges'), return, end
+near = false(sum(p), 1);
+for ch = {'SSC' 'BL3'}
+    if isfield(info.trigger_edges, ch{1})
+        near = near | info.features.(ch{1})(p) - info.trigger_edges.(ch{1}) < 0.1;
+    end
+end
+f = mean(near);
 end
 
 

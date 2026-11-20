@@ -52,7 +52,9 @@ SynPart_count = NaN(length(filelist), 1); %class 8: Syn on particle, count only 
 syntype_classes = {2 'Syn'; 5 'Euk_with_Syn'; 8 'Syn_on_particle'};
 syntype_codes = {1 'typeA'; 2 'typeB'; 3 'typeC'; 9 'type_unusable'};
 SynTypeCount = NaN(length(filelist), size(syntype_classes, 1)*size(syntype_codes, 1));
-flag_codes = {1 'Flag_lowchl_Syn_pigment'; 2 'Flag_below_Euk_chl_gap'; 3 'Flag_Pro_tail'};
+flag_codes = {1 'Flag_lowchl_Syn_pigment'; 2 'Flag_below_Euk_chl_gap'; 3 'Flag_chl_edge_noise'; 4 'Flag_Pro_like'};
+Pro_near_trigger_fraction = NaN(length(filelist), 1); %class_meta.pro_near_trigger_frac (Pro-setting files)
+ProMeasured = NaN(length(filelist), 1); %class_meta.pro_measured: the setting the file was classified with
 FlagCount = NaN(length(filelist), size(flag_codes, 1));
 Num_particles= NaN(length(filelist), 1); 
 
@@ -131,7 +133,13 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
     SynPart_count(count) = sum(rename_class==8);
     %syn_type and flag read by name: a bare load does not shadow functions
     %(flag is a colormap function), so read them into a struct
-    ev = load(filename, 'syn_type', 'flag');
+    ev = load(filename, 'syn_type', 'flag', 'class_meta');
+    if isfield(ev, 'class_meta') && isfield(ev.class_meta, 'pro_near_trigger_frac')
+        Pro_near_trigger_fraction(count) = ev.class_meta.pro_near_trigger_frac;
+    end
+    if isfield(ev, 'class_meta') && isfield(ev.class_meta, 'pro_measured')
+        ProMeasured(count) = double(ev.class_meta.pro_measured);
+    end
     if isfield(ev, 'syn_type') && numel(ev.syn_type) == numel(rename_class)
         col = 0;
         for ii = 1:size(syntype_classes, 1)
@@ -171,9 +179,28 @@ classnames = [classnames; {'ProX'}];
 AttuneTable = [AttuneTable array2table(Count, 'VariableNames', regexprep(classnames, 'X', '_count'))];
 AttuneTable = [AttuneTable array2table(Biovol, 'VariableNames', regexprep(classnames, 'X', '_biovolume'))];
 AttuneTable = [AttuneTable array2table(Carbon, 'VariableNames', regexprep(classnames, 'X', '_carbon'))];
-if ismember('pro_measured', Attune.FCSfileinfo.Properties.VariableNames) %older FCSfileinfo files lack it
-    AttuneTable.Pro_count(~Attune.FCSfileinfo.pro_measured) = NaN;
+% pro_measured: as the file was classified (class_meta, process_cruise), else from
+% FCSfileinfo (older class files; older FCSfileinfo files lack it)
+pm = ProMeasured;
+if ismember('pro_measured', Attune.FCSfileinfo.Properties.VariableNames)
+    fpm = double(Attune.FCSfileinfo.pro_measured);
+    pm(isnan(pm)) = fpm(isnan(pm));
 end
+if any(~isnan(pm))
+    % Pro not measured: Pro columns empty, and the Pro-like events (flag 4) give a
+    % lower bound; in Pro-setting files the lower bound is empty (Nov 2026)
+    nopro = pm == 0;
+    AttuneTable.Pro_count(nopro) = NaN;
+    AttuneTable.Pro_biovolume(nopro) = NaN;
+    AttuneTable.Pro_carbon(nopro) = NaN;
+    AttuneTable.Pro_lower_bound_count = FlagCount(:, 4);
+    AttuneTable.Pro_lower_bound_count(~nopro) = NaN;
+    AttuneTable.Pro_measured = pm;
+else
+    AttuneTable.Pro_lower_bound_count = NaN(height(AttuneTable), 1);
+    AttuneTable.Pro_measured = pm;
+end
+AttuneTable.Pro_near_trigger_fraction = Pro_near_trigger_fraction;
 
 AttuneTable = [AttuneTable array2table(NewCount, 'VariableNames', regexprep(newclassnames, 'X', '_count'))];
 AttuneTable = [AttuneTable array2table(NewBiovol, 'VariableNames', regexprep(newclassnames, 'X', '_biovolume'))];
@@ -206,7 +233,8 @@ else
     table_metadata = {notes(2); classpath; string(datetime())};
     if numel(notes) >= 5 %assign_class_v2 class files: class, syn_type and flag code descriptions
         table_metadata = [table_metadata; {notes(1); notes(4); notes(5); ...
-            'Crypto_dim/Crypto_bright = classes 3/4 (together = Euk_w_PE); Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Syn type counts by class; flags are class 0 events'}];
+            'Crypto_dim/Crypto_bright = classes 3/4 (together = Euk_w_PE); Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Syn type counts by class; flags are class 0 events'; ...
+            'Pro_count/biovolume/carbon NaN in files run without Pro settings; Pro_lower_bound_count = Pro-like events (flag 4) there, NaN in Pro-setting files; Pro_near_trigger_fraction = share of Pro within 0.1 log of the SSC or chl trigger edge (Pro-setting files)'}];
     end
 end
 

@@ -14,6 +14,14 @@ function s = attune_cruise_settings(cruise, root)
 % s.exclude    - cellstr; FCS files whose names contain any of these are not
 %                classified (defaults plus the csv's exclude_extra, ';'-separated)
 % s.notes      - csv notes (printed by process_cruise)
+% Preserved (discrete) samples, process_cruise(..., Sample="preserved"):
+% s.preserved_path    - <basepath>\preserved
+% s.exclude_preserved - cellstr of FCS name patterns not processed (defaults plus
+%                       the csv's exclude_extra_preserved)
+% s.bottle_format     - reader for the CTD bottle data: 'api' (default, NES-LTER API),
+%                       'exports', 'tn368', 'hb1907', 'ar43' (see preserved_bottles)
+% s.bottle_source     - bottle file or URL (default: NES-LTER API ctd/bottles)
+% s.elog_source       - event log file or URL, for underway discretes (default: API events)
 % s.config     - attune_config(cruise)
 %
 % To add a cruise: add a row to attune_cruise_settings.csv; check that
@@ -44,7 +52,8 @@ if isempty(i)
     end
     warning('attune_cruise_settings:notInTable', '%s is not in attune_cruise_settings.csv; using defaults', cruise)
     s.folder = d.name;
-    row = struct('underway_source', "", 'exclude_extra', "", 'notes', "");
+    row = struct('underway_source', "", 'exclude_extra', "", 'notes', "", 'bottle_format', "", ...
+        'bottle_source', "", 'elog_source', "", 'exclude_extra_preserved', "");
 else
     s.folder = char(T.folder(i));
     row = table2struct(T(i, :));
@@ -66,5 +75,17 @@ if strlength(row.exclude_extra) > 0
     s.exclude = [s.exclude cellstr(strtrim(split(row.exclude_extra, ';')))'];
 end
 s.notes = char(row.notes);
+
+s.preserved_path = fullfile(s.basepath, 'preserved');
+s.exclude_preserved = {'Rinses' 'skip' 'xxx' 'qwater' 'badlystained'};
+if isfield(row, 'exclude_extra_preserved') && strlength(row.exclude_extra_preserved) > 0
+    s.exclude_preserved = [s.exclude_preserved cellstr(strtrim(split(row.exclude_extra_preserved, ';')))'];
+end
+api = 'https://nes-lter-api.whoi.edu/api/';
+s.bottle_format = 'api'; s.bottle_source = [api 'ctd/bottles/' lower(char(cruise)) '.csv'];
+s.elog_source = [api 'events/' lower(char(cruise)) '.csv'];
+if isfield(row, 'bottle_format') && strlength(row.bottle_format) > 0, s.bottle_format = char(row.bottle_format); end
+if isfield(row, 'bottle_source') && strlength(row.bottle_source) > 0, s.bottle_source = char(row.bottle_source); end
+if isfield(row, 'elog_source') && strlength(row.elog_source) > 0, s.elog_source = char(row.elog_source); end
 s.config = attune_config(s.cruise);
 end
