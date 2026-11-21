@@ -51,7 +51,7 @@ if pro_run && isfield(info, 'pro_pick') && info.pro_pick.used
     [class, info.pick_trim] = pro_pick_trim(class, info, cfg);
 end
 info.runtype = runtype;
-info.large_pro = struct('accepted', false, 'n', 0);
+info.large_pro = struct('accepted', false, 'n', 0, 'method', '', 'mu', [], 'sep', NaN, 'ncand', 0, 'lda_n', 0, 'lda_median', NaN, 'lda_frac', NaN); %(same fields as large_pro returns)
 info.pro_swap = struct('applied', false, 'n_to_pro', 0, 'n_to_0', 0);
 if pro_run
     [class, info.pro_swap] = pro_component_swap(class, info, cfg);
@@ -102,7 +102,21 @@ if isfield(info, 'trace') && isfield(info.trace, 'after_syncheck')
     % ... and unassigned no-PE chlorophyll events that v2 never made Euk: since Nov 2026
     % v2 leaves components larger than pro_max_size_abs (-1.15) unnamed rather than Euk
     % (HB1907 C15N03 Pro run: 2415 of 4544 hand Pro, size ~ -1.07)
-    euk = euk | (class == 0 & info.trace.has_chl & F.PEchl < g.pe_min_PEchl & F.chlSSC >= g.lp_min_chlSSC);
+    % (only events above that ceiling: all unassigned no-PE events added false Pro from
+    % small particles in 7 hand-zero runs, e.g. EN706 C02N10 679)
+    % (whole components, not single events: the HB1907 C15N03 Pro-run Pro component sits
+    % at mean size -1.14, so a per-event size cut dropped half of it; v2 lists the
+    % components it rejected as Pro in info.pro_comp_rejected; floor groups are small
+    % and stay out by the size condition)
+    if use_lda && isfield(g, 'pro_max_size_abs') && isfield(info, 'pro_comp_rejected') && ~isempty(info.pro_comp_rejected) && isfield(info, 'gmm')
+        mu = info.comp; rj = info.pro_comp_rejected(:);
+        rj = rj(mu.SSC(rj) > g.pro_max_size_abs - 0.1 & mu.PEchl(rj) < g.pe_min_PEchl & mu.chlSSC(rj) >= g.lp_min_chlSSC);
+        if ~isempty(rj)
+            hc = info.trace.has_chl; ci = zeros(size(class));
+            ci(hc) = cluster(info.gmm, [F.size(hc) F.BL3(hc) F.PEchl(hc) F.GL2GL3(hc)]);
+            euk = euk | (class == 0 & ismember(ci, rj) & F.PEchl < g.pe_min_PEchl);
+        end
+    end
 end
 if sum(euk) < g.lp_min_n && use_lda, [class, s] = large_pro_lda(class, F, syn_size, g, s, euk); return, end
 % Fit on all the file's Euks (the larger Euks are the reference group: in deep
@@ -200,6 +214,10 @@ if ~any(cand), return, end
 % name the floor pile Pro too, EN655 C15N09). Every other component named Pro must sit
 % clearly below the candidate, and at least one must exist (otherwise v2's naming stands)
 on_floor = mu.label == 7 & ~cand; %(the components replaced; name kept for info)
+% ... except bottom slices v2 restored as part of an accepted Pro cluster (info.pro_comp_slice)
+slice = false(height(mu), 1);
+if isfield(info, 'pro_comp_slice') && ~isempty(info.pro_comp_slice), slice(info.pro_comp_slice) = true; end
+on_floor = on_floor & ~slice;
 if ~any(on_floor) || any(on_floor & mu.BL3 > max(mu.BL3(cand)) - g.pc_min_below_cand), return, end
 F = info.features; hc = info.trace.has_chl;
 comp = zeros(size(class));
@@ -214,12 +232,12 @@ for k = ic(:)'
     dx = X - gm.mu(k, :);
     d2 = min(d2, sum((dx / gm.Sigma(:, :, k)) .* dx, 2));
 end
-to_0 = class == 7 & ~to_pro & ~(d2 < chi2inv(cfg.outlier_p, size(X, 2)));
+to_0 = class == 7 & ~to_pro & ~ismember(comp, find(slice)) & ~(d2 < chi2inv(cfg.outlier_p, size(X, 2)));
 % ... and with chl:size near the new Pro's (the spread test has no chl:size: EN655
 % C15N09 kept 337 low-chl events, chl:size median 0.32 vs Pro 1.10)
 cs = F.chlSSC(to_pro);
 if numel(cs) >= 20
-    to_0 = to_0 | (class == 7 & ~to_pro & F.chlSSC < median(cs) - g.pro_chlSSC_sd * 1.4826 * mad(cs, 1));
+    to_0 = to_0 | (class == 7 & ~to_pro & ~ismember(comp, find(slice)) & F.chlSSC < median(cs) - g.pro_chlSSC_sd * 1.4826 * mad(cs, 1));
 end
 class(to_0) = 0; class(to_pro) = 7;
 s = struct('applied', true, 'n_to_pro', sum(to_pro), 'n_to_0', sum(to_0), 'pro_comp', find(cand)', 'floor_comp', find(on_floor)');
