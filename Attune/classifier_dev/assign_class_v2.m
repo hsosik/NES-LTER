@@ -237,6 +237,22 @@ if any(mu.label == 7)
                 info.pro_comp_slice(end + 1, 1) = j;
             end
         end
+        % Syn-sized part of a Pro cluster (Nov 2026): the mixture can split a Pro cluster
+        % so that one component sits within pro_min_size_below_syn of Syn's size; it was
+        % named Euk, then unassigned as Pro-like (AR79 10Nov Pro(14): the cluster's centre,
+        % 9,010 events, 0.09 smaller than Syn; the rest of the cluster accepted as Pro).
+        % A too-large candidate is Pro if it is no larger than the Syn components, passes
+        % the other Pro rules, and an accepted Pro component is within pro_slice_size_tol
+        % in size. A lone Syn-sized group stays Euk
+        adj = too_big & mu.SSC <= syns & mu.SSC <= sig.pro_max_size_abs & mu.sd_size <= sig.pro_max_sd_size & ...
+            mu.chlSSC <= sync + sig.pro_max_chlSSC_above_syn & mu.chlSSC >= sync - chl_lim;
+        info.pro_comp_adjoin = zeros(0, 1);
+        for j = find(adj)'
+            if any(abs(mu.SSC(acc) - mu.SSC(j)) <= sig.pro_slice_size_tol)
+                too_big(j) = false;
+                info.pro_comp_adjoin(end + 1, 1) = j;
+            end
+        end
         mu.label(too_big) = 1;
         mu.label(bad) = 0;
         info.pro_comp_rejected = find(bad);

@@ -752,3 +752,20 @@ Results: `output/early_layout/` (channel map only), `output/early_layout_robust/
   - The rejected component is not the deep Pro cluster. It is a 133-event smear from size −1.80 to −0.43, with only 32% within ±0.25 of its peak; the wrapper's large-Pro step still finds the cluster.
   - No spread measure separates it from the C19N13 false column, which is just as lopsided. Compared: robust SD, half-widths either side of the peak, fraction near the peak.
   - Kept as is (user decision, Nov 2026).
+
+### Syn-sized part of a Pro cluster (Nov 2026)
+
+- **Problem.** AR79 10Nov Pro(14): the mixture split the Pro cluster so that its centre (about 11,000 events) sat in a component only 0.09 smaller than Syn. The rule "candidate size ≥ Syn − `pro_min_size_below_syn` → Euk" named it Euk. The Pro-like step then left 9,010 of its events unassigned, so only the cluster's outer ring was Pro.
+  - The old classes have 0 Pro in this file. Their Pro gate failed here: the same cluster gives 18,131 old-class Pro in the run's previous file, 10Nov Pro(12).
+  - Plot: `output/examples/ar79_10nov_pro14.png`.
+- **Change.** A too-large Pro candidate is still Pro when:
+  - it is no larger than the Syn components;
+  - it passes the other Pro rules (`pro_max_size_abs`, the chl:scatter limits, `pro_max_sd_size`);
+  - an accepted Pro component is within `pro_slice_size_tol` (0.25) in size.
+
+  These are listed in `info.pro_comp_adjoin`. A lone Syn-sized group stays Euk.
+- **Effect:**
+  - AR79 10Nov Pro(14): Pro 13,260 → 24,428; Euk 3,157 → 673 (old 675).
+  - 60-file check and every other survey file: unchanged.
+  - AR104: two offshore files gain the Syn-sized parts of their clusters (19Oct testPro(10) Sample(2) 4,119 → 4,720; 22Oct wPro(12) Sample(50) 16,343 → 19,130).
+  - Preserved runs through the wrapper: unchanged (EN727 no-Pro runs 0; EN655 C15N09 946). The wrapper's Pro swap leaves `pro_comp_adjoin` components alone.
