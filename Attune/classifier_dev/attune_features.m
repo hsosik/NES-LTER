@@ -14,7 +14,8 @@ function [F, info] = attune_features(fcsdat, fcshdr, ref)
 %
 % ref  - struct from bead_reference: per channel bead log10 position, bead hv, k,
 %        and chan (physical channel -> file parameter name)
-% F    - table, one column per channel in ref.chans (log10 bead-relative units)
+% F    - table, one column per channel in ref.chans (log10 bead-relative units),
+%        plus BL3_AH = log10(BL3 area / height), the chl pulse shape
 % info - struct with per-channel sample hv, floor in F units, trigger info
 %        (trigger names translated to physical channels, e.g. file OR_GL1 ->
 %        OR_GL2 before Aug 2019; raw names in trigger_file), col (physical
@@ -63,6 +64,20 @@ for i = 1:numel(ref.chans)
     F.(ch) = log10(x) - beadpos;
     info.hv.(ch) = hv;
     info.floor.(ch) = log10(ref.floor_raw) - beadpos;
+end
+% BL3 pulse shape (Nov 2026): log10(area / height) of the chl pulse, from the
+% -A column of the same physical channel. Both scale alike with voltage, so no
+% bead correction. Small single cells give short pulses like Syn (about 0);
+% faint signals with wide pulses (about 0.3-0.4) sit among Pro in AR95 Pro runs
+% and are not Pro (assign_class_v2). NaN when the area column is missing
+F.BL3_AH = nan(size(fcsdat, 1), 1);
+info.col.BL3_A = 0;
+if isfield(chan, 'BL3') && ~isempty(chan.BL3) && isfield(info.col, 'BL3') && info.col.BL3 > 0
+    ja = find(strcmp(pn, regexprep(chan.BL3, '-H$', '-A')), 1);
+    if ~isempty(ja) && ja ~= info.col.BL3
+        info.col.BL3_A = ja;
+        F.BL3_AH = log10(max(fcsdat(:, ja), 1) ./ max(fcsdat(:, info.col.BL3), 1));
+    end
 end
 end
 

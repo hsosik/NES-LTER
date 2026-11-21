@@ -37,7 +37,7 @@ parfor i = 1:size(L, 1)
         for j = 1:height(m)
             S = info.gmm.Sigma(:, :, j);
             str = [str sprintf('  %2d %.3f %6d %5d %5d | %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f %5.2f  %.2f %.2f %d\n', j, m.weight(j), sum(comp == j), sum(old7 & comp == j), sum(new == 7 & comp == j), ...
-                m.SSC(j), m.BL3(j), m.GL2(j), m.PEchl(j), m.GL2GL3(j), m.chlSSC(j) - sync, m.SSC(j) - syns, m.BL3(j) - e, sqrt(S(1, 1)), sqrt(S(2, 2)), m.label(j))]; %#ok<AGROW>
+                m.SSC(j), m.BL3(j), m.GL2(j), m.PEchl(j), m.GL2GL3(j), m.chlSSC(j) - sync, m.SSC(j) - syns, m.BL3(j) - e, sqrt(S(1, 1)), m.sd_BL3(j), m.label(j))]; %#ok<AGROW>
         end
         str = [str sprintf('  old Pro by new class: %s\n', mat2str(arrayfun(@(x) sum(old7 & new == x), 0:8)))];
         R{i} = str;

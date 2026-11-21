@@ -70,6 +70,31 @@ has_chl = (F.BL3 > chl_min | has_pe) & F.SSC > finfo.floor.SSC + 0.1;
 X = [F.size F.BL3 F.PEchl F.GL2GL3];
 X = X(has_chl, :);
 info.n_has_chl = sum(has_chl);
+% chl pulse shape (Nov 2026): small single cells give short BL3 pulses, like Syn
+% (log10 A/H about 0). In AR95 Pro runs a second group of faint, small, no-PE
+% signals with wide pulses (log A/H about 0.3-0.4, 150-550 per file, also present
+% under rich Pro clusters) sat among the Pro and was counted as Pro (24% of v2 Pro
+% in 21Oct AltPro(24)). Pulse shape is judged against small PE-bearing events
+% (mostly Syn; 99th percentile 0.06-0.15 above their median). Events more than
+% pro_max_AH_above_ref above that are 'wide' (NaN reference or column: none)
+info.pulse_ref_AH = NaN;
+wide = false(n, 1);
+if ismember('BL3_AH', F.Properties.VariableNames)
+    rs = has_pe & F.BL3 > chl_min + 0.5 & F.size < sig.syn_size_default + sig.pulse_ref_size_above & isfinite(F.BL3_AH);
+    if sum(rs) >= 50, info.pulse_ref_AH = median(F.BL3_AH(rs)); end
+    wide = F.BL3_AH > info.pulse_ref_AH + sig.pro_max_AH_above_ref; %false where the reference is NaN
+end
+info.trace.wide_pulse = wide;
+% in Pro-setting files, small dim no-PE events with wide pulses are left out of the
+% mixture fit (they are still assigned with it), so they neither pull Pro components
+% into the smear nor stop a small compact Pro cluster from getting its own
+% component (AR95 19Oct AltPro(30) Pro(10))
+fitok = true(size(X, 1), 1);
+if pro_measured
+    wx = wide & ~has_pe & F.BL3 < sig.pro_max_BL3;
+    fitok = ~wx(has_chl);
+end
+info.n_fit_wide_excluded = sum(~fitok);
 if size(X, 1) < 50
     info.ncomp = 0; info.comp = table;
     info.syn_type = zeros(n, 1, 'uint8'); info.flag = zeros(n, 1, 'uint8'); info.features = F; %nothing assigned
@@ -102,8 +127,12 @@ if info.edge_pile_capped
     pool = [in; ip];
     nfit = min(numel(pool), cfg.gmm_max_fit);
     Xfit = X(pool(randperm(numel(pool), nfit)), :);
-else
+elseif all(fitok)
     Xfit = X(randperm(size(X, 1), nfit), :);
+else
+    idx = find(fitok);
+    nfit = min(numel(idx), cfg.gmm_max_fit);
+    Xfit = X(idx(randperm(numel(idx), nfit)), :);
 end
 best = []; bestbic = Inf;
 opts = statset('MaxIter', 500);
@@ -127,8 +156,21 @@ end
 info.ncomp = best.NumComponents;
 info.gmm = best;
 
+% assign events to components (used for naming below and for assignment after it)
+[comp, ~, ~, ~, d2] = cluster(best, X);
+% chl spread of each component for the Pro compactness test (Nov 2026): robust SD of
+% the narrow-pulse events assigned to it. The fitted Gaussian SD is inflated by a
+% component's tail toward the chl trigger (AR95 19Oct AltPro(29): 0.43 with a compact
+% core); components with fewer than 20 such events keep the fitted SD
+sdB = squeeze(sqrt(best.Sigma(2, 2, :)));
+wx = wide(has_chl);
+for cc = 1:best.NumComponents
+    in_c = comp == cc & ~wx;
+    if sum(in_c) >= 20, sdB(cc) = 1.4826 * mad(X(in_c, 2), 1); end
+end
 % name components from their means
-mu = name_components(best, finfo, sig, pe_min, pro_measured);
+mu = name_components(best, finfo, sig, pe_min, pro_measured, sdB);
+mu.sd_BL3 = sdB(:);
 % Pro candidates (compact, dim, no PE) are judged against this file's Syn
 % components (Nov 2026; survey of 108 Pro-setting files in 9 cruises,
 % survey_pro / comp_detail in the README):
@@ -151,9 +193,25 @@ if any(mu.label == 7)
         sync = sum(mu.chlSSC(mu.label == 2) .* ws) / sum(ws);
         syns = sum(mu.SSC(mu.label == 2) .* ws) / sum(ws);
         cand = mu.label == 7;
+        % chl:scatter limit below Syn grows with the component's height above the chl
+        % trigger edge (Nov 2026): near the edge (within pro_chlSSC_edge_start) it is
+        % pro_max_chlSSC_below_syn, where faint detritus piles up (AR95 19Oct AltPro(30):
+        % 1.13 below Syn, 0.20 above the edge; near-edge groups without old-class Pro in
+        % AE2426, AR95, HRS2609, AR104: 1.03-1.16 below, 0.16-0.27 above). Compact clusters
+        % well clear of the edge are real Pro at up to ~1.05 below (AR79 10Nov Pro(14):
+        % 1.03 below, 0.55 above; AR79 09Nov Pro(2): ~1.0 below, ~0.35 above)
+        chl_lim = repmat(sig.pro_max_chlSSC_below_syn, height(mu), 1);
+        if isfield(edge, 'BL3')
+            chl_lim = min(sig.pro_max_chlSSC_below_syn_far, sig.pro_max_chlSSC_below_syn + ...
+                sig.pro_chlSSC_edge_slope * max(0, mu.BL3 - edge.BL3 - sig.pro_chlSSC_edge_start));
+        end
+        mu.pro_chl_lim = chl_lim;
         too_big = cand & mu.SSC >= syns - sig.pro_min_size_below_syn;
-        bad = cand & ~too_big & (mu.SSC < syns - sig.pro_max_size_below_syn | ...
-            mu.chlSSC > sync + sig.pro_max_chlSSC_above_syn | mu.chlSSC < sync - sig.pro_max_chlSSC_below_syn);
+        % ... and no larger than any Pro cluster seen (bead-relative size, the same
+        % scale in every cruise): where Syn are unusually large (AR104 24Oct shelf, Syn
+        % at -0.41) a broad dim group at -0.88 was otherwise smaller enough than Syn
+        bad = cand & ~too_big & (mu.SSC > sig.pro_max_size_abs | mu.SSC < syns - sig.pro_max_size_below_syn | ...
+            mu.chlSSC > sync + sig.pro_max_chlSSC_above_syn | mu.chlSSC < sync - chl_lim);
         mu.label(too_big) = 1;
         mu.label(bad) = 0;
         info.pro_comp_rejected = find(bad);
@@ -165,7 +223,6 @@ end
 info.comp = mu;
 
 % assign events, leave outliers unassigned
-[comp, ~, ~, ~, d2] = cluster(best, X);
 d2own = d2(sub2ind(size(d2), (1:size(X, 1))', comp));
 lab = mu.label(comp);
 lab(d2own > chi2inv(cfg.outlier_p, size(X, 2))) = 0;
@@ -463,6 +520,25 @@ if any(pro)
     class(pro & F.GL2 > pro_GL2_max) = 0;
     info.pro_GL2_max = pro_GL2_max;
 end
+% Pro are small single cells: chl pulse no wider than pro_max_AH_above_ref above the
+% pulse reference (see 'wide' above), and no wider than the Pro's own pulse-shape
+% spread allows: median + pro_AH_sd x the spread on the narrow side (which a
+% wide-pulse group above cannot stretch). Summer Pro near the chl trigger have a
+% broad, single-peaked A/H distribution whose tail the fixed cut sliced (AR92,
+% HRS2609: 280-430 old-class Pro per file); tight fall Pro (AR95, spread ~0.05) keep
+% a cut near the fixed one, below their separate wide group at +0.3 to +0.45 (Nov 2026)
+pro = class == 7;
+pro_AH_max = info.pulse_ref_AH + sig.pro_max_AH_above_ref;
+if any(pro) && isfinite(pro_AH_max)
+    a = F.BL3_AH(pro); am = median(a);
+    pro_AH_max = max(pro_AH_max, am + sig.pro_AH_sd * (am - prctile(a, 15.87)));
+end
+info.pro_AH_max = pro_AH_max;
+pro_wide_pulse = F.BL3_AH > pro_AH_max; %false where pro_AH_max is NaN
+info.trace.pro_wide_pulse = pro_wide_pulse;
+pro_wide = pro & pro_wide_pulse;
+class(pro_wide) = 0;
+info.n_pro_wide = sum(pro_wide);
 info.trace.after_pro_pe = class;
 
 % PE-containing euks are often too rare to get their own component; pick them
@@ -735,7 +811,8 @@ if any(left) && sum(refset) >= 50
     % fail) and dimmer than pro_max_BL3, chl:scatter close to the file's Pro
     if exist('pro_GL2_max', 'var') && any(class == 7)
         pc = median(F.chlSSC(class == 7)); ps = max(1.4826 * mad(F.chlSSC(class == 7), 1), 0.05);
-        ok(nl == 7) = ok(nl == 7) & fz.GL2(nl == 7) <= pro_GL2_max & fz.size(nl == 7) < syn_size & fz.BL3(nl == 7) < sig.pro_max_BL3 & ...
+        wz = pro_wide_pulse(left);
+        ok(nl == 7) = ok(nl == 7) & ~wz(nl == 7) & fz.GL2(nl == 7) <= pro_GL2_max & fz.size(nl == 7) < syn_size & fz.BL3(nl == 7) < sig.pro_max_BL3 & ...
             abs(fz.chlSSC(nl == 7) - pc) < sig.pro_chlSSC_sd * ps;
     else
         ok(nl == 7) = false;
@@ -842,7 +919,8 @@ else
 end
 end
 
-function mu = name_components(g, finfo, sig, pe_min, pro_measured)
+function mu = name_components(g, finfo, sig, pe_min, pro_measured, sdB)
+% sdB - chl (BL3) spread of each component for the Pro compactness test
 % name mixture components from their means using pigment signatures
 mu = array2table(g.mu, 'VariableNames', {'SSC' 'BL3' 'PEchl' 'GL2GL3'});
 mu.GL2 = mu.PEchl + mu.BL3;
@@ -863,7 +941,7 @@ for c = 1:height(mu)
         mu.label(c) = 2;                      %Syn PE spectrum
     elseif comp_pe
         mu.label(c) = 3;                      %cryptophyte-type PE
-    elseif pro_measured && m.BL3 < sig.pro_max_BL3 && sqrt(g.Sigma(2, 2, c)) <= sig.pro_max_sd_BL3
+    elseif pro_measured && m.BL3 < sig.pro_max_BL3 && sdB(c) <= sig.pro_max_sd_BL3
         % Pro candidate: dim, no PE, and a compact cluster in chl. Its size is
         % judged against this file's Syn after naming (assign_class_v2, Nov 2026);
         % candidates too large for Pro go back to Euk there

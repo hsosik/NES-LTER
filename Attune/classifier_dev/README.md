@@ -659,3 +659,49 @@ Results: `output/early_layout/` (channel map only), `output/early_layout_robust/
   - AR95 18Oct AltPro(11): 350–550 Pro in about a third of its files, from a small compact group 0.6–0.8 smaller than Syn, 0.6–0.8 below in chl:scatter, 0.2–0.7 above the edge.
   - Similar small groups of 360–1,600 Pro in AR95 18Oct AltPro(7) and 19Oct AltPro(29), AE2426 08Nov (5)/(9) and 09Nov (3)/(12), AR92 18Aug ProAlt(15) Pro(6), and HRS2609 less_sensitive (6).
   - AR79 09Nov Pro(11): 553 old Pro, 0 in v2. They sit in a broad mixed component (size SD 1.0).
+
+### Pro: chl pulse shape, robust compactness, chl:scatter limit by height above the trigger, size ceiling (Nov 2026)
+
+- **Wide-pulse faint signals among Pro.** In sparse-Pro files the Pro region holds a second group that is not Pro:
+  - AR95 21Oct AltPro(24): 24% of v2 Pro; the diffuse small signals you pointed out.
+  - It is 150–550 events per file, also under rich Pro clusters (AR104, AR95 AltPro(13)).
+- **What separates them.** GL4 (chl excited by the green laser), BL1, BL2 and FSC don't separate it from the compact Pro core: all sit at noise for these events.
+  - The **BL3 pulse shape**, log10(BL3-A / BL3-H), does. The compact core sits at about 0, like Syn; the second group forms a separate band at +0.3 to +0.45.
+  - Its SSC pulse shape is normal, so it is not two particles passing together.
+  - It sits at the smallest sizes, near the SSC trigger.
+  - Plots: `output/examples/pro_pulse_shape_channels.png`, `pro_pulse_shape_en727_ar95.png`.
+  - Every cruise from EN608 (2018) on records -A, -H and -W for all channels.
+- **Changes:**
+  - `attune_features` adds `F.BL3_AH` = log10(BL3-A / BL3-H), read through the same channel map. It needs no bead correction: area and height scale alike with voltage.
+  - Reference: `info.pulse_ref_AH`, the median `BL3_AH` of small PE-bearing events (mostly Syn; their 99th percentile is 0.06–0.15 above it).
+  - Pro-setting files only:
+    - Small, dim, no-PE events more than `pro_max_AH_above_ref` (0.2) above the reference are left out of the mixture fit, though they are still assigned with it (`info.trace.wide_pulse`, `info.n_fit_wide_excluded`).
+    - Class-7 events, and catch-all Pro, are removed above an **adaptive cut** `info.pro_AH_max` = max(reference + 0.2, Pro median + `pro_AH_sd` (4) × the Pro's narrow-side spread) (`info.trace.pro_wide_pulse`, `info.n_pro_wide`). The narrow-side spread (median − 15.87th percentile) can't be stretched by a wide group above.
+  - A fixed 0.2 cut sliced the tail of the broad, single-peaked A/H distribution of summer Pro near the chl trigger (AR92, HRS2609: 280–430 old-class Pro per file). With the adaptive cut that is 7–24. Tight fall Pro (spread about 0.05) keep a cut near 0.25, below their wide group. Plot: `output/examples/pro_pulse_shape_summer.png`.
+- **Robust compactness.** The Pro compactness test (`pro_max_sd_BL3`, 0.4) now uses the robust SD (MAD) of chl among the narrow-pulse events assigned to each component (`info.comp.sd_BL3`). It falls back to the fitted Gaussian SD when a component has fewer than 20 such events. The fitted SD is inflated by a tail toward the chl trigger: AR95 19Oct AltPro(29), a compact cluster, had a fitted SD of 0.43.
+- **Chl:scatter limit grows with height above the chl trigger edge.** It is `pro_max_chlSSC_below_syn` (1.0) for components within `pro_chlSSC_edge_start` (0.2) of the edge. Above that it rises by `pro_chlSSC_edge_slope` (0.5) per log unit, up to `pro_max_chlSSC_below_syn_far` (1.3) (`info.comp.pro_chl_lim`).
+  - AR79 10Nov Pro(14): its main cluster is 1.03 below Syn but 0.55 above the edge. It was rejected at 1.0, giving 0 Pro; now 19,584.
+  - Near-edge groups stay out: AR95 19Oct AltPro(30) (1.13 below, 0.20 above), and AE2426, AR95, HRS2609 and AR104 groups (1.03–1.16 below, 0.16–0.27 above).
+- **Absolute Pro size ceiling** `pro_max_size_abs` (−1.15, bead-relative size, the same scale in every cruise). The largest real Pro cluster in the survey is at −1.25. On the AR104 24 Oct shelf, Syn sit at −0.41, so a broad dim group at −0.88 was "smaller than Syn" and got 1,266 Pro; now 0.
+- **Effect** (`output/pro_survey.mat`, `output/ar104_pro_scan.mat`):
+  - **60-file check**, before → after this section:
+
+    | Cruise | Median agreement | Lowest file |
+    |---|---|---|
+    | AR92 | 0.9855 → 0.9852 | 0.969 → 0.969 |
+    | AR95 | 0.9582 → 0.9552 | 0.864 → 0.881 |
+    | EN727 | unchanged | unchanged |
+    | HRS2609 | 0.9783 → 0.9777 | 0.963 → 0.963 |
+
+    The AR95 median drop comes from wide-pulse events that the old classes counted as Pro (19Oct AltPro(14): 186 of them; 19Oct AltPro(9); 21Oct AltPro(5)). AltPro(24) rises because its wide group is gone (1,109 → 901 Pro).
+  - **Survey of 84 Pro-setting files:**
+    - The diffuse groups judged not to be clusters go to 0: AR95 18Oct AltPro(7) and AltPro(11), AE2426 09Nov (3) and (12).
+    - AR95 19Oct AltPro(29) and 21Oct AltPro(24) keep their compact clusters (657 and 847).
+    - Rich Pro files mostly lose 0–3%. Exceptions: AR82A 09Apr shelf_pro(3) 16,124 → 15,047 (old 14,956); AR82A 09Apr(8) 1,431 → 709 (old 1,162).
+    - AR79 09Nov Pro(9) (old 1,186) and AR82A shelf_pro(8) (old 264) go to 0. Their Pro-like events are in a broad component at Syn size, or in no component.
+  - **AR104:** the offshore run (23 Oct 05:00 – 24 Oct 00:00) loses 2–10% per file (wide-pulse events) and stays continuous at about 14,000–32,000 per file. The shelf stays at 0, except 24 Oct 01:09 wPro(4) Sample(1), with 1,176 Pro one hour after the run's last strong files.
+  - **Preserved runs** (discrete wrapper, 12 cruises): median agreement Pro runs 0.903 → 0.908, CHL runs 0.914 → 0.923.
+- **Event-level Pro pick still OFF.** With `pro_pick_min_n` = 100 it finds the small compact clump in AR95 19Oct AltPro(30) (433 Pro). But it also takes a sparse trigger-edge group in 18Oct AltPro(7) (222) and tiny artifacts in AR79 Pro(11) (71): it lacks the component rules (size limits, chl:scatter, height above the edge).
+- **Open:**
+  - EN727 preserved C19N13 (no real Pro, by your ruling, like C19N02, C09N01 and C06N06): v2 still names a Pro component on the chl trigger floor at the smallest sizes, about 395 events.
+  - Pro-like flag 4 (the Pro lower bound in files without Pro settings) has no pulse-shape filter yet.
