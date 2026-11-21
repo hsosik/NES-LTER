@@ -774,3 +774,11 @@ Results: `output/early_layout/` (channel map only), `output/early_layout_robust/
 
 - The switched-off pick code and its four `pro_pick_*` settings are removed from `assign_class_v2.m` and `classifier_config.m`. With the pick off, the classes don't change: the six example agreements are identical.
 - `info.pro_pick` is no longer returned. `discrete/assign_class_discrete.m` still sets `pro_pick_min_n` and checks `isfield(info, 'pro_pick')`. Both are harmless now, but its `pro_pick_trim` step can no longer run and could be removed by the discrete-sample session.
+
+### Pulse shape for small Syn / Euk and noise: checked, no rule added (Nov 2026)
+
+- **Wide chl pulses** (BL3 A/H more than 0.2 above the Syn reference) don't mark noise among small Syn or Euks in any cruise checked: AR92, HRS2609, EN727, AR95, AT46, AR99, EN627, AR34B, TN368. Only large Euks are wider, as expected. The wide-pulse criterion stays a Pro-only rule.
+- **The side-scatter pulse (SSC A/H)** depends on instrument configuration: 20–35% of normal Syn look "wide" in pre-2019 cruises. It is not usable as a criterion.
+- **Narrow chl pulses** (more than 0.2 below the reference) mark electronic trigger noise in pre-2019 files: 63–71% of the flagged trigger-noise pile in EN627 and AR34B, median −0.3. A few reach the dim end of Syn (AR34B: up to 8% of the dimmest tenth).
+- **A narrow-pulse exclusion rule was tried and removed.** It cut 4–5% of real summer Pro (AR92 Pro(5) 32,305 → 30,964; HRS2609 Pro(21) 19,730 → 18,853), and dropping the pre-2019 noise from the fit destabilized the mixture (EN627 4Feb2019b Syn 5,636 → 2,050; 1Feb2019a Euk 429 → 1,463).
+- **Euk loss in the held-out winter CHL runs** (AT46, AR99) is unrelated to pulse shape: the small Euks there have normal pulses.
