@@ -212,6 +212,24 @@ if any(mu.label == 7)
         % at -0.41) a broad dim group at -0.88 was otherwise smaller enough than Syn
         bad = cand & ~too_big & (mu.SSC > sig.pro_max_size_abs | mu.SSC < syns - sig.pro_max_size_below_syn | ...
             mu.chlSSC > sync + sig.pro_max_chlSSC_above_syn | mu.chlSSC < sync - chl_lim);
+        % bottom slice of a Pro cluster (Nov 2026): where the chl trigger cuts a Pro
+        % cluster, the mixture can give its lowest part a component of its own, at the
+        % cluster's size but lower chl, so lower chl:scatter. A candidate that fails only
+        % the chl:scatter limit (and is within pro_max_chlSSC_below_syn_far of Syn) is Pro
+        % if an accepted Pro component lies directly above it: size within
+        % pro_slice_size_tol, brighter in chl (HRS2609 18Aug(1) Pro(19): slice 1.04 below
+        % Syn, 0.15 above the edge, 743 of its 842 events old-class Pro). The near-edge
+        % false groups have no Pro cluster above them (AR95 19Oct AltPro(30), AE2426 09Nov(10))
+        chl_only = bad & mu.chlSSC < sync - chl_lim & mu.chlSSC >= sync - sig.pro_max_chlSSC_below_syn_far & ...
+            ~(mu.SSC > sig.pro_max_size_abs | mu.SSC < syns - sig.pro_max_size_below_syn | mu.chlSSC > sync + sig.pro_max_chlSSC_above_syn);
+        acc = find(cand & ~too_big & ~bad);
+        info.pro_comp_slice = zeros(0, 1);
+        for j = find(chl_only)'
+            if any(abs(mu.SSC(acc) - mu.SSC(j)) <= sig.pro_slice_size_tol & mu.BL3(acc) > mu.BL3(j))
+                bad(j) = false;
+                info.pro_comp_slice(end + 1, 1) = j;
+            end
+        end
         mu.label(too_big) = 1;
         mu.label(bad) = 0;
         info.pro_comp_rejected = find(bad);
@@ -753,7 +771,7 @@ end
 % (above the detritus cut and, for particles well larger than Syn, above this
 % file's Euk chl:size cut). Unassigned cell-like events take the majority class of
 % their nearest assigned neighbours in [size, chl, PE, BL2, GL3], if they also meet
-% that class's own rules (sizes relative to Syn, Pro only in Pro files); otherwise
+% that class's own rules (sizes relative to Syn; never Pro, see below); otherwise
 % they stay unassigned. The Pro tail at the chl trigger in files run without Pro
 % settings stays unassigned.
 if exist('euk_cut', 'var'), ccut = euk_cut; else, ccut = sig.detritus_max_chlSSC; end
@@ -805,18 +823,13 @@ if any(left) && sum(refset) >= 50
     ok(nl == 2) = fz.size(nl == 2) > syn_size - min(sig.syn_size_max_below, max(sig.syn_size_tol_below, sig.syn_size_sd * syn_size_sdv)) & fz.size(nl == 2) < smax2 & ...
         fz.GL2(nl == 2) >= syn_PE_floor & fz.PEchl(nl == 2) > syn_PEchl - sig.syn_PEchl_tol & fz.PEchl(nl == 2) < syn_PEchl + max(sig.syn_PEchl_tol, sig.syn_PEchl_sd * syn_PEchl_sdv);
     ok(nl == 3 | nl == 4) = fz.size(nl == 3 | nl == 4) > syn_size + sig.peeuk_size_above_syn;
-    ok(nl == 7) = logical(pro_measured);
-    % ... and the Pro rules: no PE above the file's Pro ceiling, smaller than the Syn
-    % peak (Nov 2026: was SSC < pro_max_SSC, which fall Pro just smaller than Syn
-    % fail) and dimmer than pro_max_BL3, chl:scatter close to the file's Pro
-    if exist('pro_GL2_max', 'var') && any(class == 7)
-        pc = median(F.chlSSC(class == 7)); ps = max(1.4826 * mad(F.chlSSC(class == 7), 1), 0.05);
-        wz = pro_wide_pulse(left);
-        ok(nl == 7) = ok(nl == 7) & ~wz(nl == 7) & fz.GL2(nl == 7) <= pro_GL2_max & fz.size(nl == 7) < syn_size & fz.BL3(nl == 7) < sig.pro_max_BL3 & ...
-            abs(fz.chlSSC(nl == 7) - pc) < sig.pro_chlSSC_sd * ps;
-    else
-        ok(nl == 7) = false;
-    end
+    % the catch-all adds no Pro (Nov 2026): Pro come only from components named Pro.
+    % Catch-all Pro were mostly faint events just above the chl trigger, smaller than
+    % the file's Pro (8,153 in 77 underway Pro-setting files, 4% of them old-class Pro,
+    % against 91% for main-rule Pro), and most of v2's false Pro in preserved EN655
+    % C15N09 (1,337 of 1,603, from the trigger-floor pile). Unassigned events whose
+    % neighbours are Pro stay unassigned
+    ok(nl == 7) = false;
     if exist('synpart_cut', 'var'), c8 = synpart_cut; else, c8 = syn_size + sig.synpart_min_size_above; end
     ok(nl == 8) = fz.size(nl == 8) > c8;
     % ... and the rest of the Syn-on-particle rules (Syn-like PE:chl and spectrum, about

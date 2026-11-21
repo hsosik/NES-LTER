@@ -705,3 +705,28 @@ Results: `output/early_layout/` (channel map only), `output/early_layout_robust/
 - **Open:**
   - EN727 preserved C19N13 (no real Pro, by your ruling, like C19N02, C09N01 and C06N06): v2 still names a Pro component on the chl trigger floor at the smallest sizes, about 395 events.
   - Pro-like flag 4 (the Pro lower bound in files without Pro settings) has no pulse-shape filter yet.
+
+### Catch-all adds no Pro; bottom slice of a Pro cluster (Nov 2026)
+
+- **Catch-all Pro removed.** Class 7 now comes only from components named Pro; unassigned events whose neighbours are Pro stay unassigned.
+  - In 84 surveyed Pro-setting files the catch-all had added 8,153 Pro in the 77 with old classes (only 4% of them old-class Pro, against 91% for main-rule Pro) and 1,942 in AR104. Most were faint events 0.1–0.3 above the chl trigger, 0.2–0.6 smaller than the file's Pro.
+  - In preserved EN655 C15N09, run through v2 alone, they were 1,337 of v2's 1,603 Pro, from the trigger-floor pile.
+  - Losses: AR79 10Nov Pro(14) 19,584 → 13,260 (a Syn-sized cluster named Euk, which the catch-all had partly given back as Pro), AR92 18Aug ProAlt(15) 1,229 → 723 (old 0), AR104 total −2%.
+- **Bottom slice of a Pro cluster.** Where the chl trigger cuts a Pro cluster, the mixture can give its lowest part a component of its own: the same size, lower chl, so lower chl:scatter. Near the edge such a slice fails the 1.0 limit.
+  - HRS2609 18Aug(1) Pro(19): slice 1.04 below Syn, 0.15 above the edge, 743 of its 842 events old-class Pro. Only the catch-all had rescued it.
+  - A candidate that fails only the chl:scatter limit, and is no more than `pro_max_chlSSC_below_syn_far` below Syn, is now Pro if an accepted Pro component is within `pro_slice_size_tol` (0.25) in size and brighter in chl (`info.pro_comp_slice`).
+  - The near-edge false groups have no Pro cluster above them and stay out: AR95 19Oct AltPro(30), AE2426 09Nov(10).
+- **Effect of both, 60-file check** (start of the Nov 2026 Pro work → now):
+
+  | Cruise | Median agreement | Lowest file |
+  |---|---|---|
+  | AR92 | 0.9855 → 0.9852 | 0.969 → 0.969 |
+  | AR95 | 0.9582 → 0.9573 | 0.864 → 0.882 |
+  | EN727 | unchanged | unchanged |
+  | HRS2609 | 0.9783 → 0.9779 | 0.963 → 0.963 |
+
+  HRS2609 18Aug(1) Pro(19) goes 0.973 → 0.978. Slices also return in AR95 21Oct AltPro(3) (5,351 → 5,580, old 5,591) and HRS2609 17Aug(5). AR104 is unchanged by the slice rule. Tables: `output/pro_survey.mat`, `output/ar104_pro_scan.mat`.
+- **Open: Pro clusters at Syn size are named Euk** (candidate size ≥ Syn − `pro_min_size_below_syn`, 0.1). Examples:
+  - AR79 10Nov Pro(14): a second cluster 0.09 smaller than Syn, about 11,000 events.
+  - Some AR104 23Oct wPro(1) groups, 0.04–0.17 smaller than Syn.
+  - Preserved EN655 C15N09: the true Pro cluster, 0.02 smaller than Syn. The discrete wrapper swaps it back.
