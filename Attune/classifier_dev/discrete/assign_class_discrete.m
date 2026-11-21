@@ -217,6 +217,7 @@ on_floor = mu.label == 7 & ~cand; %(the components replaced; name kept for info)
 % ... except bottom slices v2 restored as part of an accepted Pro cluster (info.pro_comp_slice)
 slice = false(height(mu), 1);
 if isfield(info, 'pro_comp_slice') && ~isempty(info.pro_comp_slice), slice(info.pro_comp_slice) = true; end
+if isfield(info, 'pro_comp_adjoin') && ~isempty(info.pro_comp_adjoin), slice(info.pro_comp_adjoin) = true; end %(and Syn-sized parts v2 joined to an accepted Pro cluster)
 on_floor = on_floor & ~slice;
 if ~any(on_floor) || any(on_floor & mu.BL3 > max(mu.BL3(cand)) - g.pc_min_below_cand), return, end
 F = info.features; hc = info.trace.has_chl;
