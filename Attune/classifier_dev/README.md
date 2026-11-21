@@ -730,3 +730,25 @@ Results: `output/early_layout/` (channel map only), `output/early_layout_robust/
   - AR79 10Nov Pro(14): a second cluster 0.09 smaller than Syn, about 11,000 events.
   - Some AR104 23Oct wPro(1) groups, 0.04–0.17 smaller than Syn.
   - Preserved EN655 C15N09: the true Pro cluster, 0.02 smaller than Syn. The discrete wrapper swaps it back.
+
+### Pro size-spread cap (Nov 2026)
+
+- **Problem.** EN727 preserved Pro run C19N13 has no real Pro (user ruling, as for C19N02, C09N01 and C06N06), but v2 named two components Pro. Both are pressed against the SSC trigger wall (AND_SSC 900 in these preserved runs):
+  - a compact corner group: size −2.12, 0.20 above the chl edge, 0.22 above the SSC edge;
+  - a broad column above it: size −1.70, size SD 0.48.
+- **Height above the SSC trigger doesn't separate them** (`ssc_wall` survey of the 84 underway Pro-setting files):
+  - Real Pro components sit 0.24–0.90 above the SSC trigger edge, with up to 23% of their events within 0.15 of it.
+  - The corner group sits 0.22 above it, with 34% of its events there.
+- **Size spread does separate the column.** Real underway Pro components have a size SD of 0.10–0.38. The only two above 0.45 are AR92 18Aug ProAlt(15) (old classes 0 Pro) and a 383-event side component in AR79 10Nov Pro(6).
+- **Change.** A Pro candidate whose size spread exceeds `pro_max_sd_size` (0.45) is rejected (label 0) and can't be restored as a bottom slice. The spread is the robust SD of the narrow-pulse events assigned to it, like `sd_BL3` (`info.comp.sd_size`).
+- **Effect:**
+  - 60-file check: unchanged.
+  - Survey: AR92 18Aug ProAlt(15) 723 → 0; AR79 10Nov Pro(6) 35,013 → 34,630 (old 33,566).
+  - AR104: two offshore files lose 4–6% (22Oct wPro(8) Sample(50), wPro(9) Sample(1)); total −0.4%.
+  - EN727 C19N13, v2 alone: 468 → 198 Pro. The compact corner group remains.
+  - EN727 C19N13, through the preserved wrapper (`assign_class_discrete`, 'pro'): 0 Pro, as for C19N02, C09N01 and C06N06. EN655 C15N09: 946 (hand 799).
+- **Cost in AR92 preserved C21N05** (CHL run, 85.8 m; redesign-wrapper check):
+  - Effect: Pro 3,962 → 3,525/ml (hand 4,131). AR92 per-Niskin Pro median 1.067 → 1.050 of hand, lowest tenth 0.943 → 0.900; other runs unchanged.
+  - The rejected component is not the deep Pro cluster. It is a 133-event smear from size −1.80 to −0.43, with only 32% within ±0.25 of its peak; the wrapper's large-Pro step still finds the cluster.
+  - No spread measure separates it from the C19N13 false column, which is just as lopsided. Compared: robust SD, half-widths either side of the peak, fraction near the peak.
+  - Kept as is (user decision, Nov 2026).

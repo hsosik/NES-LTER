@@ -163,14 +163,16 @@ info.gmm = best;
 % component's tail toward the chl trigger (AR95 19Oct AltPro(29): 0.43 with a compact
 % core); components with fewer than 20 such events keep the fitted SD
 sdB = squeeze(sqrt(best.Sigma(2, 2, :)));
+sdS = squeeze(sqrt(best.Sigma(1, 1, :))); %size spread, the same way (Pro size-spread cap below)
 wx = wide(has_chl);
 for cc = 1:best.NumComponents
     in_c = comp == cc & ~wx;
-    if sum(in_c) >= 20, sdB(cc) = 1.4826 * mad(X(in_c, 2), 1); end
+    if sum(in_c) >= 20, sdB(cc) = 1.4826 * mad(X(in_c, 2), 1); sdS(cc) = 1.4826 * mad(X(in_c, 1), 1); end
 end
 % name components from their means
 mu = name_components(best, finfo, sig, pe_min, pro_measured, sdB);
 mu.sd_BL3 = sdB(:);
+mu.sd_size = sdS(:);
 % Pro candidates (compact, dim, no PE) are judged against this file's Syn
 % components (Nov 2026; survey of 108 Pro-setting files in 9 cruises,
 % survey_pro / comp_detail in the README):
@@ -212,6 +214,11 @@ if any(mu.label == 7)
         % at -0.41) a broad dim group at -0.88 was otherwise smaller enough than Syn
         bad = cand & ~too_big & (mu.SSC > sig.pro_max_size_abs | mu.SSC < syns - sig.pro_max_size_below_syn | ...
             mu.chlSSC > sync + sig.pro_max_chlSSC_above_syn | mu.chlSSC < sync - chl_lim);
+        % ... and compact in size too (Nov 2026): real Pro components have a size spread
+        % (robust SD) of 0.10-0.38; a broad column of faint small particles along the SSC
+        % trigger was named Pro in preserved EN727 C19N13 (no real Pro; size SD ~0.5)
+        broad = cand & ~too_big & mu.sd_size > sig.pro_max_sd_size;
+        bad = bad | broad;
         % bottom slice of a Pro cluster (Nov 2026): where the chl trigger cuts a Pro
         % cluster, the mixture can give its lowest part a component of its own, at the
         % cluster's size but lower chl, so lower chl:scatter. A candidate that fails only
@@ -220,7 +227,7 @@ if any(mu.label == 7)
         % pro_slice_size_tol, brighter in chl (HRS2609 18Aug(1) Pro(19): slice 1.04 below
         % Syn, 0.15 above the edge, 743 of its 842 events old-class Pro). The near-edge
         % false groups have no Pro cluster above them (AR95 19Oct AltPro(30), AE2426 09Nov(10))
-        chl_only = bad & mu.chlSSC < sync - chl_lim & mu.chlSSC >= sync - sig.pro_max_chlSSC_below_syn_far & ...
+        chl_only = bad & ~broad & mu.chlSSC < sync - chl_lim & mu.chlSSC >= sync - sig.pro_max_chlSSC_below_syn_far & ...
             ~(mu.SSC > sig.pro_max_size_abs | mu.SSC < syns - sig.pro_max_size_below_syn | mu.chlSSC > sync + sig.pro_max_chlSSC_above_syn);
         acc = find(cand & ~too_big & ~bad);
         info.pro_comp_slice = zeros(0, 1);
