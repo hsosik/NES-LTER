@@ -135,10 +135,6 @@ cfg.sig.pro_chlSSC_edge_slope = 0.5; %... by this per log10 unit of height above
 cfg.sig.pro_max_chlSSC_below_syn_far = 1.3; %... up to this (AR79 10Nov Pro(14): real Pro 1.03 below Syn, 0.55 above the edge; AR95 19Oct AltPro(30) false group 1.13 below, 0.20 above)
 cfg.sig.pro_max_sd_size = 0.45;     %Pro component size spread (robust SD of its narrow-pulse events) no more than this (real Pro 0.10-0.38; EN727 C19N13 false column ~0.5)
 cfg.sig.pro_slice_size_tol = 0.25;  %a Pro candidate failing only the chl:scatter limit is still Pro if an accepted Pro component is within this in size and brighter in chl (the cluster's bottom slice at the chl trigger); also a Syn-sized candidate (within pro_min_size_below_syn of Syn, no larger) next to an accepted Pro component
-cfg.sig.pro_pick_min_n = Inf;      %OFF (Nov 2026: invented Pro from faint detritus in AR95 19Oct AltPro(30) and 18Oct AltPro(11)); was 100. Event-level Pro pick (Pro-setting files where the mixture names no Pro): at least this many candidates ...
-cfg.sig.pro_pick_bw = 0.08;         %... KDE bandwidth (log10) of the size of small no-PE, low-chl particles ...
-cfg.sig.pro_pick_min_peak = 0.1;    %... Pro size mode at least this fraction of the highest mode ...
-cfg.sig.pro_pick_max_dip = 0.7;     %... and separated from larger particles by a minimum below this fraction of the Pro mode
 
 cfg.gmm_K = 3:9;
 cfg.gmm_max_fit = 10000;

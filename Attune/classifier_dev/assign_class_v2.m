@@ -511,41 +511,6 @@ if isfield(edge, 'BL3')
     class(class == 1 & euk_below_gap) = 0;
 end
 info.n_euk_below_gap = sum(euk_below_gap & info.trace.after_gmm == 1);
-% event-level Pro pick (Nov 2026): in Pro-setting files the mixture can merge Pro
-% into the pile of faint low-chl particles at the trigger and form no Pro component
-% (AR104 wPro runs). If no Pro were named, take small no-PE events dimmer than
-% pro_max_BL3 whose chl:scatter is within pro_max_chlSSC_below_syn of Syn (not the
-% faint detritus of AR95 19Oct AltPro(30)), but only if their size distribution
-% has its own peak below the Syn peak, separated by a minimum from the larger
-% particles of the trigger pile; Pro = candidates smaller than that minimum
-info.pro_pick = struct('used', false, 'n', 0, 'size_cut', NaN);
-if pro_measured && ~any(class == 7) && any(class == 2)
-    sync = median(F.chlSSC(class == 2));
-    lowc = ismember(class, [0 1]) & ~has_pe & F.BL3 < sig.pro_max_BL3 & F.BL3 > chl_min & F.SSC > finfo.floor.SSC + 0.1;
-    cand = lowc & F.size < syn_size & F.chlSSC > sync - sig.pro_max_chlSSC_below_syn;
-    if sum(cand) >= sig.pro_pick_min_n
-        [fk, gk] = ksdensity(F.size(lowc), 'NumPoints', 400, 'Bandwidth', sig.pro_pick_bw);
-        % smallest substantial size mode below the Syn peak
-        pk = find(islocalmax(fk) & fk > sig.pro_pick_min_peak * max(fk) & gk < syn_size);
-        if ~isempty(pk)
-            p1 = pk(1);
-            above = find(islocalmax(fk) & gk > gk(p1) & fk > sig.pro_pick_min_peak * max(fk), 1);
-            if isempty(above)
-                cut = syn_size;
-            else
-                [fmin, jm] = min(fk(p1:above)); jm = p1 - 1 + jm;
-                if fmin < sig.pro_pick_max_dip * fk(p1), cut = min(gk(jm), syn_size); else, cut = NaN; end
-            end
-            if isfinite(cut)
-                pp = cand & F.size < cut;
-                if sum(pp) >= sig.pro_pick_min_n && 1.4826 * mad(F.BL3(pp), 1) <= sig.pro_max_sd_BL3
-                    class(pp) = 7;
-                    info.pro_pick = struct('used', true, 'n', sum(pp), 'size_cut', cut);
-                end
-            end
-        end
-    end
-end
 % Pro have no PE: GL2 must be at the noise level seen in this file's Euks
 % (which also lack PE), else the file's GL2 floor plus a default
 pro = class == 7;

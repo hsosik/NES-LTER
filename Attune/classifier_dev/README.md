@@ -769,3 +769,8 @@ Results: `output/early_layout/` (channel map only), `output/early_layout_robust/
   - 60-file check and every other survey file: unchanged.
   - AR104: two offshore files gain the Syn-sized parts of their clusters (19Oct testPro(10) Sample(2) 4,119 → 4,720; 22Oct wPro(12) Sample(50) 16,343 → 19,130).
   - Preserved runs through the wrapper: unchanged (EN727 no-Pro runs 0; EN655 C15N09 946). The wrapper's Pro swap leaves `pro_comp_adjoin` components alone.
+
+### Event-level Pro pick removed (Nov 2026)
+
+- The switched-off pick code and its four `pro_pick_*` settings are removed from `assign_class_v2.m` and `classifier_config.m`. With the pick off, the classes don't change: the six example agreements are identical.
+- `info.pro_pick` is no longer returned. `discrete/assign_class_discrete.m` still sets `pro_pick_min_n` and checks `isfield(info, 'pro_pick')`. Both are harmless now, but its `pro_pick_trim` step can no longer run and could be removed by the discrete-sample session.
