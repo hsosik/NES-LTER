@@ -57,6 +57,17 @@ for ci = 1:numel(cruisedirs)
             hand = double(G.class{i}(:));
             if numel(hand) ~= numel(auto), continue, end
             h = hand; h(h == 4) = 7; h(ismember(h, [5 6])) = 34; h(h == 3) = 0;
+            % hand-gated "Pro" known to be gating mistakes (user, 20 Nov 2026: EN727
+            % C19N13, C19N02, C09N01 and C06N06 Pro runs have no real Pro: the gated
+            % group is the trigger-floor corner at the smallest sizes): scored as unassigned
+            if contains(fn, 'EN727') && contains(fn, ["_C19N13" "_C19N02" "_C09N01" "_C06N06"]), h(h == 7) = 0; end
+            % AR92 Pro runs whose hand Pro gates are empty (Proc, Proc_sub1 and the R1
+            % parent hold no events while Euk and Syn are normal: a gating failure, not
+            % a zero-Pro reference; redesign-wrapper check, 20 Nov 2026): not scored
+            if r == "pro" && contains(fn, 'AR92') && contains(fn, ["_C01N15" "_C02N01" "_C02N10" "_C06N03" "_C07N04" "_C07N08" ...
+                    "_C12N12" "_C14N02" "_C15N02" "_C16N02" "_C17N14" "_C21N08" "_C21N12" "_C22N05" "_C22N09" "_C22N13" "_C25N04"])
+                continue
+            end
             a = double(auto); a(ismember(a, [3 4 5])) = 34;
             % hand gates include the time gate (first 20% of the run dropped):
             % compare only events after the first hand-gated event

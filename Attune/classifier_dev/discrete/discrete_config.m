@@ -46,22 +46,27 @@ cfg.sig.lp_min_d_chlSSC = 0.3;    %Pro group lower in chl:size by at least this 
 cfg.sig.lp_min_d_GL2GL3 = 0.2;    %... and in GL2:GL3 by at least this ...
 cfg.sig.lp_min_sep = 2.5;         %... groups this many pooled SDs apart (Mahalanobis) ...
 cfg.sig.lp_min_group_n = 50;      %... Pro group at least this many events
+cfg.sig.lp_min_chlSSC = 0.6;      %... and its mean chl:size at least this (large-Pro groups 0.78-1.18; a detritus-like group at 0.3 in EN655 C15N09)
 % Pro runs where the group fit fails (Pro outnumber Euks): fixed discriminant,
 % Pro side if score = a*chlSSC + b*GL2GL3 + c > 0 (hand-gated Pro vs Euk, dcfg6 events)
 cfg.sig.lp_lda = [-7.080 -4.316 9.189];
 cfg.sig.lp_lda_min_median = 2;    %... applied if the Pro-side events' median score is at least this
 cfg.sig.lp_lda_dominant = [0.75 1.2]; %... or if at least this fraction of candidates is on the Pro side and their median at least this
 % Pro runs (assign_class_discrete pro_component_swap): Pro as large as Syn named Euk,
-% trigger-floor particles named Pro (EN655 C15N09)
-cfg.sig.pc_floor_band = 0.3;            %Pro component mean BL3 within this of the chl trigger edge: on the floor
+% dimmer groups (trigger floor, faint smear) named Pro (EN655 C15N09)
+cfg.sig.pc_min_below_cand = 0.3;        %swap only if every component named Pro is at least this much dimmer (mean BL3) than the candidate
 cfg.sig.pc_min_above_edge = 0.8;        %replacement component's mean BL3 at least this above the edge ...
 cfg.sig.pc_max_size_above_syn = 0.15;   %... no larger than Syn + this ...
 cfg.sig.pc_chlSSC_below_syn = [0.2 1.0]; %... chl:size this far below Syn's (min, max)
+% v2's event-level Pro pick, Pro runs only (assign_class_discrete; v2 default Inf = off):
+% would find the winter trigger-floor group in EN727 C19N13 (not Pro); if enabled, it is trimmed to
+% the picked events, without v2's catch-all additions (pro_pick_trim)
+cfg.sig.pro_pick_min_n = Inf;  %OFF: it fired only in EN727 C19N13, whose hand-gated "Pro" were a gating mistake (user, 20 Nov 2026: no real Pro); was 50
 % Pro in CHL runs (assign_class_discrete): assigned, with a lower-bound flag where
 % the chl trigger cuts the Pro cluster (thresholds calibrated in calibrate_pro_chl)
 cfg.sig.pro_in_chl_runs = true;
 cfg.sig.pro_edge_band = 0.1;               %Pro this close to the chl trigger edge (log10) count as at the edge
-cfg.sig.pro_edge_min_n = 100;              %fewer Pro than this: no completeness estimate, lower_bound true
+cfg.sig.pro_edge_min_n = 400;  %(was 100: CHL runs with 127-364 Pro clear of the edge were wrong or surface: AR39B C6N14 227 vs Pro run 9602, EN688 C10N18 364 at 0.41x, AR92 C26N05 2.8 m 169, EN727 C10N08 127)              %fewer Pro than this: no completeness estimate, lower_bound true
 cfg.sig.pro_lb_min_peak_above_edge = 0.3;  %lower bound if the Pro chl mode is closer than this to the edge ...
 cfg.sig.pro_lb_max_frac_near_edge = 0.1;   %... or more than this fraction of Pro is at the edge %Pro runs (assign_class_discrete): Pro chl:size 0.27-1.32, so keep the live cut
 % SYBR bacteria runs (assign_class_hbac); hand-gated SYBR runs, 6 cruises:
