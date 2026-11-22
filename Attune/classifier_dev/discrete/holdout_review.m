@@ -1,5 +1,5 @@
-function holdout_review(sets, outdir)
-% function holdout_review(sets, outdir)
+function holdout_review(sets, outdir, refresh)
+% function holdout_review(sets, outdir, refresh)
 % Build the static review viewer for the held-out check (step 4,
 % holdout_review_design.md in the shared notes). For every scored held-out run
 % outside the pass range (failures_<set>.csv from holdout_report), plus a seeded
@@ -11,6 +11,10 @@ function holdout_review(sets, outdir)
 % (read back with holdout_verdicts).
 % sets   - default {'2a' '2a_prime' '2b'}
 % outdir - default output/discrete/holdout/review
+% refresh - true: remake the frames of the runs already in outdir/review_data.js with
+%           the current classifier and hand classes, keeping each run's id and A/B order
+%           so saved verdicts still apply (old frames copied to frames_<old build date>);
+%           the run list is not redrawn from the current failures (default false)
 %
 % Nov 2026, discrete-sample classifier development
 
@@ -19,13 +23,28 @@ addpath(fileparts(here), fileparts(fileparts(here)))
 od = fullfile(fileparts(here), 'output', 'discrete');
 if nargin < 1 || isempty(sets), sets = {'2a' '2a_prime' '2b'}; end
 if nargin < 2 || isempty(outdir), outdir = fullfile(od, 'holdout', 'review'); end
+if nargin < 3, refresh = false; end
+prev = [];
+if refresh
+    js = fileread(fullfile(outdir, 'review_data.js'));
+    prev = jsondecode(regexprep(strtrim(js), '^window\.HOLDOUT\s*=\s*|;$', ''));
+    if iscell(prev.runs), prev.runs = [prev.runs{:}]; end
+    bk = fullfile(outdir, ['frames_' regexprep(char(prev.made), '[^0-9]', '')]);
+    if exist(fullfile(outdir, 'frames'), 'dir') && ~exist(bk, 'dir'), copyfile(fullfile(outdir, 'frames'), bk); end
+end
 fd = fullfile(outdir, 'frames'); if ~exist(fd, 'dir'), mkdir(fd), end
 root = '\\sosiknas1\lab_data\Attune\cruise_data\';
 lab = load(fullfile(od, 'lab_beadstat.mat')).beadstat;
 L = readtable(fullfile(od, 'holdout', 'holdout_lists.csv'), 'TextType', 'string');
 
-% runs to review: failures, plus controls
+% runs to review: failures, plus controls (refresh: the runs already in the viewer)
 sel = table;
+if refresh
+    pr = prev.runs(:);
+    sel = table(string({pr.set})', string({pr.file})', string({pr.why})', [pr.control]', ...
+        string({pr.id})', string({pr.auto_is})', 'VariableNames', {'set' 'file' 'why' 'control' 'id' 'auto_is'});
+    sets = {};
+end
 for s = 1:numel(sets)
     H = load(fullfile(od, 'holdout', ['score_' sets{s} '.mat'])).H;
     Fl = readtable(fullfile(od, 'holdout', ['failures_' sets{s} '.csv']), 'TextType', 'string');
@@ -41,7 +60,7 @@ for s = 1:numel(sets)
     sel = [sel; table(repmat(string(sets{s}), numel(bad), 1), bad, why, false(numel(bad), 1), 'VariableNames', {'set' 'file' 'why' 'control'}); ...
         table(repmat(string(sets{s}), numel(ctl), 1), ctl(:), repmat("", numel(ctl), 1), true(numel(ctl), 1), 'VariableNames', {'set' 'file' 'why' 'control'})]; %#ok<AGROW>
 end
-rng(2040, 'twister'); sel = sel(randperm(height(sel)), :); %review order: failures and controls mixed
+if ~refresh, rng(2040, 'twister'); sel = sel(randperm(height(sel)), :); end %review order: failures and controls mixed
 fprintf('%d runs to review (%d controls)\n', height(sel), sum(sel.control));
 
 V.phyto = {'size' 'BL3'; 'BL3' 'GL2'; 'size' 'PEchl'; 'PEchl' 'GL2GL3'; 'size' 'GL2'};
@@ -72,6 +91,11 @@ for i = 1:height(sel)
         fprintf('%s: %s\n', fn, err.message); continue
     end
     hand = double(G.class{gi}(:));
+    % hand classes rebuilt with the wider gate-name map, as in holdout_score
+    if all(ismember({'gate_names' 'gate_assignments'}, G.Properties.VariableNames)) && ~isempty(G.gate_assignments{gi})
+        hr = hand_class_rebuild(G.gate_names{gi}, G.gate_assignments{gi}, true);
+        if numel(hr) == numel(hand), hand = hr(:); end
+    end
     if r == "hbac"
         h = hand; h(ismember(h, [3 4])) = 97; h(~ismember(h, [1 2 97])) = 0;
         a = double(auto); a(ismember(a, [7 9])) = 97; a(~ismember(a, [1 2 97])) = 0;
@@ -88,7 +112,7 @@ for i = 1:height(sel)
     if ~ismember('SSC', F.Properties.VariableNames) && ismember('size', F.Properties.VariableNames), F.SSC = F.size; end
     if ~ismember('PEchl', F.Properties.VariableNames) && all(ismember({'GL2' 'BL3'}, F.Properties.VariableNames)), F.PEchl = F.GL2 - F.BL3; end
     if ~ismember('GL2GL3', F.Properties.VariableNames) && all(ismember({'GL2' 'GL3'}, F.Properties.VariableNames)), F.GL2GL3 = F.GL2 - F.GL3; end
-    id = sprintf('r%03d', i);
+    id = sprintf('r%03d', i); if refresh, id = char(sel.id(i)); end
     frame(F, h, views, lim, fullfile(fd, [id '_h.png']));
     frame(F, a, views, lim, fullfile(fd, [id '_a.png']));
     framediff(F, h, a, views, lim, fullfile(fd, [id '_d.png']));
@@ -100,9 +124,12 @@ for i = 1:height(sel)
         'counts', cn, 'n', sum(late), 'agree', sum(h == a & h ~= 0) / max(1, sum(h ~= 0 | a ~= 0)), ...
         'views', {arrayfun(@(k) sprintf('%s vs %s', names.(views{k, 2}), names.(views{k, 1})), 1:size(views, 1), 'UniformOutput', false)}); %#ok<AGROW>
     if rand < 0.5, runs{end}.auto_is = 'B'; end %blind order: which row (A/B) is the classifier
+    if refresh, runs{end}.auto_is = char(sel.auto_is(i)); end %keep the order the verdicts were made in
     fprintf('%d/%d %s\n', i, height(sel), fn);
 end
-D = struct('build', ['v2-holdout-test ' datestr(now, 'yyyy-mm-dd HH:MM')], 'made', datestr(now, 'yyyy-mm-dd HH:MM'), ...
+bname = ['v2-holdout-test ' datestr(now, 'yyyy-mm-dd HH:MM')];
+if refresh, bname = [bname ' (frames remade, runs from ' char(prev.made) ')']; end
+D = struct('build', bname, 'made', datestr(now, 'yyyy-mm-dd HH:MM'), ...
     'decisions_name', 'holdout_verdicts.csv', 'decisions_path', fullfile(outdir, 'holdout_verdicts.csv'), ...
     'decisions_dir', outdir, 'runs', {runs});
 [~, D.decisions_dir_name] = fileparts(outdir);
