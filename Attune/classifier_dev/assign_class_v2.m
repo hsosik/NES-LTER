@@ -319,11 +319,32 @@ class(det) = 0;
 info.trace.after_detritus = class;
 % Syn must sit near this file's Syn cluster in PE:chl, PE spectrum and size
 syn = class == 2;
-syn_PEchl = median(F.PEchl(syn)); syn_size = median(F.size(syn));
-syn_GL2GL3 = median(F.GL2GL3(syn)); syn_BL3 = median(F.BL3(syn));
+% the reference (centre and spread) is taken from Syn-named events no larger than
+% syn_ref_max_size (Nov 2026). A broad PE-bearing component of large particles can be
+% named Syn (preserved winter CHL runs EN627 C45N05, AR99 C02N16; underway AR88
+% 26Apr(3) Sample(30), EN627 1Feb2019a Sample(1)); its events then outnumbered the real
+% Syn, the reference moved to size +0.2 to +0.5, and "no Euk much smaller than Syn"
+% removed the small Euks. Real Syn peak at -1.5 to -0.75 (winter EN627 the largest)
+synr = syn;
+if sum(syn & F.size <= sig.syn_ref_max_size) >= sig.syn_ref_min_n
+    synr = syn & F.size <= sig.syn_ref_max_size;
+end
+info.syn_ref_n_above = sum(syn & ~synr);
+syn_PEchl = median(F.PEchl(synr)); syn_size = median(F.size(synr));
+syn_GL2GL3 = median(F.GL2GL3(synr)); syn_BL3 = median(F.BL3(synr));
 if ~any(syn), syn_PEchl = sig.syn_PEchl_default; syn_size = sig.syn_size_default; end
 % GL2:GL3 is only meaningful where GL3 is clear of its floor (dim summer Syn are not)
 gl3ok = F.GL3 > finfo.floor.GL3 + sig.ratio_min_above_floor;
+% ... and the reference PE:chl from those of them with a measured Syn-type spectrum
+% (GL3 clear of its floor, GL2:GL3 above syn_min_GL2GL3) when there are at least
+% syn_ref_spec_min_n (Nov 2026). In MVCO MV337N04 (preserved) a cloud of dim PE
+% particles (PE:chl ~ -0.7, GL3 at its floor so no spectrum test) was named Syn and
+% outnumbered the 42 real Syn (PE:chl +0.35) ten to one, so the Syn check kept the
+% cloud. Where dim Syn have GL3 at the floor (summer) the brighter Syn set the value
+info.syn_ref_n_spec = sum(synr & gl3ok & F.GL2GL3 > sig.syn_min_GL2GL3);
+if info.syn_ref_n_spec >= sig.syn_ref_spec_min_n
+    syn_PEchl = median(F.PEchl(synr & gl3ok & F.GL2GL3 > sig.syn_min_GL2GL3));
+end
 % Syn pigment types differ in GL2:GL3 and a sample can hold a mixture (e.g. two
 % types at ~0.26 and ~0.4 in AR92), so accept the range spanned by this file's Syn
 % components (those with a Syn-type spectrum measured clear of the GL3 floor), not one centre
@@ -332,10 +353,10 @@ syn_range = syn_ratio_range(mu, syn_GL2GL3, sig);
 % file's Syn spread; more PE per chl than Syn is allowed further (dim-chl Syn near the
 % chl trigger edge or detected by PE alone), up to syn_PEchl_sd robust SDs
 if any(syn)
-    syn_PEchl_sdv = 1.4826 * mad(F.PEchl(syn), 1);
+    syn_PEchl_sdv = 1.4826 * mad(F.PEchl(synr), 1);
     % size centre and spread from the peak of the distribution, which neither an upward
     % smear of large Syn nor tiny signals below shift or stretch
-    [syn_size, syn_size_sdv] = peak_centre(F.size(syn));
+    [syn_size, syn_size_sdv] = peak_centre(F.size(synr));
 else
     syn_PEchl_sdv = 0; syn_size_sdv = 0;
 end
@@ -485,7 +506,12 @@ end
 % particles (Euks and unassigned, smaller than Syn + euk_gap_size_above) has a deep
 % minimum between that pile and the Euk peak, small Euks below the minimum are left
 % unassigned (and the catch-all may not re-add them). Files whose smallest Euks run
-% smoothly down to the trigger have no such minimum and keep the rules above
+% smoothly down to the trigger have no such minimum and keep the rules above.
+% The population below the minimum must peak within euk_gap_pile_max_above_edge of the
+% chl edge (Nov 2026): a cluster well above the edge is not trigger noise. In MVCO
+% MV337N04 (preserved) the window took in the large Euks as the "Euk peak", and the
+% whole small-Euk cluster (peak ~1.0 above the edge) fell below the minimum between
+% the two; underway trigger-noise piles peak 0.37-0.60 above the edge
 euk_below_gap = false(n, 1);
 info.euk_chl_gap = -Inf;
 if isfield(edge, 'BL3')
@@ -501,7 +527,8 @@ if isfield(edge, 'BL3')
             for j = ip - 1:-1:2
                 if gk(j) <= edge.BL3, break, end
                 if fk(j) <= fk(j - 1) && fk(j) <= fk(j + 1) && fk(j) < sig.euk_gap_frac * fm && ...
-                        max(fk(1:j - 1)) > sig.euk_gap_rise * fk(j) && sum(x < gk(j)) >= sig.euk_gap_min_pile && fk(j) < best
+                        max(fk(1:j - 1)) > sig.euk_gap_rise * fk(j) && sum(x < gk(j)) >= sig.euk_gap_min_pile && fk(j) < best && ...
+                        pile_near_edge(fk(1:j - 1), gk(1:j - 1), edge.BL3, sig.euk_gap_pile_max_above_edge)
                     best = fk(j); info.euk_chl_gap = gk(j);
                 end
             end
@@ -970,4 +997,11 @@ w = [];
 if ~isempty(lo), w(end + 1) = c - g(lo); end
 if ~isempty(hi), w(end + 1) = g(hi) - c; end
 if isempty(w), sd = max(1.4826 * mad(x, 1), 0.05); else, sd = max(min(w) / 1.1774, 0.05); end
+end
+
+function ok = pile_near_edge(f, g, e, max_above)
+% the density peak of the population below a chl gap (density f on grid g) lies
+% within max_above of the chl trigger edge e
+[~, i] = max(f);
+ok = g(i) <= e + max_above;
 end

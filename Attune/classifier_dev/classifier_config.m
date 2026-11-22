@@ -111,6 +111,10 @@ cfg.sig.euk_gap_frac = 0.1;         %... gap = local minimum below the peak with
 cfg.sig.euk_gap_rise = 1.5;         %... and density rising again below it (pile at the trigger) by at least this factor ...
 cfg.sig.euk_gap_min_pile = 20;      %... with at least this many events below the gap
 cfg.sig.euk_gap_min_n = 200;        %... only with at least this many candidate particles
+cfg.sig.euk_gap_pile_max_above_edge = 0.7; %... and only where the population below the gap peaks within this of the chl edge (trigger noise; underway piles 0.37-0.60, a real small-Euk cluster in MVCO ~1.0)
+cfg.sig.syn_ref_max_size = -0.5;    %file's Syn reference from Syn-named events no larger than this (real Syn peak -1.5 to -0.75; broad large PE components named Syn otherwise move it) ...
+cfg.sig.syn_ref_min_n = 20;         %... when there are at least this many (else all Syn-named events)
+cfg.sig.syn_ref_spec_min_n = 20;    %Syn reference PE:chl from those with a measured Syn-type spectrum (GL3 clear of floor, GL2:GL3 > syn_min_GL2GL3) when at least this many
 cfg.sig.syn_PEchl_default = -0.2;  %used when a file has no Syn
 cfg.sig.syn_size_default = -1.24;
 cfg.sig.syn_rescue = true;         %no component named Syn: events near these defaults with a Syn PE spectrum start as Syn (rare Syn; assign_class_v2) ...

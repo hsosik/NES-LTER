@@ -782,3 +782,29 @@ Results: `output/early_layout/` (channel map only), `output/early_layout_robust/
 - **Narrow chl pulses** (more than 0.2 below the reference) mark electronic trigger noise in pre-2019 files: 63–71% of the flagged trigger-noise pile in EN627 and AR34B, median −0.3. A few reach the dim end of Syn (AR34B: up to 8% of the dimmest tenth).
 - **A narrow-pulse exclusion rule was tried and removed.** It cut 4–5% of real summer Pro (AR92 Pro(5) 32,305 → 30,964; HRS2609 Pro(21) 19,730 → 18,853), and dropping the pre-2019 noise from the fit destabilized the mixture (EN627 4Feb2019b Syn 5,636 → 2,050; 1Feb2019a Euk 429 → 1,463).
 - **Euk loss in the held-out winter CHL runs** (AT46, AR99) is unrelated to pulse shape: the small Euks there have normal pulses.
+
+### Syn reference from real Syn; Euk chl gap only at the trigger edge (Nov 2026)
+
+Found in the held-out check of preserved winter CHL runs, where most hand-gated Euks were lost because the file's Syn reference was wrong. Three changes, all in `assign_class_v2.m` and set in `classifier_config.m`:
+
+- **Syn reference from Syn-named events no larger than size −0.5** (`syn_ref_max_size`, with at least `syn_ref_min_n` = 20 of them).
+  - A broad PE-bearing component of large particles can be named Syn. Its events outnumbered the real Syn, the reference moved to size +0.2 to +0.5, and "no Euk much smaller than Syn" removed the small Euks.
+  - Real Syn peak at −1.5 to −0.75 in 328 underway files (winter EN627 the largest). Larger Syn-named components are mostly the large-Syn tail; naming them Euk instead changed 89 underway files and dropped Syn events, so the components keep their names and only the reference is restricted.
+- **Syn reference PE:chl from Syn with a measured Syn-type spectrum** (GL3 clear of its floor, GL2:GL3 above `syn_min_GL2GL3`), when there are at least `syn_ref_spec_min_n` = 20.
+  - In MVCO MV337N04 a cloud of dim PE particles (PE:chl about −0.7, GL3 at its floor so no spectrum test) was named Syn and outnumbered the 42 real Syn (PE:chl +0.35) ten to one.
+  - GL2:GL3 alone doesn't separate the two (the cloud's GL2:GL3 is noise), nor does BL2:GL2 (the cloud's PE spectrum is Syn-like); PE amount and PE:chl do.
+- **Euk chl gap only where the pile below it sits at the trigger edge**: its density peak within `euk_gap_pile_max_above_edge` = 0.7 of the chl edge.
+  - In MVCO the gap window took in the large Euks as the "Euk peak", and the whole small-Euk cluster (peak about 1.0 above the edge) fell below the minimum between the two.
+  - Underway trigger-noise piles peak 0.37–0.60 above the edge, so their gaps are kept.
+
+**Effect** (hand Euk recovered, preserved runs through the discrete wrapper):
+
+| run | before | after |
+|---|---|---|
+| EN627 C45N05 | 83 of 1,646 | 1,586 (Syn ref +0.28 → −1.21) |
+| AR99 C02N16 | 321 of 1,158 | 1,056 (Syn ref +0.19 → −1.19) |
+| MVCO MV337N04 | 989 of 1,843 | 1,791 (Syn 488 → 56, all 42 hand Syn) |
+
+- AT46 C17N02 is unchanged; it has the opposite problem (too many Euks).
+- **60-file check:** medians AR92 0.9852, AR95 0.9573 → 0.9575, EN727 0.9293, HRS2609 0.9779 → 0.9782; no file moves by more than 0.002.
+- **Underway survey (328 files):** 10 change. AR88 26Apr(3) Sample(30) Euk 535 → 3,613 (old 3,577) and EN627 1Feb2019a Sample(1) Euk 429 → 1,444 (both v2 and the old classes had the reference at +0.47 there). Seven files lose 20–120 of 1,700–9,300 Syn; EN688 EXPORTS C01N24 (a discrete PE run among the underway files) loses 472 of 1,374 Syn, not yet reviewed.
