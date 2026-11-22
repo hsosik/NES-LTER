@@ -31,6 +31,15 @@ function D = bead_review(cruise, opts)
 % Exclusions work the same way. Tests are read from performance_test_fcs beside
 % cruise_data (opts.ptdir).
 %
+% Preserved (discrete) samples: beaddir = <cruise>\preservedead_calibrated, whose
+% beadstat.mat is the cruise's subset of the lab bead checks (preserved_bead_step,
+% meta.source "lab FCB bead checks"). Runs are read from the lab bead folder
+% (meta.lab_dir), samples are the preserved runs in FCSfileinfo (runtype CHL, PE,
+% pro, hbac), and each sample's reference is discrete_bead_reference (same-day runs;
+% a channel without a good same-day population uses the nearest good run: orange).
+% The page also lists each run day: samples, same-day runs, channels needing a
+% fallback, and days without a lab bead run. Exclusions apply to this cruise.
+%
 % opts (all optional):
 %   .root       cruise_data root passed to attune_cruise_settings
 %   .beaddir    folder with beadstat.mat and FCSfileinfo.mat (default bead_calibrated);
@@ -56,18 +65,26 @@ if ~exist(fullfile(outdir, 'frames'), 'dir'), mkdir(fullfile(outdir, 'frames'));
 [bs, meta] = load_beadstat(bp, false); % as measured: the page shows QC before exclusions
 src = ""; if isfield(meta, 'source'), src = string(meta.source); end
 pt = src == "PT performance test transfer";
+lab = src == "lab FCB bead checks"; % preserved samples: lab bead runs
+if lab, addpath(fullfile(fileparts(here), 'discrete')), end
 if ~pt && ~isfield(meta, 'signature')
     error('bead_review:source', ['%s: beadstat.mat is neither an FCB bead table nor a PT-transfer table ' ...
         '(meta.source "%s"); for a cruise without FCB beads rebuild it with make_perf_beadstat'], s.cruise, src)
 end
 if isfile(fullfile(bp, 'FCSfileinfo.mat'))
     F = load(fullfile(bp, 'FCSfileinfo.mat')); fn = fieldnames(F); Fi = F.(fn{1});
+elseif lab
+    error('bead_review:files', 'preserved samples: run the files step first (no FCSfileinfo.mat in %s)', bp)
 else % step 1 not run yet: sample times from the FCS headers
     Fi = list_fcs(fullfile(s.basepath, 'FCS'));
 end
 cfg = classifier_config();
 cfg.cruise = s.cruise;
 conf = attune_config(s.cruise);
+fcsdir = fullfile(s.basepath, 'FCS'); % where the bead runs are
+if lab
+    cfg.cruise = 'LAB'; conf = attune_config('LAB'); fcsdir = char(meta.lab_dir);
+end
 P = {'05' '1' '6'}; PN = {'0.5' '1' '6'};
 chans = bs.peak1.Properties.VariableNames; % FSC_H ... GL4_H, SSC_A, GL1_A
 bt = datenum(bs.time);
@@ -112,7 +129,7 @@ for i = 1:nfcb
     end
     r.all = struct(); r.read = '';
     try
-        [d, h] = fca_readfcs(fullfile(s.basepath, 'FCS', r.file));
+        [d, h] = fca_readfcs(fullfile(fcsdir, r.file));
         d = double(d); names = {h.par.name};
         rng(0) % robustcov subsets
         [cl, pops] = find_beads(d, h, sig, conf);
@@ -139,6 +156,9 @@ end
 
 % sample files and the reference each one is normalized against (bead_reference)
 isbead = contains(Fi.fcslist, {'FCB_bead' 'fcb_bead'});
+if lab % preserved samples, as classify selects them
+    isbead = strcmp(Fi.runtype, 'other') | contains(Fi.fcslist, s.exclude_preserved) | ~isfinite(Fi.matdate_start);
+end
 t = Fi.matdate_start(~isbead); names = Fi.fcslist(~isbead);
 [t, o] = sort(t); names = names(o);
 ns = numel(t);
@@ -152,12 +172,21 @@ for c = cfg.chans
     S.ref.(c{1}) = nan(ns, 1); S.nruns.(c{1}) = zeros(ns, 1); S.nearest.(c{1}) = false(ns, 1); S.runs.(c{1}) = cell(ns, 1);
 end
 for k = 1:ns
-    ref = bead_reference(bsx, t(k), cfg);
+    if lab
+        ref = discrete_bead_reference(bsx, t(k), cfg);
+        if isempty(ref) % no lab bead run that day: classify skips the file
+            for c = cfg.chans, S.runs.(c{1}){k} = []; end
+            continue
+        end
+    else
+        ref = bead_reference(bsx, t(k), cfg);
+    end
     for c = cfg.chans
         ch = c{1};
         u = find(ismember(bsx.filename, ref.runs.(ch)));
         S.runs.(ch){k} = u(:)' - 1; % 0-based for the page
         S.nearest.(ch)(k) = ~isempty(u) && all(abs(bt(u) - t(k)) > cfg.bead_window_days);
+        if lab, S.nearest.(ch)(k) = ref.fallback.(ch) > 0; end % nearest good run on another day
         % reference at the cruise's common voltage
         S.ref.(ch)(k) = ref.bead_log.(ch) + cfg.k.(ch) * log10(hvc.(ch) / ref.bead_hv.(ch));
         S.nruns.(ch)(k) = ref.ntimes.(ch);
@@ -177,6 +206,13 @@ if pt
     D.state_usual = char(mode(categorical(bs.state))); D.filter_usual = char(mode(categorical(bs.filterset)));
 else
     D.qc = sig.qc; D.nshift = table2struct(meta.nshift);
+end
+D.lab = lab;
+if lab
+    D.source = char(src); D.notes = cellstr(meta.notes);
+    dd = meta.days; dd.day = cellstr(string(dd.day, 'yyyy-MM-dd')); dd.fallback_channels = cellstr(dd.fallback_channels);
+    D.lab_days = num2cell(table2struct(dd));
+    D.window_days = 0; % same day only
 end
 D.code = char(meta.code); D.processed = char(datetime(meta.processed, 'Format', 'yyyy-MM-dd HH:mm'));
 D.runs = R;

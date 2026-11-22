@@ -45,7 +45,8 @@ function p = process_cruise(cruise, opt)
 %   Sample    "underway" (default) or "preserved": discrete samples from <cruise>\preserved\FCS,
 %             output in <cruise>\preserved\bead_calibrated\. Built so far: files (adds
 %             cast, niskin, runtype: preserved_fileinfo), beads (lab bead runs:
-%             preserved_bead_step), metadata (CTD bottles / event log:
+%             preserved_bead_step, and the bead review page in bead_calibrated\bead_review\
+%             unless Review is false; exclusions apply to this cruise), metadata (CTD bottles / event log:
 %             preserved_metadata, writes BottleMetadata.mat), classify (by run type:
 %             assign_class_discrete for CHL/PE/pro runs, assign_class_hbac for SYBR runs;
 %             same-day lab beads, discrete_bead_reference; per-event time_gate mask),
@@ -173,7 +174,14 @@ end
 
 %% beads
 if do("beads") && pres
-    preserved_bead_step(p, opts.force); % lab bead runs (bead review page: not yet for lab tables)
+    made = preserved_bead_step(p, opts.force); % lab bead runs; exclusions from this cruise's bead review
+    if made && opts.review
+        try
+            bead_review(p.cruise, struct('root', opts.root, 'beaddir', p.outpath));
+        catch ME
+            warning('process_cruise:bead_review', 'bead review not built: %s', ME.message)
+        end
+    end
 elseif do("beads")
     made = bead_step(p, c, opts.force);
     if made && opts.review

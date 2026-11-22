@@ -398,7 +398,7 @@ function side() {
       return `<tr><td>${ch}</td><td>${PN[ip]}</td><td class="${bad ? 'bad' : ''}">${p.QC ? fmt(v) : '<span class="mut">' + fmt(v) + '</span>'}</td><td>${fmt(p.rsd[ch + '_H'])}</td><td class="${fin(hvOf(f, ch)) && hvOf(f, ch) !== D.hvc[ch] ? 'bad' : ''}">${fmt(hvOf(f, ch), 0)}</td></tr>`; }).join('') + '</table>';
   }
   h += `<h3>Used by</h3><div>${U.length ? `${U.length} sample files, ${S.time[U[0]].replace('T', ' ')} to ${S.time[U[U.length - 1]].replace('T', ' ')}` : '<span class="mut">no sample files</span>'}</div>`;
-  h += PTM ? `<h3>Build</h3><div class="mut">bead table ${esc(D.processed)} (${esc(D.code)}): ${esc(D.source)}; page ${esc(D.made)}</div>` + arr(D.notes).map(n => `<p class="help">${esc(n)}</p>`).join('')
+  h += (PTM || D.lab) ? `<h3>Build</h3><div class="mut">bead table ${esc(D.processed)} (${esc(D.code)}): ${esc(D.source)}; page ${esc(D.made)}</div>` + arr(D.notes).map(n => `<p class="help">${esc(n)}</p>`).join('')
     : `<h3>Build</h3><div class="mut">bead stats ${esc(D.processed)} (${esc(D.code)}); page ${esc(D.made)}<br>cruise offsets learned from ${Object.entries(D.nshift).map(([k, v]) => `${v} (${k.slice(1).replace('05', '0.5')} µm)`).join(', ')} runs</div>`;
   h += `<p class="help">Keys: <kbd>←</kbd> <kbd>→</kbd> ${RUNS}, <kbd>n</kbd> <kbd>p</kbd> unusual ${RUNS}, <kbd>o</kbd> OK, <kbd>x</kbd> problem, <kbd>e</kbd> exclude, <kbd>?</kbd> needs another look, <kbd>m</kbd> note</p>`;
   $('sideinfo').innerHTML = h;
@@ -434,8 +434,12 @@ function coverage() {
     const desc = per.map(([c, r, nr]) => `${same ? '' : c + ': '}${r.length ? r.map(j => j + 1).join(' ') : 'none'}${nr ? ' <span class="minor">(nearest only)</span>' : ''}`).join('; ');
     return `<tr><td>${a + 1}–${b + 1}</td><td>${b - a + 1}</td><td class="l">${S.time[a].replace('T', ' ').slice(0, 16)}</td><td class="l">${S.time[b].replace('T', ' ').slice(0, 16)}</td><td class="l">${desc}</td></tr>`;
   }).join('');
-  $('cover').innerHTML = `<div class="head"><b>Coverage</b> <span>${NS} sample files; ${nnear ? `<span class="minor">${nnear} with no ${RUN} within ±${D.window_days} d (nearest ${RUN} used)</span>` : `every file has a good ${RUN} within ±${D.window_days} d`}; ${same ? `all channels use the same ${RUNS}` : `channels differ: ${RUNS} listed per channel`}; longest gap between ${RUNS} ${fmt(Math.max(...gaps, 0), 1)} h</span></div>` +
-    `<table><tr><th>files</th><th>n</th><th class="l">from</th><th class="l">to</th><th class="l">${RUNS} in the median (#)</th></tr>${rows}</table>`;
+  const win = D.lab ? `on the same day` : `within ±${D.window_days} d`;
+  $('cover').innerHTML = `<div class="head"><b>Coverage</b> <span>${NS} sample files; ${nnear ? `<span class="minor">${nnear} with no good ${RUN} ${win} on some channel (nearest ${RUN} used)</span>` : `every file has a good ${RUN} ${win}`}; ${same ? `all channels use the same ${RUNS}` : `channels differ: ${RUNS} listed per channel`}; longest gap between ${RUNS} ${fmt(Math.max(...gaps, 0), 1)} h</span></div>` +
+    `<table><tr><th>files</th><th>n</th><th class="l">from</th><th class="l">to</th><th class="l">${RUNS} in the median (#)</th></tr>${rows}</table>` +
+    (D.lab ? `<div class="head" style="margin-top:8px"><b>Run days</b> <span>preserved samples are normalized against lab bead runs from the same day</span></div>` +
+      `<table><tr><th class="l">day</th><th>samples</th><th>same-day bead runs</th><th class="l">channels using a run from another day</th></tr>` +
+      arr(D.lab_days).map(d => `<tr><td class="l">${esc(d.day)}</td><td>${d.n_samples}</td><td class="${d.n_bead_runs ? '' : 'bad'}">${d.n_bead_runs || 'none: samples skipped'}</td><td class="l ${d.fallback_channels ? 'minor' : ''}">${esc(d.fallback_channels) || '–'}</td></tr>`).join('') + '</table>' : '');
 }
 // ---------- review decisions (as in the class review) ----------
 const ST = {
