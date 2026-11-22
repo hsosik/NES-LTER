@@ -93,6 +93,17 @@ cfg.hbac.syn_max_SSC = -0.8;     %Syn by chl excess alone: SSC below this (Syn 9
 cfg.hbac.bact_max_SSC = -1.2;    %bacteria no larger than this (SSC 95th percentile -1.5)
 cfg.hbac.min_chlSSC = 0.6;       %chl excess needs chl:size above this (as detritus_max_chlSSC in phyto runs) ...
 cfg.hbac.min_chlSSC_pro = 0.04;  %... or this for Pro-sized events
+% HNA / LNA subtype of bacteria (9), info.bact_type (hbac_hna_split): cut on
+% y = BL1 - slope * (SSC + 2) at the run's density valley, else a fixed cut.
+% 200 + 175 held-out runs, 25 cruises (hbac_hna_test, Nov 2026): valley median
+% -1.26 (5-95% -1.35 to -1.18); no clear valley mostly in summer surface samples
+cfg.hbac.hna.slope = 0.35;        %HNA cloud rises with SSC (best slope per run 0.3-0.4)
+cfg.hbac.hna.win = [-1.45 -1.10]; %valley search window in y (keeps off the trigger-edge band near BL1 -1.85)
+cfg.hbac.hna.flank = 0.35;        %dip = valley density / lower of the maxima within this either side
+cfg.hbac.hna.bw = 0.04;           %ksdensity bandwidth
+cfg.hbac.hna.min_n = 2000;        %fewer bacteria: fixed cut
+cfg.hbac.hna.max_dip = 0.9;       %valley used only if the dip is below this
+cfg.hbac.hna.default_cut = -1.26; %fixed cut (median valley)
 % Syn defaults (rare-Syn rescue, files without Syn): hand-gated preserved Syn
 cfg.sig.syn_PEchl_default = 0.1;   %live -0.2
 cfg.sig.syn_size_default = -1.29;  %live -1.24

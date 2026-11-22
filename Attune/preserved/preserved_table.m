@@ -13,6 +13,7 @@ function T = preserved_table(p)
 %                                                                 lower_bound false); otherwise the
 %                                                                 CHL count is pro_lower_bound_*
 %   heterotrophic bacteria (9), Pro in SYBR runs   hbac
+%     bacteria LNA / HNA (class file bact_type)
 %
 % Where a sample has several runs of one type (repeats), the last one is used
 % and n_<type>_runs says how many there were. Counts use only events in the
@@ -30,21 +31,25 @@ function T = preserved_table(p)
 % Nov 2026, process_cruise preserved mode
 
 d = dir(fullfile(p.classpath, '*.mat'));
-S = struct('file', {}, 'key', {}, 'runtype', {}, 'vol', {}, 'stats', {}, 'pro_lb', {}, 'meta', {});
+wl = warning('off', 'MATLAB:load:variableNotFound'); % bact_type: SYBR runs only
+S = struct('file', {}, 'key', {}, 'runtype', {}, 'vol', {}, 'stats', {}, 'pro_lb', {}, 'hna_method', {}, 'meta', {});
 for k = 1:numel(d)
-    c = load(fullfile(d(k).folder, d(k).name), 'class', 'syn_type', 'time_gate', 'class_meta', 'volume_cubic_microns');
+    c = load(fullfile(d(k).folder, d(k).name), 'class', 'syn_type', 'bact_type', 'time_gate', 'class_meta', 'volume_cubic_microns');
     if ~isfield(c, 'class_meta') || ~isfield(c.class_meta, 'sample') || c.class_meta.sample ~= "preserved", continue, end
     m = c.class_meta;
     g = true(size(c.class)); if isfield(c, 'time_gate'), g = c.time_gate(:); end
     cl = c.class(:); cl = cl(g);
     st = zeros(size(cl), 'uint8'); if isfield(c, 'syn_type') && numel(c.syn_type) == numel(g), st = c.syn_type(:); st = st(g); end
+    bt = []; if isfield(c, 'bact_type') && numel(c.bact_type) == numel(g), bt = c.bact_type(:); bt = bt(g); end
+    hm = ""; if isfield(m, 'hbac') && isfield(m.hbac, 'hna') && isfield(m.hbac.hna, 'method'), hm = string(m.hbac.hna.method); end
     v = NaN(size(cl)); if isfield(c, 'volume_cubic_microns') && numel(c.volume_cubic_microns) == numel(g), v = c.volume_cubic_microns(:); v = v(g); end
     lb = true; if isfield(m, 'pro') && isfield(m.pro, 'lower_bound'), lb = logical(m.pro.lower_bound); end
     if m.cast > 0, key = sprintf('%d_%d_%s', m.cast, m.niskin, m.sizefrac); else, key = sprintf('0_0_%s_%s', m.sample_label, m.sizefrac); end
     meta = struct('cast', m.cast, 'niskin', m.niskin, 'sample_label', string(m.sample_label), 'sizefrac', string(m.sizefrac));
     S(end+1) = struct('file', regexprep(d(k).name, '\.mat$', '.fcs'), 'key', key, 'runtype', char(m.runtype), ...
-        'vol', m.vol_analyzed_ml, 'stats', file_stats(cl, st, v), 'pro_lb', lb, 'meta', meta); %#ok<AGROW>
+        'vol', m.vol_analyzed_ml, 'stats', file_stats(cl, st, bt, v), 'pro_lb', lb, 'hna_method', hm, 'meta', meta); %#ok<AGROW>
 end
+warning(wl)
 if isempty(S), error('preserved_table:none', 'no preserved class files in %s (run classify first)', p.classpath), end
 F = load([p.outpath 'FCSfileinfo.mat'], 'FCSfileinfo'); F = F.FCSfileinfo;
 [~, ia] = ismember({S.file}, F.fcslist);
@@ -80,7 +85,8 @@ for i = 1:numel(keys)
         r.pro_lower_bound_cells_per_ml = NaN; r.pro_lower_bound_filename = "";
     end
     % SYBR run: heterotrophic bacteria and Pro
-    r = add_group(r, 'hbac', S, iHB, {'bacteria' 'pro_sybr' 'bacteria_incl_pro'}, {});
+    r = add_group(r, 'hbac', S, iHB, {'bacteria' 'bacteria_LNA' 'bacteria_HNA' 'pro_sybr' 'bacteria_incl_pro'}, {});
+    r.bacteria_hna_method = ""; if ~isempty(iHB), r.bacteria_hna_method = S(iHB).hna_method; end
     rows{i} = r;
 end
 T = vertcat(rows{:});
@@ -95,6 +101,7 @@ table_metadata = {"process_cruise preserved table (preserved_table)"; string(dat
     "syn_*: PE run (CHL if none); euk_*, crypto_*, euk_with_syn: CHL run (PE if none); euk = Euk without PE (class 1), all sizes; euk_leqXum: class 1 by ESD; crypto dim/bright = classes 3/4 (<= 20 um); euk_with_syn = class 5 (<= 20 um)"; ...
     "pro_*: pro run, or CHL run where its Pro cluster is complete; otherwise NaN and pro_lower_bound_cells_per_ml from the CHL run"; ...
     "bacteria = heterotrophic bacteria (class 9) in the SYBR run; pro_sybr = Pro (7) in the SYBR run; bacteria_incl_pro = 7 + 9"; ...
+    "bacteria_LNA / bacteria_HNA: class 9 split by bact_type (sum = bacteria); bacteria_hna_method 'valley' = cut at the run's SYBR density valley, 'fixed' = no valley (HNA and LNA merged), split nominal"; ...
     "volumes: live size calibration applied as is (no preservation correction)"; ...
     "<group>_storage_days: run start minus collection time (days) for the run used; treat Pro from long-stored reruns as uncertain"};
 save([p.outpath 'DiscreteTable.mat'], 'T', 'table_metadata')
@@ -102,7 +109,7 @@ fprintf('table: %d samples -> %sDiscreteTable.mat\n', height(T), p.outpath)
 end
 
 
-function s = file_stats(cl, st, v)
+function s = file_stats(cl, st, bt, v)
 % counts, biovolume and carbon (pg) per group for one file, time-gated events
 esd = (v * 3 / 4 / pi).^(1/3) * 2;
 C = real(biovol2carbon(v, 0));
@@ -114,13 +121,16 @@ for e = [2 3 5 10 20]
     grp.(sprintf('euk_leq%dum', e)) = cl == 1 & esd <= e;
 end
 grp.crypto_dim = cl == 3 & ~(esd > 20); grp.crypto_bright = cl == 4 & ~(esd > 20); grp.euk_with_syn = cl == 5 & ~(esd > 20);
-grp.pro = cl == 7; grp.bacteria = cl == 9; grp.pro_sybr = cl == 7; grp.bacteria_incl_pro = cl == 7 | cl == 9;
+grp.pro = cl == 7; grp.bacteria = cl == 9;
+nobt = isempty(bt); if nobt, bt = zeros(size(cl), 'uint8'); end %class file without bact_type: LNA/HNA NaN
+grp.bacteria_LNA = cl == 9 & bt == 1; grp.bacteria_HNA = cl == 9 & bt == 2; grp.pro_sybr = cl == 7; grp.bacteria_incl_pro = cl == 7 | cl == 9;
 s = struct();
 for f = fieldnames(grp)'
     x = grp.(f{1});
     s.(f{1}) = sum(x); s.([f{1} '_biovol']) = sum(v(x), 'omitnan'); s.([f{1} '_carbon']) = sum(C(x), 'omitnan');
     if all(isnan(v)), s.([f{1} '_biovol']) = NaN; s.([f{1} '_carbon']) = NaN; end
 end
+if nobt, s.bacteria_LNA = NaN; s.bacteria_HNA = NaN; end
 if all(isnan(v)) % no volumes yet: no size classes
     for e = [2 3 5 10 20], s.(sprintf('euk_leq%dum', e)) = NaN; end
 end

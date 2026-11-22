@@ -27,7 +27,14 @@ function [class, info] = assign_class_hbac(fcsdat, fcshdr, ref, cfg)
 %   bacteria chlx 0.35 +- 0.14, pex -0.52 +- 0.18 in every cruise;
 %   BL1 - SSC 1st percentile ~0; SSC 5-95% -2.6 to -1.5
 %
-% info - core offsets and SDs, thresholds used, trigger edges, features
+% HNA / LNA (hbac_hna_split, cfg.hbac.hna): per-event info.bact_type, uint8,
+%   1 LNA, 2 HNA, 0 not bacteria. Cut on y = BL1 - slope * (SSC + 2) at the
+%   run's SYBR density valley when it is clear (info.hna.method 'valley'),
+%   else a fixed cut ('fixed': HNA and LNA merged, mostly summer surface
+%   samples; the split there is nominal).
+%
+% info - core offsets and SDs, thresholds used, trigger edges, features,
+%        bact_type, bact_type_names, hna (cut, slope, method, dip, counts)
 %
 % Nov 2026, discrete-sample classifier development
 
@@ -66,5 +73,9 @@ class(chl_ex & ~syn & F.SSC <= h.pro_max_SSC) = 7;
 bact = ~phyto & stain > h.stain_min & F.BL1 > e.BL1 + h.bl1_edge_margin & F.SSC <= h.bact_max_SSC;
 class(bact) = 9;
 info.chlx = [oc sc cut_c]; info.pex = [op sp cut_p];
-info.counts = struct('syn', sum(class == 2), 'euk', sum(class == 1), 'pro', sum(class == 7), 'bact', sum(class == 9));
+% HNA / LNA subtype of the bacteria (like info.syn_type; class 9 unchanged)
+[info.bact_type, info.hna] = hbac_hna_split(F.BL1, F.SSC, class == 9, h.hna);
+info.bact_type_names = info.hna.names;
+info.counts = struct('syn', sum(class == 2), 'euk', sum(class == 1), 'pro', sum(class == 7), 'bact', sum(class == 9), ...
+    'lna', info.hna.n_lna, 'hna', info.hna.n_hna);
 end

@@ -72,6 +72,8 @@ function p = process_cruise(cruise, opt)
 %              5 Euk with Syn, 7 Pro, 8 Syn on particle
 %   syn_type   per event, uint8: 1/2/3 Syn type A/B/C (PUB:PEB low/mid/high),
 %              9 Syn-bearing but spectrum not usable, 0 not Syn-bearing (classes 2, 5, 8 only)
+%   bact_type  SYBR (hbac) preserved runs only: per event, uint8, 1 LNA, 2 HNA bacteria,
+%              0 not bacteria (class 9 only; method and cut in class_meta.hbac.hna)
 %   flag       per event, uint8, only on class 0: 1 Syn-pigment particle with low chl
 %              (degraded Syn/Euk, grazer, detritus), 2 below the Euk chl gap, 3 trigger-
 %              noise pile at the chl edge (pre-2019), 4 Pro-like event in a file without
@@ -375,8 +377,12 @@ parfor (k = 1:n, M)
             o.class_meta.large_pro = field_or(info, 'large_pro', struct());
             o.class_meta.euk_autofluor = field_or(info, 'euk_autofluor', struct());
             o.class_meta.discrete_cfg = field_or(info, 'discrete_cfg', struct()); % settings used (version tag)
-            if strcmp(rt{k}, 'hbac'), o.class_meta.hbac = struct('n_core', field_or(info, 'n_core', NaN), ...
-                    'chlx', field_or(info, 'chlx', []), 'pex', field_or(info, 'pex', [])); end
+            if strcmp(rt{k}, 'hbac')
+                o.class_meta.hbac = struct('n_core', field_or(info, 'n_core', NaN), ...
+                    'chlx', field_or(info, 'chlx', []), 'pex', field_or(info, 'pex', []), 'hna', field_or(info, 'hna', struct()));
+                o.bact_type = field_or(info, 'bact_type', zeros(numel(cls), 1, 'uint8'));
+                o.notes(7) = codes.bact_type;
+            end
         end
         save_classfile(classfile{k}, o)
         if do_review && ~strcmp(rt{k}, 'hbac') % SYBR runs: no review frame yet
@@ -438,6 +444,8 @@ codes.class = "class: 0 = unassigned, 1 = Euk (no PE), 2 = Syn, 3 = dim crypto (
     "8 = Syn on particle (count with Syn abundance, not Syn size or carbon); cell volume in cubic microns";
 codes.syn_type = "syn_type (classes 2, 5, 8): 1 = type A (low PUB:PEB), 2 = type B (mid), 3 = type C (high PUB:PEB), " + ...
     "9 = spectrum not usable, 0 = not Syn-bearing";
+codes.bact_type = "bact_type (SYBR runs, class 9 only): 1 = LNA, 2 = HNA (low / high nucleic acid; cut on BL1 - slope*(SSC+2), " + ...
+    "class_meta.hbac.hna: method 'fixed' = no SYBR valley, split nominal), 0 = not bacteria";
 codes.flag = "flag (class 0 only): 1 = Syn-pigment particle with low chl (degraded Syn/Euk, grazer, detritus), " + ...
     "2 = below the Euk chl gap, 3 = trigger-noise pile at the chl edge (pre-2019 files), " + ...
     "4 = Pro-like (no PE, no larger than Syn) in a file run without Pro settings: Pro lower bound, 0 = none";
