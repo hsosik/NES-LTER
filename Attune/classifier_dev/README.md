@@ -807,4 +807,4 @@ Found in the held-out check of preserved winter CHL runs, where most hand-gated 
 
 - AT46 C17N02 is unchanged; it has the opposite problem (too many Euks).
 - **60-file check:** medians AR92 0.9852, AR95 0.9573 → 0.9575, EN727 0.9293, HRS2609 0.9779 → 0.9782; no file moves by more than 0.002.
-- **Underway survey (328 files):** 10 change. AR88 26Apr(3) Sample(30) Euk 535 → 3,613 (old 3,577) and EN627 1Feb2019a Sample(1) Euk 429 → 1,444 (both v2 and the old classes had the reference at +0.47 there). Seven files lose 20–120 of 1,700–9,300 Syn; EN688 EXPORTS C01N24 (a discrete PE run among the underway files) loses 472 of 1,374 Syn, not yet reviewed.
+- **Underway survey (328 files):** 10 change. AR88 26Apr(3) Sample(30) Euk 535 → 3,613 (old 3,577) and EN627 1Feb2019a Sample(1) Euk 429 → 1,444 (both v2 and the old classes had the reference at +0.47 there). Seven files lose 20–120 of 1,700–9,300 Syn; EN688 EXPORTS C01N24 loses 472 of 1,374 Syn, but it is a preserved PE run filed with the underway data and only changes when run through v2 alone. Through `assign_class_discrete`, the right path for it, Syn stay at 781 with the same Syn reference.
