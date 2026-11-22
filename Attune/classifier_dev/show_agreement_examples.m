@@ -21,16 +21,16 @@ exdir = fullfile(outdir, 'examples');
 if ~exist(exdir, 'dir'), mkdir(exdir), end
 for i = 1:height(E)
     cpath = fullfile(root, char(E.cruise(i)));
-    bp = fullfile(cpath, 'bead_calibrated');
-    bs = load_beadstat(bp);
+    P = cruise_paths(char(E.cruise(i)), Root=root); % archive-aware
+    bs = load_beadstat(P.bead_dir);
     fn = char(E.file(i));
     [fcsdat, fcshdr] = fca_readfcs(fullfile(cpath, 'FCS', fn));
     ref = bead_reference(bs, E.time(i), cfg);
     [new, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, E.pro_measured(i));
-    c = load(fullfile(bp, 'class', regexprep(fn, '\.fcs$', '.mat')), 'class');
+    old = load_old_class(P, fn);
     ttl = sprintf('example %d of %d: %s   agreement %.3f (rank %d of %d)   v2 adds %d, drops %d, relabels %d of %d phyto events   trigger %s %g', ...
         i, height(E), fn, E.agreement(i), find(A.file == E.file(i)), height(A), E.n_added(i), E.n_dropped(i), E.n_relabelled(i), E.n_phyto(i), ...
         fcshdr.tr1_par, fcshdr.tr1_level);
-    plot_class_cytograms(fcsdat, fcshdr, c.class(:, 1), new, info, ttl, fullfile(exdir, sprintf('example%d_%s.png', i, extractAfter(char(E.cruise(i)), '_'))));
+    plot_class_cytograms(fcsdat, fcshdr, old, new, info, ttl, fullfile(exdir, sprintf('example%d_%s.png', i, extractAfter(char(E.cruise(i)), '_'))));
 end
 end

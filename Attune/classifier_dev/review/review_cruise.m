@@ -31,12 +31,13 @@ addpath(here, fileparts(here), fileparts(fileparts(here)))
 s = attune_cruise_settings(cruise, opts.root);
 c = s.config;
 bp = fullfile(s.basepath, 'bead_calibrated');
+P = cruise_paths(s.folder, Root=fileparts(s.basepath)); % old classes, FCSfileinfo, beads (archive-aware)
 outdir = opts.outdir; if isempty(outdir), outdir = fullfile(bp, 'review'); end
 decfile = opts.decisions; if isempty(decfile), decfile = fullfile(bp, 'review_decisions.csv'); end
 build = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm')); % this classification run
 if ~exist(fullfile(outdir, 'frames'), 'dir'), mkdir(fullfile(outdir, 'frames')); end
 
-load(fullfile(bp, 'FCSfileinfo.mat'), 'FCSfileinfo')
+load(fullfile(P.info_dir, 'FCSfileinfo.mat'), 'FCSfileinfo')
 Fi = FCSfileinfo(~contains(FCSfileinfo.fcslist, s.exclude), :);
 if ~ismember('pro_measured', Fi.Properties.VariableNames), Fi.pro_measured = zeros(height(Fi), 1); end
 Fi = sortrows(Fi, 'matdate_start');
@@ -48,14 +49,18 @@ end
 n = height(Fi);
 fprintf('review_cruise %s: %d files -> %s\n', s.cruise, n, outdir)
 
-bs = load_beadstat(bp);
+bs = load_beadstat(P.bead_dir);
 cfg = classifier_config();
 cfg.gl1_is_od2_scatter = strcmp(c.OD2, 'GL1');
 cfg.cruise = s.cruise;
 R = review_config();
 fcsfile = fullfile(s.basepath, 'FCS', Fi.fcslist);
-classfile = fullfile(bp, 'class', regexprep(Fi.fcslist, '\.fcs$', '.mat'));
-names = Fi.fcslist; t = Fi.matdate_start; pro = Fi.pro_measured; use_old = opts.old;
+use_old = opts.old;
+classfile = fullfile(P.old_class, regexprep(Fi.fcslist, '\.fcs$', '.mat'));
+if use_old, k1 = find(isfile(classfile), 1); % never compare v2 with v2 (cruise reprocessed but not archived)
+    if ~isempty(k1) && ismember('class_meta', who('-file', classfile{k1}))
+        warning('review_cruise:oldv2', '%s holds v2 class files; no old-class comparison', P.old_class), use_old = false; end, end
+names = Fi.fcslist; t = Fi.matdate_start; pro = Fi.pro_measured;
 
 use_par = opts.parallel;
 if isempty(use_par), use_par = license('test', 'Distrib_Computing_Toolbox') && n > 4; end
