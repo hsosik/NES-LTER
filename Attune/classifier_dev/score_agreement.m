@@ -16,6 +16,7 @@ cfg.cruise = extractAfter(cruisedir, '_'); %cruise settings from attune_config, 
 cfg.gl1_is_od2_scatter = strcmpi(attune_config(cfg.cruise).OD2, 'GL1');
 cpath = fullfile(root, cruisedir);
 P = cruise_paths(cruisedir, Root=root); %old classes from the archive once the cruise is archived
+if isempty(P.old_class), error('score_agreement:noold', '%s', P.old_note), end
 fprintf('%s: old classes from %s; FCSfileinfo from %s; beads from %s\n', cruisedir, P.old_class, P.info_dir, P.bead_dir)
 bs = load_beadstat(P.bead_dir);
 load(fullfile(P.info_dir, 'FCSfileinfo.mat'), 'FCSfileinfo')

@@ -17,7 +17,9 @@ function P = cruise_paths(cruisedir, opt)
 % P.tag        archive tag used ('' if none)
 % P.old        folder holding the old (pre-v2) output: the archive if there is one,
 %              otherwise bead_calibrated itself (cruise not yet archived)
-% P.old_class  P.old\class (old class files, one per FCS file)
+% P.old_class  P.old\class (old class files, one per FCS file); a class_pre_* folder
+%              in the archive if class\ there holds v2 files; '' if no old classes exist
+% P.old_note   why P.old_class is not P.old\class ('' normally)
 % P.info_dir   folder to read FCSfileinfo.mat from: P.current once process_cruise
 %              has rebuilt it, otherwise P.old
 % P.bead_dir   folder to read beadstat.mat from (same rule)
@@ -60,8 +62,32 @@ if P.archived, P.old = fullfile(P.basepath, ['bead_calibrated_archive_' P.tag]);
 else, P.old = P.current;
 end
 P.old_class = fullfile(P.old, 'class');
+% the archived class\ can hold v2 files where a cruise was run with assign_class_v2
+% before archiving (AR29, EN627: Nov 2026, PT-transfer work); the old classes are then
+% in a class_pre_* folder next to it (EN627: class_pre_PTtransfer_20261118), or absent
+% (AR29 was never classified before). P.old_class is '' when there are none.
+P.old_note = '';
+if P.archived && is_v2_folder(P.old_class)
+    alt = dir(fullfile(P.old, 'class_pre_*')); alt = alt([alt.isdir]);
+    alt = alt(arrayfun(@(a) ~is_v2_folder(fullfile(P.old, a.name)) && ~isempty(dir(fullfile(P.old, a.name, '*.mat'))), alt));
+    if isempty(alt)
+        P.old_note = sprintf('archived class\\ holds v2 files and there is no older class folder: no old classes for %s', cruisedir);
+        P.old_class = '';
+    else
+        P.old_class = fullfile(P.old, alt(end).name);
+        P.old_note = sprintf('archived class\\ holds v2 files; old classes from %s', alt(end).name);
+    end
+    warning('cruise_paths:oldv2', '%s', P.old_note)
+end
 P.info_dir = P.old; if exist(fullfile(P.current, 'FCSfileinfo.mat'), 'file'), P.info_dir = P.current; end
 P.bead_dir = P.old; if exist(fullfile(P.current, 'beadstat.mat'), 'file'), P.bead_dir = P.current; end
 P.baseline_class = '';
 if P.archived && isfolder(fullfile(P.current, 'class')), P.baseline_class = fullfile(P.current, 'class'); end
+end
+
+
+function tf = is_v2_folder(d)
+% true if the first class file in folder d is a v2 file (has class_meta)
+f = dir(fullfile(d, '*.mat'));
+tf = ~isempty(f) && ismember('class_meta', who('-file', fullfile(d, f(1).name)));
 end
