@@ -52,6 +52,7 @@ cfg.sig.lp_min_chlSSC = 0.6;      %... and its mean chl:size at least this (larg
 cfg.sig.lp_lda = [-7.080 -4.316 9.189];
 cfg.sig.lp_lda_min_median = 2;    %... applied if the Pro-side events' median score is at least this
 cfg.sig.lp_lda_dominant = [0.75 1.2]; %... or if at least this fraction of candidates is on the Pro side and their median at least this
+cfg.sig.euk_restore_margin = 0.5;  %v2 Pro-like small Euks back to Euk where the Pro-vs-Euk score (lp_lda) is below -this (Euk side, with a margin)
 % Pro runs (assign_class_discrete pro_component_swap): Pro as large as Syn named Euk,
 % dimmer groups (trigger floor, faint smear) named Pro (EN655 C15N09)
 cfg.sig.pc_min_below_cand = 0.3;        %swap only if every component named Pro is at least this much dimmer (mean BL3) than the candidate
@@ -67,6 +68,7 @@ cfg.sig.pesyn_gap_bw = 0.05;       %... KDE bandwidth of the Syn chl (BL3) densi
 cfg.sig.pesyn_gap_min_below = 0.3; %... lower peak at least this below the main Syn peak ...
 cfg.sig.pesyn_gap_depth = 0.7;     %... valley under this fraction of the lower peak (Inf: off) ...
 cfg.sig.pesyn_gap_min_n = 50;      %... and at least this many Syn below the valley
+cfg.sig.pe_catchall_syn_min_chlSSC = 0; %PE runs: v2 catch-all Syn with chl:size below this are unassigned (low-chl particle cloud near chl:size 0). A fixed cut beat cuts relative to the run's Syn core (core chl:size varies 0.73-2.27; the cloud does not): pe_catchall_cut_test, 94 PE runs; 0.1 removed ~45% more hand Syn for the same gain
 % Pro in CHL runs (assign_class_discrete): assigned, with a lower-bound flag where
 % the chl trigger cuts the Pro cluster (thresholds calibrated in calibrate_pro_chl)
 cfg.sig.pro_in_chl_runs = true;

@@ -49,6 +49,17 @@ info.pe_syn_trim = struct('applied', false, 'n', 0, 'gap', -Inf);
 if strcmp(runtype, 'PE')
     [class, info.pe_syn_trim] = pe_syn_trim(class, info, cfg);
 end
+% PE-triggered runs: every recorded event carries some PE, so v2's catch-all counts the
+% low-chl particle cloud (no chl trigger; BL3 ~ -1.3) as cell-like and gives it the Syn
+% of its neighbours, without the detritus chl:size cut (TN368 15N24(1): 499 catch-all
+% "Syn", chl:size median -0.23, PE:chl +0.49, none hand-gated). Catch-all Syn with chl:size
+% below pe_catchall_syn_min_chlSSC are unassigned (the 0.6 detritus cut also took real dim
+% Syn there: hand-gated Syn chl:size 5th percentile ~0.26)
+info.n_pe_catchall_syn_removed = 0;
+if strcmp(runtype, 'PE') && isfield(info, 'trace') && isfield(info.trace, 'catchall')
+    rm = class == 2 & info.trace.catchall & info.features.chlSSC < cfg.sig.pe_catchall_syn_min_chlSSC;
+    class(rm) = 0; info.n_pe_catchall_syn_removed = sum(rm);
+end
 info.runtype = runtype;
 info.large_pro = struct('accepted', false, 'n', 0, 'method', '', 'mu', [], 'sep', NaN, 'ncand', 0, 'lda_n', 0, 'lda_median', NaN, 'lda_frac', NaN); %(same fields as large_pro returns)
 info.pro_swap = struct('applied', false, 'n_to_pro', 0, 'n_to_0', 0);
@@ -57,6 +68,21 @@ if pro_run
 end
 if assign_pro && ~info.pro_swap.applied %(the swap has already found the file's Pro cluster)
     [class, info.large_pro] = large_pro(class, info, cfg, pro_run);
+end
+% small Euks v2 unassigned as Pro-like (euk_prolike: no PE, smaller than the Syn peak,
+% chl below pro_max_BL3, which discrete_config raises to 0.3 for CHL-run Pro) go back
+% to Euk where their spectrum is Euk-like: on the Euk side of the Pro-vs-Euk boundary
+% (lp_lda) in [chl:size, GL2:GL3]. EN655 C10N16 CHL: 1,330 of 5,325 Syn-sized hand Euks
+% (GL2:GL3 ~ +0.1; EN655 Pro ~ -0.2 to -0.6) were cut; user: keep that cluster as Euk.
+% CHL runs only: there median agreement rose (unseen cruises 0.939 -> 0.947) with Pro
+% unchanged; in Pro runs it only added Euk to runs that already overcount them
+info.n_euk_prolike_restored = 0;
+if strcmp(runtype, 'CHL') && isfield(info, 'trace') && isfield(info.trace, 'euk_prolike') && isfield(info.trace, 'after_syncheck')
+    F = info.features;
+    pl = class == 0 & info.trace.euk_prolike & info.trace.after_syncheck == 1 & isfinite(F.GL2GL3) & isfinite(F.chlSSC);
+    sc = cfg.sig.lp_lda(1) * F.chlSSC + cfg.sig.lp_lda(2) * F.GL2GL3 + cfg.sig.lp_lda(3);
+    back = pl & sc < -cfg.sig.euk_restore_margin;
+    class(back) = 1; info.n_euk_prolike_restored = sum(back);
 end
 % v2's wide-pulse rule (Pro-setting files, Nov 2026): events whose BL3 pulse is
 % wider than the file's Syn-referenced A/H (info.trace.wide_pulse) are not Pro; the
