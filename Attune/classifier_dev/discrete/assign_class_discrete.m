@@ -43,12 +43,11 @@ if pro_run && isfield(cfg.sig, 'detritus_max_chlSSC_pro')
     cfg.sig.detritus_max_chlSSC = cfg.sig.detritus_max_chlSSC_pro;
 end
 [cfg.sig.pe_min_PEchl, info_pe] = euk_autofluor_cut(fcsdat, fcshdr, ref, cfg);
-if ~pro_run, cfg.sig.pro_pick_min_n = Inf; end %v2's event-level Pro pick: Pro runs only
 [class, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, assign_pro);
 info.euk_autofluor = info_pe;
-info.pick_trim = struct('applied', false, 'n_before', 0, 'n_after', 0);
-if pro_run && isfield(info, 'pro_pick') && info.pro_pick.used
-    [class, info.pick_trim] = pro_pick_trim(class, info, cfg);
+info.pe_syn_trim = struct('applied', false, 'n', 0, 'gap', -Inf);
+if strcmp(runtype, 'PE')
+    [class, info.pe_syn_trim] = pe_syn_trim(class, info, cfg);
 end
 info.runtype = runtype;
 info.large_pro = struct('accepted', false, 'n', 0, 'method', '', 'mu', [], 'sep', NaN, 'ncand', 0, 'lda_n', 0, 'lda_median', NaN, 'lda_frac', NaN); %(same fields as large_pro returns)
@@ -244,17 +243,35 @@ class(to_0) = 0; class(to_pro) = 7;
 s = struct('applied', true, 'n_to_pro', sum(to_pro), 'n_to_0', sum(to_0), 'pro_comp', find(cand)', 'floor_comp', find(on_floor)');
 end
 
-function [class, s] = pro_pick_trim(class, info, cfg)
-% v2's event-level Pro pick (Pro runs where the mixture names no Pro, e.g. winter
-% Pro on the chl trigger floor, EN727 C19N13) is followed by v2's catch-all, which
-% gives Pro to leftover cell-like events near the picked ones: 523 Pro in all vs
-% 301 picked and a hand-gated compact cluster of 191 (late window). The catch-all
-% additions were brighter (BL3 median -0.63 vs -0.99) and spread in chl:size and
-% PE:chl, so with the pick only the picked events stay Pro
-s = struct('applied', false, 'n_before', sum(class == 7), 'n_after', sum(class == 7));
-if ~isfield(info.trace, 'catchall'), return, end
-class(class == 7 & info.trace.catchall) = 0;
-s = struct('applied', true, 'n_before', s.n_before, 'n_after', sum(class == 7));
+function [class, s] = pe_syn_trim(class, info, cfg)
+% PE-triggered runs: a separate faint group at the PE (GL2) trigger, below the Syn
+% cluster in chl, passes v2's broad Syn checks (EN617 PE runs: 2,200-4,600 per run,
+% left out by the hand gates). Unlike the dim Syn tail of the tuning cruises, which runs
+% continuously down the Syn diagonal to the trigger, it is set off from the Syn by a
+% density valley in chl. If the chl (BL3) density of this run's Syn has a lower peak
+% at least pesyn_gap_min_below below the main peak and the valley between them is
+% under pesyn_gap_depth of that lower peak, Syn below the valley and within
+% pesyn_near_edge of the PE trigger are unassigned. Runs without such a valley are
+% left alone (tuning PE runs: no valley found; TN368: the faint group merges with
+% the Syn, not caught)
+g = cfg.sig; F = info.features;
+s = struct('applied', false, 'n', 0, 'gap', -Inf);
+if ~isfield(info.trigger_edges, 'GL2') || ~isfinite(g.pesyn_gap_depth), return, end
+e = info.trigger_edges.GL2;
+syn = class == 2 & isfinite(F.BL3);
+x = F.BL3(syn);
+if numel(x) < 200, return, end
+[fk, gk] = ksdensity(x, 'NumPoints', 400, 'Bandwidth', g.pesyn_gap_bw);
+[~, ip] = max(fk);
+lm = find(fk(2:end-1) > fk(1:end-2) & fk(2:end-1) >= fk(3:end)) + 1;
+lm = lm(gk(lm) < gk(ip) - g.pesyn_gap_min_below);
+if isempty(lm), return, end
+[pl, jl] = max(fk(lm)); jl = lm(jl);
+[vm, jv] = min(fk(jl:ip)); jv = jl - 1 + jv;
+if vm >= g.pesyn_gap_depth * pl || sum(x < gk(jv)) < g.pesyn_gap_min_n, return, end
+low = syn & F.BL3 < gk(jv) & F.GL2 <= e + g.pesyn_near_edge;
+class(low) = 0;
+s = struct('applied', true, 'n', sum(low), 'gap', gk(jv));
 end
 
 function p = pro_completeness(info, class, cfg)
@@ -275,7 +292,7 @@ end
 
 function [cut, s] = euk_autofluor_cut(fcsdat, fcshdr, ref, cfg)
 % PE detected = PE:chl above the file's Euk autofluorescence: the Euks form the
-% lowest major mode of PE:chl among cell-like events (chl:size above the
+% main low mode of PE:chl among cell-like events (chl:size above the
 % detritus cut); the cut is that mode + cfg.sig.euk_af_above_mode. CHL runs: mode
 % ~ -2.05, cut ~ -1.3; PE-triggered runs record only the brightest Euks (EN668
 % C002N17: mode ~ -1.2, which the fixed cut called Syn). Without a clear Euk
@@ -293,6 +310,12 @@ d = ksdensity(x, g, 'bandwidth', 0.08);
 pk = find(d(2:end-1) > d(1:end-2) & d(2:end-1) >= d(3:end)) + 1;
 pk = pk(d(pk) >= cfg.sig.euk_af_min_peak * max(d) & g(pk) < cfg.sig.euk_af_max_mode);
 if isempty(pk), return, end
-s.mode = g(pk(1));
+% the Euk mode: the strongest qualifying peak within euk_af_above_mode of the lowest
+% one (not simply the lowest: in AT46 C17N02 a minor bump at -2.36 put the cut at
+% -1.61, inside the main Euk mode at -1.8, and all Euks were lost; the window keeps a
+% PE-euk peak further up, e.g. -0.84 there, from being taken)
+w = pk(g(pk) < g(pk(1)) + cfg.sig.euk_af_above_mode);
+[~, b] = max(d(w));
+s.mode = g(w(b));
 cut = s.mode + cfg.sig.euk_af_above_mode;
 end

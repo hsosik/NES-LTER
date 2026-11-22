@@ -58,10 +58,15 @@ cfg.sig.pc_min_below_cand = 0.3;        %swap only if every component named Pro 
 cfg.sig.pc_min_above_edge = 0.8;        %replacement component's mean BL3 at least this above the edge ...
 cfg.sig.pc_max_size_above_syn = 0.15;   %... no larger than Syn + this ...
 cfg.sig.pc_chlSSC_below_syn = [0.2 1.0]; %... chl:size this far below Syn's (min, max)
-% v2's event-level Pro pick, Pro runs only (assign_class_discrete; v2 default Inf = off):
-% would find the winter trigger-floor group in EN727 C19N13 (not Pro); if enabled, it is trimmed to
-% the picked events, without v2's catch-all additions (pro_pick_trim)
-cfg.sig.pro_pick_min_n = Inf;  %OFF: it fired only in EN727 C19N13, whose hand-gated "Pro" were a gating mistake (user, 20 Nov 2026: no real Pro); was 50
+% PE-triggered runs (assign_class_discrete pe_syn_trim): a separate faint group below the Syn
+% in chl at the PE trigger (EN617), set off by a density valley; the continuous dim Syn tail of
+% the tuning cruises has no valley and is kept. (A fixed chl-below-trend cut was tried first
+% and cut that real tail: EN687 C10N18 1.02 -> 0.66 of hand Syn.)
+cfg.sig.pesyn_near_edge = 0.6;     %only Syn within this of the GL2 trigger edge are unassigned ...
+cfg.sig.pesyn_gap_bw = 0.05;       %... KDE bandwidth of the Syn chl (BL3) density ...
+cfg.sig.pesyn_gap_min_below = 0.3; %... lower peak at least this below the main Syn peak ...
+cfg.sig.pesyn_gap_depth = 0.7;     %... valley under this fraction of the lower peak (Inf: off) ...
+cfg.sig.pesyn_gap_min_n = 50;      %... and at least this many Syn below the valley
 % Pro in CHL runs (assign_class_discrete): assigned, with a lower-bound flag where
 % the chl trigger cuts the Pro cluster (thresholds calibrated in calibrate_pro_chl)
 cfg.sig.pro_in_chl_runs = true;
