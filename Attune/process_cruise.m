@@ -327,9 +327,16 @@ else
 end
 % classification review: frame and QC per file in the loop, viewer after it
 do_review = opts.review; revdir = fullfile(p.outpath, 'review'); R = []; Q = cell(n, 1);
+% SYBR (hbac) preserved runs: own panels and QC, on their own page review\hbac\
+revdir_h = fullfile(revdir, 'hbac'); Rh = []; Qh = cell(n, 1);
 if do_review
     if ~exist(fullfile(revdir, 'frames'), 'dir'), mkdir(fullfile(revdir, 'frames')); end
     R = review_config();
+    if pres && any(strcmp(rt, 'hbac'))
+        if ~exist(fullfile(revdir_h, 'frames'), 'dir'), mkdir(fullfile(revdir_h, 'frames')); end
+        Rh = review_config_hbac();
+        Rh.link = struct('href', '../index.html', 'text', 'phytoplankton runs (CHL, PE, Pro)');
+    end
 end
 use_par = opts.parallel;
 if isempty(use_par), use_par = license('test', 'Distrib_Computing_Toolbox') && n > 4; end
@@ -385,10 +392,14 @@ parfor (k = 1:n, M)
             end
         end
         save_classfile(classfile{k}, o)
-        if do_review && ~strcmp(rt{k}, 'hbac') % SYBR runs: no review frame yet
+        if do_review
             try
                 warning('off', 'stats:statrobustfit:IterationLimit')
-                Q{k} = review_sample(fcsdat, fcshdr, cls, info, [], revdir, names{k}, t(k), pro(k), R);
+                if strcmp(rt{k}, 'hbac')
+                    Qh{k} = review_sample_hbac(cls, info, cfg, revdir_h, names{k}, t(k), fcshdr, Rh);
+                else
+                    Q{k} = review_sample(fcsdat, fcshdr, cls, info, [], revdir, names{k}, t(k), pro(k), R);
+                end
             catch ME
                 warning('process_cruise:review', '%s: review frame failed: %s', names{k}, ME.message)
             end
@@ -405,10 +416,27 @@ L = [table(string(Fi.fcslist), t, pro, nev, ncomp, 'VariableNames', {'file' 'tim
     array2table(counts, 'VariableNames', {'n0' 'n1_euk' 'n2_syn' 'n3_crypto_dim' 'n4_crypto_bright' 'n5_euk_syn' 'n7_pro' 'n8_syn_particle' 'n9_bact' 'n_flagged'}) ...
     table(err, 'VariableNames', {'error'})];
 if pres, L.runtype = string(rt); end
-save([p.outpath 'class_log.mat'], 'L')
+% a run on some files (Files, NewOnly) keeps the log rows of the other files
+lf = [p.outpath 'class_log.mat'];
+if exist(lf, 'file')
+    try
+        o = load(lf, 'L'); oL = o.L(~ismember(o.L.file, L.file), :);
+        if ~isempty(oL)
+            for v = setdiff(L.Properties.VariableNames, oL.Properties.VariableNames), oL.(v{1}) = repmat(missing_like(L.(v{1})), height(oL), 1); end
+            L = sortrows([oL(:, L.Properties.VariableNames); L], 'time');
+        end
+    catch ME
+        warning('process_cruise:class_log', 'earlier class_log not merged: %s', ME.message)
+    end
+end
+save(lf, 'L')
 fprintf('classify: %d files classified, %d failed; log in %sclass_log.mat\n', sum(err == ""), sum(err ~= ""), p.outpath)
 if do_review
+    if ~isempty(Rh) || exist(fullfile(revdir_h, 'review_qc.mat'), 'file')
+        R.link = struct('href', 'hbac/index.html', 'text', 'SYBR bacteria runs');
+    end
     review_step(revdir, Q, R, p, version)
+    if ~isempty(Rh), review_step(revdir_h, Qh, Rh, p, version), end
 end
 end
 
@@ -435,6 +463,12 @@ err = strings(0, 1); %#ok<NASGU> same variables as review_cruise writes
 save(qf, 'Q', 'err', 'build', 'decfile')
 review_viewer(revdir, Q, R, p.cruise, decfile, build);
 fprintf('classify: review of %d files: %s\n', numel(Q), fullfile(revdir, 'index.html'))
+end
+
+
+function m = missing_like(x)
+% a missing value of x's type (for log columns an older class_log lacks)
+if isstring(x), m = string(missing); elseif isnumeric(x), m = NaN; else, m = {''}; end
 end
 
 

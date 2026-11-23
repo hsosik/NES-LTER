@@ -110,12 +110,15 @@ const colOf = k => R.cols[R.codes.indexOf(k)];
 const nameOf = k => k === 0 ? 'unassigned' : R.names[R.codes.indexOf(k)];
 const fmt = (v, d = 2) => (v === null || v === undefined || Number.isNaN(v)) ? '–' : (typeof v === 'number' ? (Number.isInteger(v) ? v.toLocaleString() : v.toFixed(d)) : v);
 F.forEach(f => { f.t = new Date(f.time).getTime(); f.src = f.frame + '?v=' + encodeURIComponent(D.made); }); // stamp: no stale frames after a rerun
-$('title').textContent = `${D.cruise} class review`;
-document.title = `${D.cruise} review`;
+const HB = R.mode === 'hbac'; // SYBR-stained bacteria runs (preserved samples): own panels, classes and QC
+const CK = HB ? [91, 92, 2, 7, 1, 0] : [1, 2, 7, 3, 4, 5, 8, 0]; // class keys for toggles and counts
+$('title').textContent = HB ? `${D.cruise} SYBR run review` : `${D.cruise} class review`;
+document.title = HB ? `${D.cruise} SYBR review` : `${D.cruise} review`;
+if (R.link) $('title').insertAdjacentHTML('afterend', `<a href="${R.link.href}" style="margin:0 6px;font-size:12px">${R.link.text} →</a>`);
 
 // ---------- QC metrics and unusual-file detection ----------
 const lg = v => Math.log10((v || 0) + 1);
-const METRICS = [
+const METRICS_PH = [
   { key: 'euk', label: 'Euk count (log)', f: q => lg(q.n1), floor: .12 },
   { key: 'syn', label: 'Syn count (log)', f: q => lg(q.n2), floor: .12 },
   { key: 'pro', label: 'Pro count (log)', f: q => lg(q.n7), floor: .15 },
@@ -137,6 +140,22 @@ const METRICS = [
   { key: 'pegap', label: 'Syn PE gap (blank = none)', f: q => q.syn_PE_gap, floor: .08, gap: 'Syn PE gap' },
   { key: 'agree', label: 'agreement with old classes', f: q => q.agreement, floor: .03 },
 ];
+const METRICS_HB = [
+  { key: 'bact', label: 'bacteria count (log)', f: q => lg(q.n9), floor: .12 },
+  { key: 'hnaf', label: 'HNA fraction of bacteria', f: q => q.hna_frac, floor: .05 },
+  { key: 'lna', label: 'LNA count (log)', f: q => lg(q.n91), floor: .12 },
+  { key: 'hna', label: 'HNA count (log)', f: q => lg(q.n92), floor: .12 },
+  { key: 'syn', label: 'Syn count (log)', f: q => lg(q.n2), floor: .15 },
+  { key: 'pro', label: 'Pro count (log)', f: q => lg(q.n7), floor: .2 },
+  { key: 'euk', label: 'Euk count (log)', f: q => lg(q.n1), floor: .15 },
+  { key: 'un', label: 'unassigned (log)', f: q => lg(q.n0), floor: .12 },
+  { key: 'cut', label: 'HNA / LNA cut (tilted SYBR)', f: q => q.hna_cut, floor: .05 },
+  { key: 'dip', label: 'HNA / LNA valley dip ratio', f: q => q.hna_dip, floor: .1, minor: true },
+  { key: 'chlx', label: 'bacteria chl spillover offset', f: q => q.chlx_off, floor: .05 },
+  { key: 'pex', label: 'bacteria PE spillover offset', f: q => q.pex_off, floor: .05 },
+  { key: 'core', label: 'bacteria core events (log)', f: q => lg(q.n_core), floor: .12 },
+];
+const METRICS = HB ? METRICS_HB : METRICS_PH;
 const HALF = 10;
 let zthr = 4;
 const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
@@ -182,7 +201,7 @@ function stats() {
 // ---------- state ----------
 let cur = 0;
 const hasOld = F.some(f => f.old_n1 !== undefined);
-const SHOW = { 1: true, 2: true, 7: true, 3: true, 4: true, 5: true, 8: true, 0: false };
+const SHOW = HB ? { 91: true, 92: true, 2: true, 7: true, 1: true, 0: false } : { 1: true, 2: true, 7: true, 3: true, 4: true, 5: true, 8: true, 0: false };
 // which runs are shown: all, Pro-setting runs only, or the others only. Unusual-file
 // detection is unchanged (it already compares each file with neighbours of the same setting)
 const LSP = 'attune-review:pro:' + D.cruise;
@@ -208,8 +227,8 @@ function visible(i) {
   setView(lsGet(LSP, 'all'));
 }
 METRICS.forEach((m, i) => { if (m.key === 'agree' && !hasOld) return; const o = document.createElement('option'); o.value = i; o.textContent = m.label; $('metric').appendChild(o); });
-$('metric').value = METRICS.findIndex(m => m.key === 'catch');
-$('cls_toggles').innerHTML = [1, 2, 7, 3, 4, 5, 8, 0].map(k =>
+$('metric').value = METRICS.findIndex(m => m.key === (HB ? 'hnaf' : 'catch'));
+$('cls_toggles').innerHTML = CK.map(k =>
   `<label><input type="checkbox" data-k="${k}" ${SHOW[k] ? 'checked' : ''}><span class="sw" style="background:${k ? rgb(colOf(k)) : rgb(R.col0)}"></span>${nameOf(k)}</label>`).join(' ');
 $('cls_toggles').addEventListener('change', e => { SHOW[e.target.dataset.k] = e.target.checked; drawStrips(); });
 
@@ -336,6 +355,12 @@ function drawFrame() {
           L += `<line x1="${sx(lx[0])}" y1="${sy(lx[0] + e)}" x2="${sx(lx[1])}" y2="${sy(lx[1] + e)}" stroke="#000" stroke-dasharray="4 3" stroke-width=".8"/>`;
         }
       }
+      // per-file class boundaries given as data (SYBR runs: review_qc_hbac q.lines; v = panel number)
+      for (const l of [].concat(f.lines || [])) if (l.v === c + 1) {
+        const lc = rgb(l.col);
+        if (Number.isFinite(l.x)) vl(l.x, lc, l.dash);
+        else if (Number.isFinite(l.a)) L += `<line x1="${sx(lx[0])}" y1="${sy(l.a + l.b * lx[0])}" x2="${sx(lx[1])}" y2="${sy(l.a + l.b * lx[1])}" stroke="${lc}" stroke-dasharray="${l.dash}" stroke-width="1.1"><title>${l.label}</title></line>`;
+      }
       if (L) s += `<svg x="${x0}" y="${y0}" width="${P}" height="${P}" viewBox="${x0} ${y0} ${P} ${P}" overflow="hidden">${L}</svg>`;
     });
   });
@@ -344,6 +369,14 @@ function drawFrame() {
 }
 function legend() {
   const sw = (c, t) => `<span><span class="sw" style="background:${rgb(c)}"></span>${t}</span>`;
+  if (HB) {
+    let h = sw(R.col0, 'unassigned') + R.codes.map((k, i) => sw(R.cols[i], R.names[i])).join('');
+    const seen = new Set(), ln = [];
+    for (const l of [].concat(F[cur].lines || [])) if (!seen.has(l.label)) { seen.add(l.label); ln.push(`<span style="color:${rgb(l.col)}">${l.dash === '1 3' ? '··' : '- -'} ${l.label}</span>`); }
+    h += '<span>lines: <b>- -</b> trigger edge' + (ln.length ? ', ' + ln.join(', ') : '') + '; HNA / LNA cut dotted when fixed (no clear valley)</span>';
+    $('legend').innerHTML = h;
+    return;
+  }
   let h = sw(R.col0, 'unassigned') + R.codes.map((k, i) => sw(R.cols[i], R.names[i] + (R.rare.includes(k) ? ' (points)' : ''))).join('');
   h += '<span style="color:#333">Syn type panel (Syn, Euk with Syn, Syn on particle):</span>' + ['A', 'B', 'C'].map((t, i) => sw(R.syn_type_cols[i], 'type ' + t)).join('') + sw(R.syn_untyped_col, 'untyped') + sw([.6, .6, .6], 'other');
   h += R.flag_names.map((t, i) => sw(R.flag_cols[i], 'flag: ' + t)).join('');
@@ -356,13 +389,23 @@ function legend() {
 function side() {
   const f = F[cur];
   let h = '<h3>Counts</h3><table><tr><th></th>' + (f.old_n1 !== undefined ? '<th>old</th>' : '') + '<th>v2</th></tr>';
-  for (const k of [1, 2, 7, 3, 4, 5, 8, 0]) {
+  for (const k of CK) {
     const old = f['old_n' + k];
     h += `<tr><td><span class="sw" style="background:${k ? rgb(colOf(k)) : rgb(R.col0)}"></span>${nameOf(k)}</td>` + (f.old_n1 !== undefined ? `<td>${old === undefined ? '' : fmt(old)}</td>` : '') + `<td>${fmt(f['n' + k])}</td></tr>`;
   }
   h += `</table><div class="mut">${fmt(f.n_events)} events; trigger ${f.trigger}${f.pro_measured ? '; Pro run' : ''}</div>`;
   h += '<h3>Unusual</h3>' + (f.why.length ? f.why.map(r => `<div class="why"${r.minor ? ' style="color:var(--mut)"' : ''}>• ${r.minor ? 'note: ' : ''}${r.txt}</div>`).join('') : '<div class="mut">nothing beyond the thresholds</div>');
   h += '<h3>QC</h3><table>';
+  if (HB) {
+    const hr = [['bacteria (HNA fraction)', `${fmt(f.n9)} (${fmt(f.hna_frac)})`], ['HNA / LNA split', `${f.hna_method || '–'}${f.hna_method === 'valley' ? ', dip ' + fmt(f.hna_dip) : ' (nominal)'}`],
+      ['cut on tilted SYBR (slope)', `${fmt(f.hna_cut)} (${fmt(f.hna_slope)})`], ['bacteria core events', f.n_core],
+      ['chl spillover offset / SD / cut', `${fmt(f.chlx_off)} / ${fmt(f.chlx_sd)} / ${fmt(f.chlx_cut)}`], ['PE spillover offset / SD / cut', `${fmt(f.pex_off)} / ${fmt(f.pex_sd)} / ${fmt(f.pex_cut)}`]];
+    for (const [k, v] of hr) h += `<tr><td>${k}</td><td>${fmt(v)}</td></tr>`;
+    h += '</table>';
+    h += `<div class="mut" style="margin-top:8px">viewer made ${D.made}</div>`;
+    $('sideinfo').innerHTML = h;
+    return;
+  }
   const rows = [['agreement with old', f.agreement, 3], ['catch-all (share of Euk)', `${fmt(f.n_catchall)} (${fmt(f.catchall_share)})`], ['Euk chl gap', f.euk_chl_gap], ['Syn PE gap', f.syn_PE_gap], ['Syn PE floor', f.syn_PE_floor],
     ['Syn ref size / chl', `${fmt(f.syn_ref_size)} / ${fmt(f.syn_ref_BL3)}`], ['Syn ref PE:chl / GL2:GL3', `${fmt(f.syn_ref_PEchl)} / ${fmt(f.syn_ref_GL2GL3)}`],
     ['Syn types A / B / C', `${fmt(f.syn_type1)} / ${fmt(f.syn_type2)} / ${fmt(f.syn_type3)}`], ['untyped Syn (share)', `${fmt(f.syn_untyped)} (${fmt(f.syn_untyped_share)})`],
