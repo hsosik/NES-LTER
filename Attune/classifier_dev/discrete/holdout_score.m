@@ -70,6 +70,11 @@ for i = 1:height(L)
     if r == "hbac"
         h = hand; h(ismember(h, [3 4])) = 97; h(~ismember(h, [1 2 97])) = 0;
         a = double(auto); a(ismember(a, [7 9])) = 97; a(~ismember(a, [1 2 97])) = 0;
+        % EN688 and HB1907 SYBR runs (other workspace: No_SYN_Euk_Pro, MysteryPE gates): the
+        % hand Euk gate is mostly the unstained-particle band (PE:chl on the bacteria's SYBR
+        % spectrum), 1.3-44x the Euks per mL of the same sample's CHL run (EN688 C11N01 507 m:
+        % 10,512 vs 241); Euks are left out of both labellings there (23 Nov 2026)
+        if contains(fn, ["EN688" "HB1907"]), h(h == 1) = 0; a(a == 1) = 0; end
     else
         h = hand; h(h == 4) = 7; h(ismember(h, [5 6])) = 34; h(h == 3) = 0;
         if contains(fn, 'EN727') && contains(fn, ["_C19N13" "_C19N02" "_C09N01" "_C06N06"]), h(h == 7) = 0; end
