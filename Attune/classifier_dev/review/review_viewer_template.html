@@ -343,6 +343,7 @@ function drawFrame() {
         const ge = f.euk_chl_gap, pf = f.syn_PE_floor;
         if (v.x === 'BL3') vl(ge, rgb(colOf(1)), '2 2'); if (v.y === 'BL3') hl(ge, rgb(colOf(1)), '2 2');
         if (v.x === 'GL2') vl(pf, rgb(colOf(2)), '2 2'); if (v.y === 'GL2') hl(pf, rgb(colOf(2)), '2 2');
+        if (v.y === 'BL3_AH') hl(f.pro_AH_max, rgb(colOf(7)), '5 3'); // Pro wide-pulse cut: wider (above) not Pro
         if (v.y === 'dEuk' && f.euk_line && Number.isFinite(f.euk_line[0])) {
           // chl relative to the Euk chl-size line: line itself, Euk-with-Syn cut, chl gap, min size
           const eg = rgb(colOf(1)), b1 = f.euk_line[0], b2 = f.euk_line[1];
@@ -381,7 +382,7 @@ function legend() {
   h += '<span style="color:#333">Syn type panel (Syn, Euk with Syn, Syn on particle):</span>' + ['A', 'B', 'C'].map((t, i) => sw(R.syn_type_cols[i], 'type ' + t)).join('') + sw(R.syn_untyped_col, 'untyped') + sw([.6, .6, .6], 'other');
   h += R.flag_names.map((t, i) => sw(R.flag_cols[i], 'flag: ' + t)).join('');
   if (F.some(f => f.nrow === 3)) h += sw(R.diff_cols[0], 'v2 adds') + sw(R.diff_cols[1], 'v2 drops') + sw(R.diff_cols[2], 'relabelled');
-  h += '<span>lines: <b>- -</b> trigger edge, <span style="color:' + rgb(colOf(1)) + '">··· Euk chl gap, — Euk chl-size line, -·- Euk min size</span>, <span style="color:' + rgb(colOf(5)) + '">- - Euk with Syn cut (below: unassigned, flag 1)</span>, <span style="color:' + rgb(colOf(2)) + '">··· Syn PE floor</span>, Syn type edges</span>';
+  h += '<span>lines: <b>- -</b> trigger edge, <span style="color:' + rgb(colOf(1)) + '">··· Euk chl gap, — Euk chl-size line, -·- Euk min size</span>, <span style="color:' + rgb(colOf(5)) + '">- - Euk with Syn cut (below: unassigned, flag 1)</span>, <span style="color:' + rgb(colOf(2)) + '">··· Syn PE floor</span>, <span style="color:' + rgb(colOf(7)) + '">- - Pro wide-pulse cut (pulse-shape panel)</span>, Syn type edges</span>';
   $('legend').innerHTML = h;
 }
 

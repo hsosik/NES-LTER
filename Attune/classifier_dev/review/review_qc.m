@@ -49,6 +49,7 @@ rl = fieldor(info, 'rules', struct());
 q.euksyn_cut = -fieldor(rl, 'euksyn_max_chl_below_euk', NaN);
 q.euk_min_size = fieldor(rl, 'euk_min_size', NaN);
 q.trig = fieldor(info, 'trigger_edges', struct());
+q.pro_AH_max = fieldor(info, 'pro_AH_max', NaN); % Pro wide-pulse cut (chl pulse-shape panel)
 if isfield(info, 'syn_type_edges'), q.syn_type_edges = info.syn_type_edges(:)'; else, q.syn_type_edges = [NaN NaN]; end
 end
 

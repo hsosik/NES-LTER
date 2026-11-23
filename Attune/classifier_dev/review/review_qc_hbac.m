@@ -62,6 +62,26 @@ L = add(L, 5, NaN, NaN, h.pro_max_SSC, pc, '5 3', 'Pro (left) / Euk (right) size
 L = add(L, 5, h.min_chlSSC, 1, NaN, ec, '2 2', 'chl:size minimum (Euk, Syn)');
 L = add(L, 5, NaN, NaN, h.bact_max_SSC, bc, '2 2', 'bacteria size limit');
 L = add(L, 6, h.syn_min_PEchl, 1, NaN, sc, '5 3', 'Syn PE:chl minimum');
+% panel 7: PE:chl relative to the bacteria's (0 = the SYBR spectrum, where the unstained-particle band sits)
+sp = q.pex_off - q.chlx_off;
+if isfinite(sp)
+    L = add(L, 7, 0, 0, NaN, bc, '1 2', 'bacteria PE:chl (SYBR spectrum)');
+    L = add(L, 7, h.syn_min_PEchl - sp, 0, NaN, sc, '5 3', 'Syn PE:chl minimum');
+    if h.euk_below_sybr == h.euk_stained_below_sybr
+        L = add(L, 7, -h.euk_below_sybr, 0, NaN, ec, '5 3', 'Euk, stained Euk and large Pro: below this');
+    else
+        L = add(L, 7, -h.euk_below_sybr, 0, NaN, ec, '5 3', 'Euk: below this');
+        L = add(L, 7, -h.euk_stained_below_sybr, 0, NaN, ec, '1 3', 'stained Euk and large Pro: below this');
+    end
+end
+L = add(L, 7, NaN, NaN, h.pro_max_SSC, pc, '5 3', 'Pro (left) / Euk (right) size split');
+L = add(L, 7, NaN, NaN, h.bact_max_SSC, bc, '2 2', 'bacteria size limit');
+% panel 8: large deep Pro limits (Pro-like "Euks" become Pro where they dominate)
+if isfield(h, 'lp')
+    L = add(L, 8, NaN, NaN, h.lp.max_chlSSC, pc, '5 3', 'large Pro: chl:size below this');
+    L = add(L, 8, h.lp.max_BL3, 0, NaN, pc, '5 3', 'large Pro: chl below this');
+end
+L = add(L, 8, NaN, NaN, h.min_chlSSC, ec, '2 2', 'chl:size minimum (Euk, Syn)');
 q.lines = L;
 end
 

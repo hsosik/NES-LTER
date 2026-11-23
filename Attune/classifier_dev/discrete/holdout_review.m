@@ -63,11 +63,16 @@ end
 if ~refresh, rng(2040, 'twister'); sel = sel(randperm(height(sel)), :); end %review order: failures and controls mixed
 fprintf('%d runs to review (%d controls)\n', height(sel), sum(sel.control));
 
-V.phyto = {'size' 'BL3'; 'BL3' 'GL2'; 'size' 'PEchl'; 'PEchl' 'GL2GL3'; 'size' 'GL2'};
-V.hbac = {'SSC' 'BL1'; 'BL1' 'BL3'; 'BL1' 'GL2'; 'SSC' 'BL3'; 'SSC' 'GL2'};
+% Pro-colour panels (Nov 2026): phyto chl:size vs GL2:GL3 (large Pro low in both, small
+% Euks high) and the chl pulse shape (wide-pulse cut, trigger-floor debris); SYBR chl
+% vs PE, PE:chl relative to the stained bacteria's (particle band ~0, Pro ~ -0.6,
+% Euks -0.6 to -0.9, Syn above) and chl:size vs chl (large deep Pro)
+V.phyto = {'size' 'BL3'; 'BL3' 'GL2'; 'size' 'PEchl'; 'PEchl' 'GL2GL3'; 'size' 'GL2'; 'chlSSC' 'GL2GL3'; 'BL3' 'BL3_AH'};
+V.hbac = {'SSC' 'BL1'; 'BL1' 'BL3'; 'BL1' 'GL2'; 'SSC' 'BL3'; 'SSC' 'GL2'; 'BL3' 'GL2'; 'SSC' 'dS'; 'chlSSC' 'BL3'};
 lim = struct('size', [-2.6 2.8], 'SSC', [-3.2 2.6], 'BL1', [-1.6 3.2], 'BL3', [-1.3 3.2], 'GL2', [-3.5 1.7], ...
-    'PEchl', [-4.4 1.8], 'GL2GL3', [-2.5 1.5]);
-names = struct('size', 'size', 'SSC', 'SSC', 'BL1', 'SYBR (BL1)', 'BL3', 'chl (BL3)', 'GL2', 'PE (GL2)', 'PEchl', 'PE:chl', 'GL2GL3', 'GL2:GL3');
+    'PEchl', [-4.4 1.8], 'GL2GL3', [-2.5 1.5], 'chlSSC', [-1 3], 'BL3_AH', [-0.8 0.8], 'dS', [-2.5 2.0]);
+names = struct('size', 'size', 'SSC', 'SSC', 'BL1', 'SYBR (BL1)', 'BL3', 'chl (BL3)', 'GL2', 'PE (GL2)', 'PEchl', 'PE:chl', 'GL2GL3', 'GL2:GL3', ...
+    'chlSSC', 'chl:size', 'BL3_AH', 'chl pulse shape', 'dS', 'PE:chl minus bacteria');
 runs = {};
 Gc = struct();
 rng(2050, 'twister');
@@ -112,6 +117,10 @@ for i = 1:height(sel)
     if ~ismember('SSC', F.Properties.VariableNames) && ismember('size', F.Properties.VariableNames), F.SSC = F.size; end
     if ~ismember('PEchl', F.Properties.VariableNames) && all(ismember({'GL2' 'BL3'}, F.Properties.VariableNames)), F.PEchl = F.GL2 - F.BL3; end
     if ~ismember('GL2GL3', F.Properties.VariableNames) && all(ismember({'GL2' 'GL3'}, F.Properties.VariableNames)), F.GL2GL3 = F.GL2 - F.GL3; end
+    if ~ismember('chlSSC', F.Properties.VariableNames), F.chlSSC = F.BL3 - F.size; end
+    if ~ismember('BL3_AH', F.Properties.VariableNames), F.BL3_AH = nan(height(F), 1); end
+    sp = 0; if isfield(info, 'pex') && isfield(info, 'chlx'), sp = info.pex(1) - info.chlx(1); end
+    F.dS = F.GL2 - F.BL3 - sp; % PE:chl relative to the stained bacteria's (SYBR runs)
     id = sprintf('r%03d', i); if refresh, id = char(sel.id(i)); end
     frame(F, h, views, lim, fullfile(fd, [id '_h.png']));
     frame(F, a, views, lim, fullfile(fd, [id '_a.png']));

@@ -28,8 +28,11 @@ a = double(auto); a(ismember(a, [3 4 5])) = 34;
 late = true(size(h)); if any(h), late = fcsdat(:, 1) >= min(fcsdat(h ~= 0, 1)); end
 F = info.features(late, :); h = h(late); a = a(late);
 cs = [0 1 2 7 34 8]; cols = [.75 .75 .75; 0 .6 0; 1 0 0; .4 .4 .4; 1 0 1; 1 .6 0];
-pairs = {'size' 'BL3'; 'BL3' 'GL2'; 'size' 'PEchl'; 'PEchl' 'GL2GL3'; 'size' 'GL2'};
-fig = figure('visible', 'off', 'position', [50 50 1500 650]);
+% last two: Pro colour (chl:size vs GL2:GL3: large Pro low in both) and the chl pulse shape
+pairs = {'size' 'BL3'; 'BL3' 'GL2'; 'size' 'PEchl'; 'PEchl' 'GL2GL3'; 'size' 'GL2'; 'chlSSC' 'GL2GL3'; 'BL3' 'BL3_AH'};
+if ~ismember('chlSSC', F.Properties.VariableNames), F.chlSSC = F.BL3 - F.size; end
+if ~ismember('BL3_AH', F.Properties.VariableNames), F.BL3_AH = nan(height(F), 1); end
+fig = figure('visible', 'off', 'position', [50 50 2000 650]);
 for row = 1:2
     lab_ = h; if row == 2, lab_ = a; end
     for k = 1:size(pairs, 1)
@@ -38,7 +41,7 @@ for row = 1:2
             j = lab_ == cs(c);
             plot(F.(pairs{k, 1})(j), F.(pairs{k, 2})(j), '.', 'color', cols(c, :), 'markersize', 3)
         end
-        xlabel(pairs{k, 1}), ylabel(pairs{k, 2}), grid on
+        xlabel(pairs{k, 1}, 'interpreter', 'none'), ylabel(pairs{k, 2}, 'interpreter', 'none'), grid on
         if k == 1
             if row == 1, t = 'hand'; else, t = 'auto'; end
             title(sprintf('%s: Euk %d Syn %d Pro %d PEeuk %d SynPart %d', t, sum(lab_ == 1), sum(lab_ == 2), sum(lab_ == 7), sum(lab_ == 34), sum(lab_ == 8)), 'fontsize', 8)

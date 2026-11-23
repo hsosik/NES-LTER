@@ -16,6 +16,11 @@ bt = zeros(size(cls)); if isfield(info, 'bact_type'), bt = double(info.bact_type
 c = cls; c(cls == 9 & bt == 1) = 91; c(cls == 9 & bt == 2) = 92; c(cls == 9 & ~ismember(bt, [1 2])) = 91;
 slope = 0.35; if isfield(info, 'hna') && isfield(info.hna, 'slope'), slope = info.hna.slope; end
 F.hnay = F.BL1 - slope * (F.SSC + 2);
+% Pro-colour panels: PE:chl relative to the stained bacteria's (the SYBR spillover
+% spectrum, pex - chlx offsets of the core) and chl:size
+sp = 0; if isfield(info, 'pex') && isfield(info, 'chlx'), sp = info.pex(1) - info.chlx(1); end
+F.dS = F.GL2 - F.BL3 - sp;
+F.chlSSC = F.BL3 - F.SSC;
 nv = size(R.views, 1); W = R.px; g = R.gap;
 img = ones(W, nv * W + (nv - 1) * g, 3);
 order = [91 92 1 2 7];

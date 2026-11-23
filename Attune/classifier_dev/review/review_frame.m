@@ -19,6 +19,10 @@ if isempty(j), F.FSCW = nan(height(F), 1); else, F.FSCW = log10(max(fcsdat(:, j)
 cls = double(cls(:));
 eb = review_euk_line(F, cls);
 F.dEuk = F.BL3 - (eb(1) + eb(2) * F.size); % chl relative to the Euk chl-size line (NaN without a fit)
+% Pro-colour panels (chl:size, GL2:GL3, chl pulse shape): fill any feature an older attune_features lacks
+if ~ismember('chlSSC', F.Properties.VariableNames), F.chlSSC = F.BL3 - F.size; end
+if ~ismember('GL2GL3', F.Properties.VariableNames), F.GL2GL3 = F.GL2 - F.GL3; end
+if ~ismember('BL3_AH', F.Properties.VariableNames), F.BL3_AH = nan(height(F), 1); end
 st = zeros(size(cls)); if isfield(info, 'syn_type'), st = double(info.syn_type(:)); end
 fl = zeros(size(cls)); if isfield(info, 'flag'), fl = double(info.flag(:)); end
 

@@ -14,13 +14,16 @@ R.views = {'size' 'BL3' 'size (log10 SSC rel. 1 um bead)' 'chl (BL3)'; ...
     'BL3' 'BL2' 'chl (BL3)' 'BL2 (green fl., blue laser)'; ...
     'GL3' 'BL2' 'GL3' 'BL2 (PE, blue laser)'; ...
     'size' 'dEuk' 'size' 'chl minus Euk chl-size line'; ...
-    'GL2' 'BL2' 'PE (GL2)' 'PE (BL2)  Syn types'};
+    'chlSSC' 'GL2GL3' 'chl:size (BL3 - size)' 'GL2:GL3'; ...      % Pro colour: Pro low in both, small Euks high (large Pro vs Euk)
+    'BL3' 'BL3_AH' 'chl (BL3)' 'chl pulse shape log10(A/H)'; ...  % Pro wide-pulse cut; trigger-floor debris
+    'GL2' 'BL2' 'PE (GL2)' 'PE (BL2)  Syn types'};                % Syn type view: keep last (review_frame, viewer)
 % fixed axis limits per channel; events outside are drawn on the panel edge
 R.lim = struct('size', [-2.6 2.8], 'BL3', [-1.3 3.2], 'GL2', [-3.5 1.7], 'GL3', [-2.5 2.8], ...
-    'PEchl', [-4.4 1.8], 'BL2', [-2.5 2.3], 'FSCW', [1.0 2.8], 'dEuk', [-3 2]);
+    'PEchl', [-4.4 1.8], 'BL2', [-2.5 2.3], 'FSCW', [1.0 2.8], 'dEuk', [-3 2], ...
+    'chlSSC', [-1 3], 'GL2GL3', [-2.5 1.5], 'BL3_AH', [-0.8 0.8]);
 % per-view limits that override R.lim: the Syn type view is zoomed on the Syn region
 R.view_lim = cell(size(R.views, 1), 1);
-R.view_lim{8} = [-1.2 1.8; -0.7 2.3]; % [x; y], equal spans so type edges (y = x + e) run at 45 degrees
+R.view_lim{end} = [-1.2 1.8; -0.7 2.3]; % [x; y], equal spans so type edges (y = x + e) run at 45 degrees
 R.px = 240;       % panel width and height in pixels
 R.gap = 4;        % white pixels between panels
 R.compare_rows = false; % true: add old-class and disagreement rows when old classes are given

@@ -74,7 +74,7 @@ const VB = [['A_wrong', 'A wrong'], ['B_wrong', 'B wrong'], ['ambiguous', 'ambig
 const VU = [['classifier_wrong', 'classifier wrong'], ['hand_wrong', 'hand gate wrong'], ['ambiguous', 'ambiguous'], ['ok', 'OK']];
 const VCOL = { classifier_wrong: '#c0392b', hand_wrong: '#8e44ad', ambiguous: '#d68910', ok: '#2e8b57' };
 // axis ranges (log10, bead-relative) as drawn by holdout_review
-const LIM = { 'size': [-2.6, 2.8], 'SSC': [-3.2, 2.6], 'SYBR (BL1)': [-1.6, 3.2], 'chl (BL3)': [-1.3, 3.2], 'PE (GL2)': [-3.5, 1.7], 'PE:chl': [-4.4, 1.8], 'GL2:GL3': [-2.5, 1.5] };
+const LIM = { 'size': [-2.6, 2.8], 'SSC': [-3.2, 2.6], 'SYBR (BL1)': [-1.6, 3.2], 'chl (BL3)': [-1.3, 3.2], 'PE (GL2)': [-3.5, 1.7], 'PE:chl': [-4.4, 1.8], 'GL2:GL3': [-2.5, 1.5], 'chl:size': [-1, 3], 'chl pulse shape': [-0.8, 0.8], 'PE:chl minus bacteria': [-2.5, 2.0] };
 // panel labels: [x, y] pairs; older builds stored them as one flat column-major list (x labels, then y labels)
 function panels(v) {
   if (v.length && Array.isArray(v[0])) return v;

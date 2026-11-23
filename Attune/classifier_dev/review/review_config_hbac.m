@@ -12,6 +12,9 @@ function R = review_config_hbac()
 %   4 SYBR vs PE (GL2)     PE spillover line and the PE-excess cut
 %   5 SSC vs chl           Pro / Euk size split, chl:size minimum
 %   6 chl vs PE            Syn PE:chl minimum
+%   7 SSC vs PE:chl minus the bacteria's   0 = the SYBR spectrum (unstained-particle
+%                          band); Syn, Euk and stained-Euk / large-Pro cuts
+%   8 chl:size vs chl      large deep Pro limits (dim, low chl:size)
 % Classes: bacteria (9) split by bact_type into LNA and HNA (codes 91, 92 here),
 % Syn 2, Pro 7, Euk 1, unassigned 0.
 %
@@ -24,8 +27,11 @@ R.views = {'SSC' 'BL1' 'size (log10 SSC rel. 1 um bead)' 'SYBR (BL1)'; ...
     'BL1' 'BL3' 'SYBR (BL1)' 'chl (BL3)'; ...
     'BL1' 'GL2' 'SYBR (BL1)' 'PE (GL2)'; ...
     'SSC' 'BL3' 'size (SSC)' 'chl (BL3)'; ...
-    'BL3' 'GL2' 'chl (BL3)' 'PE (GL2)'};
-R.lim = struct('SSC', [-3.2 1.2], 'BL1', [-2.4 1.6], 'BL3', [-1.6 3.0], 'GL2', [-3.2 2.0], 'hnay', [-2.4 0.4], 'hist', [0 1.05]);
+    'BL3' 'GL2' 'chl (BL3)' 'PE (GL2)'; ...
+    'SSC' 'dS' 'size (SSC)' 'PE:chl minus the bacteria''s'; ...   % colour vs the SYBR spectrum: particle band ~0, Pro ~-0.6, Euks -0.6 to -0.9, Syn above
+    'chlSSC' 'BL3' 'chl:size (BL3 - SSC)' 'chl (BL3)'};          % large deep Pro (dim, low chl:size) vs Euks
+R.lim = struct('SSC', [-3.2 1.2], 'BL1', [-2.4 1.6], 'BL3', [-1.6 3.0], 'GL2', [-3.2 2.0], 'hnay', [-2.4 0.4], 'hist', [0 1.05], ...
+    'dS', [-2.5 2.0], 'chlSSC', [-1 3]);
 R.view_lim = cell(size(R.views, 1), 1);
 R.codes = [91 92 1 2 7];
 R.names = {'LNA bacteria' 'HNA bacteria' 'Euk' 'Syn' 'Pro'};
