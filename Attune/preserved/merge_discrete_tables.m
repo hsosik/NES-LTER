@@ -44,6 +44,11 @@ function [M, E] = merge_discrete_tables(cruises, outpath, opt)
 %               "syn_types"       syn_typeA/B/C/unusable_cells_per_ml
 %               "sybr"            pro_sybr_cells_per_ml and the other hetprok choice
 %                                 (hetprok_excl_pro_ or hetprok_incl_pro_cells_per_ml)
+%               "hna"             hetprok_lna_cells_per_ml, hetprok_hna_cells_per_ml (class 9
+%                                 heterotrophs split by bact_type; sum = hetprok excluding Pro)
+%                                 and hetprok_hna_method ("valley": cut at the run's SYBR
+%                                 density valley; "fixed": no valley, HNA and LNA merged and
+%                                 the split nominal)
 %               "storage_days"    syn/redeuk/pro/hetprok_storage_days
 %               "runs"            n_CHL_runs, n_PE_runs, n_pro_runs, n_hbac_runs
 %               "sample"          sample_label, sizefrac
@@ -63,13 +68,13 @@ arguments
     opt.Root (1,1) string = string([char([92 92]) 'sosiknas1\Lab_data\Attune\cruise_data\'])
     opt.Hetprok (1,1) string {mustBeMember(opt.Hetprok, ["incl_pro" "heterotrophs"])} = "incl_pro"
     opt.Extra string = ["pro" "crypto" "euk_with_syn" "redeuk_all" "syn_on_particle" "syn_types" ...
-        "sybr" "storage_days" "runs" "sample" "processing"]
+        "sybr" "hna" "storage_days" "runs" "sample" "processing"]
     opt.Legacy string = strings(0)
     opt.SampleLogQC (1,1) string = ""
     opt.CsvName (1,1) string = "attune-transect-discrete-samples.csv"
     opt.AllowNAS (1,1) logical = false
 end
-known = ["pro" "crypto" "euk_with_syn" "redeuk_all" "syn_on_particle" "syn_types" "sybr" ...
+known = ["pro" "crypto" "euk_with_syn" "redeuk_all" "syn_on_particle" "syn_types" "sybr" "hna" ...
     "storage_days" "runs" "sample" "processing"];
 bad = setdiff(opt.Extra, known);
 if ~isempty(bad), error('merge_discrete_tables:extra', 'unknown Extra "%s"; known: %s', bad(1), strjoin(known, ', ')), end
@@ -220,6 +225,11 @@ end
 if ismember("sybr", ex)
     E.pro_sybr_cells_per_ml = col(M, 'pro_sybr_cells_per_ml', n);
     if opt.Hetprok == "incl_pro", E.hetprok_excl_pro_cells_per_ml = het; else, E.hetprok_incl_pro_cells_per_ml = incl; end
+end
+if ismember("hna", ex)
+    E.hetprok_lna_cells_per_ml = col(M, 'bacteria_LNA_cells_per_ml', n);
+    E.hetprok_hna_cells_per_ml = col(M, 'bacteria_HNA_cells_per_ml', n);
+    E.hetprok_hna_method = col(M, 'bacteria_hna_method', n, strings(n, 1));
 end
 if ismember("storage_days", ex)
     for g = ["syn" "euk" "pro" "hbac"; "syn" "redeuk" "pro" "hetprok"]
