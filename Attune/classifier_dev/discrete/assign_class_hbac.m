@@ -99,6 +99,54 @@ syn = syn & ~lowchl;
 info.n_syn_lowchl = sum(lowchl);
 chl_ex = chl_ex & ~lowchl;
 phyto = chl_ex | (pe_ex & synlike & ~lowchl);
+% Per-run Syn / bacteria-edge split (replaces the rules above where it can be fitted).
+% Dim Syn (PE only just over the SYBR spillover, summer and deep samples) overlap the
+% bacteria edge in every fixed measure, so the fixed cuts lost about half of them
+% (EN655 C16N14 auto 0.44x hand, the same sample's PE run agrees with the hand count;
+% EN720 C15N16 0.54x, EN617 C02N12 0.32x). Within a run PE and chl separate them: fit
+% 2-4 groups (BIC) to [PE, chl] of the events with some PE excess over the SYBR line,
+% sized like Syn; the groups whose mean PE is above the midpoint of the lowest and
+% highest group are Syn, the rest stays bacteria (14 runs: 97% of hand Syn kept, 3.8% of
+% the other events there taken in; syngmm, Nov 2026)
+info.syn_method = 'rules'; info.syn_gmm = struct('n', 0, 'K', NaN, 'mu', []);
+if h.syn_gmm.on
+    zone = pex - op > h.syn_gmm.min_pexr & F.SSC < h.syn_max_SSC & F.SSC > h.syn_min_SSC & isfinite(F.GL2) & isfinite(F.BL3);
+    iz = find(zone); info.syn_gmm.n = numel(iz);
+    if numel(iz) >= h.syn_gmm.min_n
+        X = [F.GL2(iz) F.BL3(iz)];
+        rng(1, 'twister');
+        fi = iz; if numel(iz) > h.syn_gmm.max_fit, fi = sort(randsample(numel(iz), h.syn_gmm.max_fit)); else, fi = 1:numel(iz); end
+        best = []; bic = Inf;
+        for K = 2:4
+            try
+                gk = fitgmdist(X(fi, :), K, 'RegularizationValue', 1e-3, 'Replicates', 3, 'Options', statset('MaxIter', 500));
+            catch
+                continue
+            end
+            if gk.BIC < bic, best = gk; bic = gk.BIC; end
+        end
+        if ~isempty(best)
+            mu = best.mu(:, 1); sc_ = find(mu > (min(mu) + max(mu)) / 2);
+            if max(mu) - min(mu) >= h.syn_gmm.min_d_PE
+                [~, ci] = max(posterior(best, X), [], 2);
+                gsyn = false(n, 1); gsyn(iz(ismember(ci, sc_))) = true;
+                info.syn_gmm.K = best.NumComponents; info.syn_gmm.mu = best.mu;
+                % where there is no separate Syn group the fit names the brightest
+                % bacteria-edge or PE-particle groups Syn (EN688 C08N23: 5,646 vs 601
+                % hand, mostly the MysteryPE gate, chl:size ~0.1): its Syn must also pass
+                % the run's chl:size cut and a loose Syn colour; Syn found by the rules
+                % above are kept too (EN720 C07N02: a dim Syn group the fit merged with
+                % the bacteria edge)
+                ccut = info.syn_chlSSC_cut; if ~isfinite(ccut), ccut = h.min_chlSSC; end
+                gsyn = gsyn & chlSSC > ccut & PEchl - (op - oc) > h.syn_gmm.min_above_sybr;
+                gsyn = gsyn | syn;
+                chl_ex = chl_ex & ~(zone & ~gsyn);
+                syn = gsyn; phyto = chl_ex | gsyn;
+                info.syn_method = 'gmm';
+            end
+        end
+    end
+end
 % Euks below the SYBR spectrum: unstained particles with BL1 near its floor show chl
 % and PE "excess" at the stained bacteria's own PE:chl (op - oc, ~ -0.8); with Syn at
 % PE:chl > -0.9 they were split between Syn and Euk (EN715 C18N14: 657 Syn, 571 Euk
