@@ -96,6 +96,14 @@ cfg.hbac.euk_below_sybr = 0.2;   %Euk: PE:chl at least this below the stained ba
 cfg.hbac.euk_stained_min_chlx = 0.15;  %stained Euks (SYBR raises BL1, small chl excess): larger than bacteria, chl
 cfg.hbac.euk_stained_below_sybr = 0.3; %excess above this and PE:chl at least this below the bacteria's (lost hand Euks
                                        %chl excess median 0.46, PE:chl -0.48 below)
+% large deep Pro named Euk (assign_class_hbac hbac_large_pro): Pro-like "Euks" become Pro where they
+% dominate; hand Pro named Euk (deep runs): chl:size 1.10-1.30 (25-75%), BL3 0.01-0.19; hand Euks
+% chl:size 1.58-1.92, BL3 0.72-1.33
+cfg.hbac.lp.max_BL3 = 0.4;         %Pro-like: dimmer than this ...
+cfg.hbac.lp.max_chlSSC = 1.5;      %... chl:size below this ...
+cfg.hbac.lp.min_below_sybr = 0.3;  %... PE:chl at least this below the stained bacteria's (keeps the particle band out)
+cfg.hbac.lp.min_n = 200;           %applied if at least this many ...
+cfg.hbac.lp.min_ratio = 2;         %... and this many times the run's other Euks
 cfg.hbac.pro_max_SSC = -1.45;    %chl excess without Syn PE: Pro at or below this SSC, Euk above
 cfg.hbac.syn_max_SSC = -0.8;     %Syn by chl excess alone: SSC below this (Syn 95th percentile -1.0)
 cfg.hbac.bact_max_SSC = -1.2;    %bacteria no larger than this (SSC 95th percentile -1.5)

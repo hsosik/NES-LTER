@@ -86,7 +86,8 @@ class(chl_ex & ~syn & F.SSC <= h.pro_max_SSC) = 7;
 seuk = class == 0 & ~syn & F.SSC > h.bact_max_SSC & chlx - oc > h.euk_stained_min_chlx & chlSSC > h.min_chlSSC ...
     & PEchl - (op - oc) < -h.euk_stained_below_sybr;
 class(seuk) = 1; info.n_stained_euk = sum(seuk);
-bact = ~phyto & stain > h.stain_min & F.BL1 > e.BL1 + h.bl1_edge_margin & F.SSC <= h.bact_max_SSC;
+[class, info.large_pro] = hbac_large_pro(class, F, chlSSC, PEchl - (op - oc), h.lp);
+bact =~phyto & stain > h.stain_min & F.BL1 > e.BL1 + h.bl1_edge_margin & F.SSC <= h.bact_max_SSC;
 class(bact) = 9;
 info.chlx = [oc sc cut_c]; info.pex = [op sp cut_p];
 % HNA / LNA subtype of the bacteria (like info.syn_type; class 9 unchanged)
@@ -94,4 +95,25 @@ info.chlx = [oc sc cut_c]; info.pex = [op sp cut_p];
 info.bact_type_names = info.hna.names;
 info.counts = struct('syn', sum(class == 2), 'euk', sum(class == 1), 'pro', sum(class == 7), 'bact', sum(class == 9), ...
     'lna', info.hna.n_lna, 'hna', info.hna.n_hna);
+end
+
+function [class, s] = hbac_large_pro(class, F, chlSSC, dS, g)
+% Large deep Pro (SSC -1.3 to -0.9, above pro_max_SSC) are named Euk (EN644 C12N07
+% 60 m: 1889 of 1994 extra "Euks" in the hand Pro gate; EN720 C19N03, AR38 C12N15,
+% AR39B C10N07 alike). They are dim (BL3 ~ 0.1), have little chl for their size
+% (chl:size ~1.2 vs Euks ~1.8) and a Pro-like PE:chl (0.6 below the stained
+% bacteria's), but small dim Euks overlap them in every cruise, so no fixed cut
+% works, and a per-run group fit (as large_pro in assign_class_discrete) split the
+% Pro instead of Pro from Euks in the deep runs and took 140 Euks in AR61B C10N04.
+% Rule: the Pro-like "Euks" (BL3 < lp.max_BL3, chl:size < lp.max_chlSSC, PE:chl
+% at least lp.min_below_sybr below the bacteria's) become Pro only where they
+% dominate: at least lp.min_n of them and lp.min_ratio times the run's other Euks
+% (204 held-out and tuning SYBR runs, hbdom2, Nov 2026: on in 9 deep runs, 8415 of
+% 11293 hand Pro named Euk recovered, no hand Euks moved)
+s = struct('accepted', false, 'n', 0, 'n_other_euk', 0);
+cand = class == 1 & F.BL3 < g.max_BL3 & chlSSC < g.max_chlSSC & dS < -g.min_below_sybr;
+s.n = sum(cand); s.n_other_euk = sum(class == 1 & ~cand);
+if s.n < g.min_n || s.n < g.min_ratio * s.n_other_euk, s.n = 0; return, end
+class(cand) = 7;
+s.accepted = true;
 end
