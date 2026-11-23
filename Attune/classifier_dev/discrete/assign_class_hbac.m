@@ -18,7 +18,8 @@ function [class, info] = assign_class_hbac(fcsdat, fcshdr, ref, cfg)
 %            and chl:size above cfg.hbac.min_chlSSC, or chl excess with that
 %            PE:chl; SSC below cfg.hbac.syn_max_SSC (large PE-signal particles
 %            with little chl, EN695 C03N06, are not Syn)
-%   Euk (1)  chl excess, not Syn, SSC above cfg.hbac.pro_max_SSC
+%   Euk (1)  chl excess, not Syn, SSC above cfg.hbac.pro_max_SSC, PE:chl at least
+%            cfg.hbac.euk_below_sybr below the stained bacteria's (else unassigned)
 %   Pro (7)  chl excess, not Syn, SSC at or below cfg.hbac.pro_max_SSC
 %   bacteria (9) the rest that is stained (BL1 - SSC > cfg.hbac.stain_min),
 %            above the BL1 trigger edge + cfg.hbac.bl1_edge_margin and no larger
@@ -67,9 +68,24 @@ chl_ex = chl_ex & (chlSSC > h.min_chlSSC | (F.SSC <= h.pro_max_SSC & chlSSC > h.
 synlike = PEchl > h.syn_min_PEchl;
 syn = ((pe_ex & chlSSC > h.min_chlSSC) | chl_ex) & synlike & F.SSC < h.syn_max_SSC & (pe_ex | F.SSC > h.pro_max_SSC);
 phyto = chl_ex | pe_ex;
+% Euks below the SYBR spectrum: unstained particles with BL1 near its floor show chl
+% and PE "excess" at the stained bacteria's own PE:chl (op - oc, ~ -0.8); with Syn at
+% PE:chl > -0.9 they were split between Syn and Euk (EN715 C18N14: 657 Syn, 571 Euk
+% outside the hand gates). Hand Euks sit 0.6-0.9 below that spectrum (204 runs,
+% hbac_band_eval3, Nov 2026); between them and Syn the events stay unassigned
+euklike = PEchl - (op - oc) < -h.euk_below_sybr;
+info.n_sybr_band = sum(chl_ex & ~syn & ~euklike & F.SSC > h.pro_max_SSC);
 class(syn) = 2;
-class(chl_ex & ~syn & F.SSC > h.pro_max_SSC) = 1;
+class(chl_ex & ~syn & euklike & F.SSC > h.pro_max_SSC) = 1;
 class(chl_ex & ~syn & F.SSC <= h.pro_max_SSC) = 7;
+% stained Euks: SYBR raises their BL1, so their chl excess over the bacteria line is
+% small (hand Euks left unassigned: chlx - oc median 0.46, under the ~0.5 cut; about
+% half the hand Euks in EN668 C007N13, EN655 C10N13, AR92 C20N15), but their PE:chl
+% sits well below the SYBR spectrum. Larger than bacteria, some chl excess, real chl
+% for their size, and PE:chl at least euk_stained_below_sybr below the bacteria's
+seuk = class == 0 & ~syn & F.SSC > h.bact_max_SSC & chlx - oc > h.euk_stained_min_chlx & chlSSC > h.min_chlSSC ...
+    & PEchl - (op - oc) < -h.euk_stained_below_sybr;
+class(seuk) = 1; info.n_stained_euk = sum(seuk);
 bact = ~phyto & stain > h.stain_min & F.BL1 > e.BL1 + h.bl1_edge_margin & F.SSC <= h.bact_max_SSC;
 class(bact) = 9;
 info.chlx = [oc sc cut_c]; info.pex = [op sp cut_p];
