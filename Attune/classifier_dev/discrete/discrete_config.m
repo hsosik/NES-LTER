@@ -23,6 +23,7 @@ cfg.sig.euk_af_above_mode = 0.75;  %... cut = Euk PE:chl mode + this (Euk 5-95% 
 cfg.sig.euk_af_min_peak = 0.1;     %... mode = lowest KDE peak of cell-like PE:chl at least this fraction of the highest ...
 cfg.sig.euk_af_max_mode = -0.8;    %... and below this (Syn ~ +0.1, PE euks -1.15 to -0.2 sit above Euks)
 cfg.sig.euk_af_min_n = 200;        %... with at least this many cell-like events
+cfg.sig.euk_af_min_size = -1.0;    %... pro and PE runs: among events larger than this (SSC; Pro -1.3 to -1.8, Syn ~ -1.3), all cell-like events if no mode there
 % PE euks bright in PE: above preserved Euk GL2 (95th percentile 0.29); live -1
 cfg.sig.peeuk_min_GL2 = 0.35;
 % Autofluorescent non-cell particles: preserved samples have a cloud with PE:chl
@@ -52,6 +53,7 @@ cfg.sig.lp_min_chlSSC = 0.6;      %... and its mean chl:size at least this (larg
 cfg.sig.lp_lda = [-7.080 -4.316 9.189];
 cfg.sig.lp_lda_min_median = 2;    %... applied if the Pro-side events' median score is at least this
 cfg.sig.lp_lda_dominant = [0.75 1.2]; %... or if at least this fraction of candidates is on the Pro side and their median at least this
+cfg.sig.lp_extend_p = 0.99;        %large_pro_lda: Pro extended to candidates within this chi2 quantile of the picked Pro's spread (Inf: off)
 cfg.sig.euk_restore_margin = 0.5;  %v2 Pro-like small Euks back to Euk where the Pro-vs-Euk score (lp_lda) is below -this (Euk side, with a margin)
 % Pro runs (assign_class_discrete pro_component_swap): Pro as large as Syn named Euk,
 % dimmer groups (trigger floor, faint smear) named Pro (EN655 C15N09)

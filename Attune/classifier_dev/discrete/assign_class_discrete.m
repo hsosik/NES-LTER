@@ -42,7 +42,7 @@ assign_pro = pro_run || (strcmp(runtype, 'CHL') && cfg.sig.pro_in_chl_runs);
 if pro_run && isfield(cfg.sig, 'detritus_max_chlSSC_pro')
     cfg.sig.detritus_max_chlSSC = cfg.sig.detritus_max_chlSSC_pro;
 end
-[cfg.sig.pe_min_PEchl, info_pe] = euk_autofluor_cut(fcsdat, fcshdr, ref, cfg);
+[cfg.sig.pe_min_PEchl, info_pe] = euk_autofluor_cut(fcsdat, fcshdr, ref, cfg, runtype);
 [class, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, assign_pro);
 info.euk_autofluor = info_pe;
 info.pe_syn_trim = struct('applied', false, 'n', 0, 'gap', -Inf);
@@ -61,7 +61,7 @@ if strcmp(runtype, 'PE') && isfield(info, 'trace') && isfield(info.trace, 'catch
     class(rm) = 0; info.n_pe_catchall_syn_removed = sum(rm);
 end
 info.runtype = runtype;
-info.large_pro = struct('accepted', false, 'n', 0, 'method', '', 'mu', [], 'sep', NaN, 'ncand', 0, 'lda_n', 0, 'lda_median', NaN, 'lda_frac', NaN); %(same fields as large_pro returns)
+info.large_pro = struct('accepted', false, 'n', 0, 'method', '', 'mu', [], 'sep', NaN, 'ncand', 0, 'lda_n', 0, 'lda_median', NaN, 'lda_frac', NaN, 'n_extended', 0); %(same fields as large_pro returns)
 info.pro_swap = struct('applied', false, 'n_to_pro', 0, 'n_to_0', 0);
 if pro_run
     [class, info.pro_swap] = pro_component_swap(class, info, cfg);
@@ -110,7 +110,7 @@ function [class, s] = large_pro(class, info, cfg, pro_run)
 % Hand-gated preserved Pro vs Euks at size -1.3 to -0.6: chl:size 1.09 vs 1.70,
 % GL2:GL3 -0.10 vs 0.34 (single events overlap; GL3 near its floor).
 g = cfg.sig;
-s = struct('accepted', false, 'n', 0, 'method', '', 'mu', [], 'sep', NaN, 'ncand', 0, 'lda_n', 0, 'lda_median', NaN, 'lda_frac', NaN);
+s = struct('accepted', false, 'n', 0, 'method', '', 'mu', [], 'sep', NaN, 'ncand', 0, 'lda_n', 0, 'lda_median', NaN, 'lda_frac', NaN, 'n_extended', 0);
 F = info.features;
 if sum(class == 2) >= 20, syn_size = median(F.size(class == 2)); else, syn_size = g.syn_size_default; end
 % the fixed-boundary fallback (large_pro_lda; its candidates need chl:size >= lp_min_chlSSC,
@@ -204,8 +204,29 @@ side = sc > 0;
 s.lda_n = sum(side); s.lda_median = median(sc(side)); s.lda_frac = mean(side);
 dominant = s.lda_frac >= g.lp_lda_dominant(1) && s.lda_median >= g.lp_lda_dominant(2);
 if s.lda_n < g.lp_min_group_n || ~(s.lda_median >= g.lp_lda_min_median || dominant), return, end
+n_pro_before = sum(class == 7);
 class(cand(side)) = 7;
-s.accepted = true; s.n = s.lda_n; s.method = 'lda';
+% the fixed boundary is applied event by event and can cut through the Pro cluster: its
+% brighter part (GL2:GL3 and chl:size slightly higher) lands on the Euk side and stays
+% Euk (AR39B C13N04 Pro run: 104 of 848 hand Pro). Extend the Pro to the remaining
+% candidates within the picked Pro's own spread in [size BL3 GL2GL3] (chi2 quantile
+% lp_extend_p; chl:size = BL3 - size, so it adds nothing); the real Euks sit well apart (BL3 ~1.7, GL2:GL3 ~ +0.5).
+% Only where the picked group is the run's main Pro (v2 named fewer Pro): a small
+% Euk-side sliver next to v2's Pro (EN720 C14N14(1): 290 vs 4700) spreads over the
+% Euks, and extending it took 1216 of 2337 hand Euks
+s.n_extended = 0;
+if isfinite(g.lp_extend_p) && s.lda_n > n_pro_before
+    X = [F.size F.BL3 F.GL2GL3];
+    P = X(cand(side), :);
+    rest = cand(~side);
+    if size(P, 1) >= 20 && ~isempty(rest)
+        dx = X(rest, :) - median(P, 1);
+        d2 = sum((dx / cov(P)) .* dx, 2);
+        ext = rest(d2 < chi2inv(g.lp_extend_p, size(X, 2)));
+        class(ext) = 7; s.n_extended = numel(ext);
+    end
+end
+s.accepted = true; s.n = s.lda_n + s.n_extended; s.method = 'lda';
 end
 
 function [class, s] = pro_component_swap(class, info, cfg)
@@ -316,21 +337,43 @@ p.frac_near_edge = mean(x < cfg.sig.pro_edge_band);
 p.lower_bound = p.peak_above_edge < cfg.sig.pro_lb_min_peak_above_edge | p.frac_near_edge > cfg.sig.pro_lb_max_frac_near_edge;
 end
 
-function [cut, s] = euk_autofluor_cut(fcsdat, fcshdr, ref, cfg)
+function [cut, s] = euk_autofluor_cut(fcsdat, fcshdr, ref, cfg, runtype)
 % PE detected = PE:chl above the file's Euk autofluorescence: the Euks form the
 % main low mode of PE:chl among cell-like events (chl:size above the
 % detritus cut); the cut is that mode + cfg.sig.euk_af_above_mode. CHL runs: mode
 % ~ -2.05, cut ~ -1.3; PE-triggered runs record only the brightest Euks (EN668
 % C002N17: mode ~ -1.2, which the fixed cut called Syn). Without a clear Euk
 % mode, cfg.sig.pe_min_PEchl.
-s = struct('mode', NaN, 'n', 0);
+s = struct('mode', NaN, 'n', 0, 'size_restricted', false); m = NaN; n = 0;
 cut = cfg.sig.pe_min_PEchl;
 F = attune_features(fcsdat, fcshdr, ref);
 pechl = F.GL2 - F.BL3;
 cell_like = F.BL3 - F.SSC > cfg.sig.detritus_max_chlSSC & isfinite(pechl) & F.BL3 > prctile(F.BL3, 10);
-x = pechl(cell_like);
-s.n = numel(x);
-if numel(x) < cfg.sig.euk_af_min_n, return, end
+% Pro and PE runs: mode among events larger than euk_af_min_size, falling back to all
+% cell-like events without a clear mode there. In Pro runs Pro can far outnumber the
+% Euks, and preserved Pro carry more green autofluorescence (PE:chl ~ -0.84 in TN368
+% C38N24 hi vs Euks -1.38), so their peak was taken for the Euk mode and the cut
+% (-0.09) fell inside the Syn (Syn 972 of 2307 hand). In PE runs the Syn (SSC ~ -1.3)
+% swamped the Euk peak (no mode; AR92 C16N08, C20N18, C21N19, EN687 C15N05 PE: 0 Euks
+% of 815-997 hand). Not in CHL runs: small Euk-poor runs lost all Euks (EN668
+% C015N02, EN715 C14N02) and AR92 C25N02 overcounted.
+if ismember(runtype, {'pro' 'PE'})
+    [m, n] = af_mode(pechl(cell_like & F.SSC > cfg.sig.euk_af_min_size), cfg);
+    s.size_restricted = isfinite(m);
+end
+if ~isfinite(m)
+    [m, n] = af_mode(pechl(cell_like), cfg);
+end
+s.n = n;
+if ~isfinite(m), return, end
+s.mode = m;
+cut = s.mode + cfg.sig.euk_af_above_mode;
+end
+
+function [m, n] = af_mode(x, cfg)
+% Euk PE:chl mode among cell-like events x (euk_autofluor_cut); NaN without a clear one
+m = NaN; n = numel(x);
+if n < cfg.sig.euk_af_min_n, return, end
 g = linspace(-3.5, 1, 226);
 d = ksdensity(x, g, 'bandwidth', 0.08);
 pk = find(d(2:end-1) > d(1:end-2) & d(2:end-1) >= d(3:end)) + 1;
@@ -342,6 +385,5 @@ if isempty(pk), return, end
 % PE-euk peak further up, e.g. -0.84 there, from being taken)
 w = pk(g(pk) < g(pk(1)) + cfg.sig.euk_af_above_mode);
 [~, b] = max(d(w));
-s.mode = g(w(b));
-cut = s.mode + cfg.sig.euk_af_above_mode;
+m = g(w(b));
 end
