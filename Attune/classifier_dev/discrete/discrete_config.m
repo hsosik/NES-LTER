@@ -93,6 +93,11 @@ cfg.hbac.syn_min_PEchl = -0.7;   %Syn-like PE:chl (hand Syn 1st percentile -0.49
                                  %SYBR-spectrum particles at ~ -0.8: hbac_band_eval, Nov 2026)
 cfg.hbac.syn_above_sybr = 0.4;   %Syn: PE:chl also at least this above the stained bacteria's (bacteria-cloud edge 0.2-0.9,
                                  %median 0.44, in EN627 C24N06; hand Syn ~1.0, 1st percentile 0.38; event test: 1% hand Syn lost)
+cfg.hbac.syn_core_above_sybr = 0.8;   %Syn chl:size cut: from the run's Syn at least this above the bacteria's PE:chl ...
+cfg.hbac.syn_core_min_n = 50;         %... if at least this many (else no cut) ...
+cfg.hbac.syn_chlSSC_below_core = 0.5; %... Syn need chl:size above their median less this (EN627 C24N06 streak, chl:size 0.87 vs 1.69) ...
+cfg.hbac.syn_min_SSC = -1.9;          %Syn no smaller than this (bacteria-edge events let in by the cap; hand Syn 1st percentile -1.73)
+cfg.hbac.syn_chlSSC_cut_max = 1.1;    %... with the cut no higher than this (EN720 C07N02: bright Syn put it at 1.34, above a dim Syn group)
 cfg.hbac.euk_below_sybr = 0.3;   %Euk: PE:chl at least this below the stained bacteria's (hand Euks 0.6-0.9 below; the
                                  %unstained-particle band sits on it, -0.14; 0.2 left its tail: AT46 C01N13 14x hand, 0.3 1.1x,
                                  %held-out Euk within 20% 0.40-0.43 -> 0.69-0.75); in between stays unassigned

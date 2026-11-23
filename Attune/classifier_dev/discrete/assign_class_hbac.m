@@ -73,7 +73,32 @@ chl_ex = chl_ex & (chlSSC > h.min_chlSSC | (F.SSC <= h.pro_max_SSC & chlSSC > h.
 % phytoplankton, so those events stay in the bacteria
 synlike = PEchl > h.syn_min_PEchl & PEchl - (op - oc) > h.syn_above_sybr;
 syn = ((pe_ex & chlSSC > h.min_chlSSC) | chl_ex) & synlike & F.SSC < h.syn_max_SSC & (pe_ex | F.SSC > h.pro_max_SSC);
-phyto = chl_ex | (pe_ex & synlike);
+% ... and real chl for their size relative to the run's own Syn: a dim, small streak
+% from the Syn cluster toward the bacteria (EN627 C24N06: 297 of 651 auto Syn, chl:size
+% median 0.87 vs Syn 1.69) passes the colour cuts. Syn chl:size varies between runs
+% (~1.0-1.6), so the cut is the median of the run's clearly Syn-coloured events
+% (syn_core_above_sybr) less syn_chlSSC_below_core (204 runs, synchl2: 0.8% of hand Syn
+% lost, 53% of the other auto Syn removed). Those events are not phytoplankton
+lowchl = false(n, 1); info.syn_chlSSC_cut = NaN;
+core = syn & PEchl - (op - oc) > h.syn_core_above_sybr;
+if sum(core) >= h.syn_core_min_n
+    % capped: in runs with bright Syn the median sits high and the cut took a dimmer Syn
+    % group (EN720 C07N02: median 1.99, cut 1.34, 220 hand Syn at chl:size 0.9-1.35)
+    info.syn_chlSSC_cut = min(h.syn_chlSSC_cut_max, median(chlSSC(core)) - h.syn_chlSSC_below_core);
+    lowchl = synlike & chlSSC < info.syn_chlSSC_cut;
+    syn = syn & ~lowchl;
+end
+% ... and no smaller than syn_min_SSC: with the capped cut, small bacteria-edge events
+% with chl:size just over it (EN720 C07N02: 83, SSC median -2.17) passed; hand Syn 1st
+% percentile -1.73 (204 runs: 0.1% of hand Syn lost, 42% of the other auto Syn removed)
+lowchl = lowchl | (synlike & F.SSC <= h.syn_min_SSC);
+% (PE brightness separates Syn from the bacteria edge best within a run, per-run AUC
+% median 0.999, but Syn PE differs between runs: a fixed floor GL2 > -1.0 changed the
+% held-out sets little and cut real Syn in EN644 C13N13, 0.93 -> 0.81x hand; not used)
+syn = syn & ~lowchl;
+info.n_syn_lowchl = sum(lowchl);
+chl_ex = chl_ex & ~lowchl;
+phyto = chl_ex | (pe_ex & synlike & ~lowchl);
 % Euks below the SYBR spectrum: unstained particles with BL1 near its floor show chl
 % and PE "excess" at the stained bacteria's own PE:chl (op - oc, ~ -0.8); with Syn at
 % PE:chl > -0.9 they were split between Syn and Euk (EN715 C18N14: 657 Syn, 571 Euk
