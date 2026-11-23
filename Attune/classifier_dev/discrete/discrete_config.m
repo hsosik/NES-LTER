@@ -51,7 +51,10 @@ cfg.sig.lp_min_chlSSC = 0.6;      %... and its mean chl:size at least this (larg
 % Pro runs where the group fit fails (Pro outnumber Euks): fixed discriminant,
 % Pro side if score = a*chlSSC + b*GL2GL3 + c > 0 (hand-gated Pro vs Euk, dcfg6 events)
 cfg.sig.lp_lda = [-7.080 -4.316 9.189];
-cfg.sig.lp_lda_min_median = 2;    %... applied if the Pro-side events' median score is at least this
+cfg.sig.lp_comp_min_score = 0.5;  %v2 Euk components with their mean this far on the Pro side of lp_lda (small, dim) become Pro (Inf: off; EN720 C07N02 CHL deep Pro comp 0.65)
+cfg.sig.lp_comp_min_chlSSC = 1.0; %... and their mean chl:size at least this (deep Pro comps 1.21-1.24, debris comps 0.71-0.81)
+cfg.sig.lp_comp_min_weight = 0.08; %... and their mixture weight at least this (deep Pro 0.11, 0.46; surface Euk/particle comps 0.024-0.051)
+cfg.sig.lp_lda_min_median = 2;  %... applied if the Pro-side events' median score is at least this
 cfg.sig.lp_lda_dominant = [0.75 1.2]; %... or if at least this fraction of candidates is on the Pro side and their median at least this
 cfg.sig.lp_extend_p = 0.99;        %large_pro_lda: Pro extended to candidates within this chi2 quantile of the picked Pro's spread (Inf: off)
 cfg.sig.euk_restore_margin = 0.5;  %v2 Pro-like small Euks back to Euk where the Pro-vs-Euk score (lp_lda) is below -this (Euk side, with a margin)
