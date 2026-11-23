@@ -91,8 +91,9 @@ cfg.hbac.phyto_sd = 4;           %chl or PE excess: this many robust SDs above t
 cfg.hbac.phyto_min = 0.4;        %... and at least this (log10)
 cfg.hbac.syn_min_PEchl = -0.7;   %Syn-like PE:chl (hand Syn 1st percentile -0.49, 204 runs; was -0.9, which took in the
                                  %SYBR-spectrum particles at ~ -0.8: hbac_band_eval, Nov 2026)
-cfg.hbac.euk_below_sybr = 0.2;   %Euk: PE:chl at least this below the stained bacteria's (hand Euks 0.6-0.9 below; the
-                                 %unstained-particle band sits on it, -0.14); in between stays unassigned
+cfg.hbac.euk_below_sybr = 0.3;   %Euk: PE:chl at least this below the stained bacteria's (hand Euks 0.6-0.9 below; the
+                                 %unstained-particle band sits on it, -0.14; 0.2 left its tail: AT46 C01N13 14x hand, 0.3 1.1x,
+                                 %held-out Euk within 20% 0.40-0.43 -> 0.69-0.75); in between stays unassigned
 cfg.hbac.euk_stained_min_chlx = 0.15;  %stained Euks (SYBR raises BL1, small chl excess): larger than bacteria, chl
 cfg.hbac.euk_stained_below_sybr = 0.3; %excess above this and PE:chl at least this below the bacteria's (lost hand Euks
                                        %chl excess median 0.46, PE:chl -0.48 below)
