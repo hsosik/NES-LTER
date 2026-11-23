@@ -65,9 +65,15 @@ chl_ex = chlx > cut_c; pe_ex = pex > cut_p;
 % particles have low BL1, so chlx is high without chl (v1: Syn 2.2x, Euk 3.3x hand)
 chlSSC = F.BL3 - F.SSC;
 chl_ex = chl_ex & (chlSSC > h.min_chlSSC | (F.SSC <= h.pro_max_SSC & chlSSC > h.min_chlSSC_pro));
-synlike = PEchl > h.syn_min_PEchl;
+% Syn colour: PE:chl above syn_min_PEchl and at least syn_above_sybr above the stained
+% bacteria's (the SYBR spectrum). Without the second, the bright upper edge of the
+% bacteria cloud (PE excess just over its cut, PE:chl 0.2-0.9 above the bacteria's) was
+% Syn: EN627 C24N06 881 auto vs 363 hand Syn, 5,062 per mL in the CHL run; hand Syn
+% sit ~1.0 above (1st percentile 0.38, 204 runs). PE excess without that colour is not
+% phytoplankton, so those events stay in the bacteria
+synlike = PEchl > h.syn_min_PEchl & PEchl - (op - oc) > h.syn_above_sybr;
 syn = ((pe_ex & chlSSC > h.min_chlSSC) | chl_ex) & synlike & F.SSC < h.syn_max_SSC & (pe_ex | F.SSC > h.pro_max_SSC);
-phyto = chl_ex | pe_ex;
+phyto = chl_ex | (pe_ex & synlike);
 % Euks below the SYBR spectrum: unstained particles with BL1 near its floor show chl
 % and PE "excess" at the stained bacteria's own PE:chl (op - oc, ~ -0.8); with Syn at
 % PE:chl > -0.9 they were split between Syn and Euk (EN715 C18N14: 657 Syn, 571 Euk

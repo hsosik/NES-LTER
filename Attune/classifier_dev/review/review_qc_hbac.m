@@ -66,7 +66,7 @@ L = add(L, 6, h.syn_min_PEchl, 1, NaN, sc, '5 3', 'Syn PE:chl minimum');
 sp = q.pex_off - q.chlx_off;
 if isfinite(sp)
     L = add(L, 7, 0, 0, NaN, bc, '1 2', 'bacteria PE:chl (SYBR spectrum)');
-    L = add(L, 7, h.syn_min_PEchl - sp, 0, NaN, sc, '5 3', 'Syn PE:chl minimum');
+    L = add(L, 7, max(h.syn_min_PEchl - sp, fo(h, 'syn_above_sybr', -Inf)), 0, NaN, sc, '5 3', 'Syn PE:chl minimum (absolute and above the bacteria''s)');
     if h.euk_below_sybr == h.euk_stained_below_sybr
         L = add(L, 7, -h.euk_below_sybr, 0, NaN, ec, '5 3', 'Euk, stained Euk and large Pro: below this');
     else
