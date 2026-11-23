@@ -110,6 +110,24 @@ if strcmp(runtype, 'CHL') && isfield(info, 'trace') && isfield(info.trace, 'euk_
     back = pl & sc < -cfg.sig.euk_restore_margin;
     class(back) = 1; info.n_euk_prolike_restored = sum(back);
 end
+% Euks need chl for their size relative to the run's own Euks: faint particles near the
+% chl trigger with low chl:size were Euk (EN661 C07N05 CHL, 180 m: 498 auto vs 185 hand
+% Euk, chl:size ~0.95 vs Euks 1.77). Cut = median chl:size of the run's clear Euks (chl
+% at least euk_chl.core_above_edge above the BL3 trigger edge, >= euk_chl.core_min_n of
+% them) less euk_chl.below_core, no higher than euk_chl.cut_max. Euks below it AND with
+% GL2:GL3 below euk_chl.max_GL2GL3 are unassigned: the particles have low GL2:GL3, while
+% dim real Euks at the low-chl edge of a continuous cloud (EN655 C16N14, TN368 C80N23)
+% keep their cloud's GL2:GL3
+info.euk_chl_cut = NaN; info.n_euk_lowchl = 0;
+if isfield(cfg.sig, 'euk_chl') && cfg.sig.euk_chl.on && isfield(info.trigger_edges, 'BL3')
+    F = info.features;
+    core = class == 1 & F.BL3 > info.trigger_edges.BL3 + cfg.sig.euk_chl.core_above_edge & isfinite(F.chlSSC);
+    if sum(core) >= cfg.sig.euk_chl.core_min_n
+        info.euk_chl_cut = min(cfg.sig.euk_chl.cut_max, median(F.chlSSC(core)) - cfg.sig.euk_chl.below_core);
+        low = class == 1 & F.chlSSC < info.euk_chl_cut & F.GL2GL3 < cfg.sig.euk_chl.max_GL2GL3;
+        class(low) = 0; info.n_euk_lowchl = sum(low);
+    end
+end
 % v2's wide-pulse rule (Pro-setting files, Nov 2026): events whose BL3 pulse is
 % wider than the file's Syn-referenced A/H (info.trace.wide_pulse) are not Pro; the
 % steps above can make Pro of events v2 left out, so the same exclusion applies here
