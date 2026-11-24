@@ -132,6 +132,8 @@ cfg.sig.euk_gap_peak_local = true;  %... Euk peak = highest local maximum above 
 cfg.sig.euk_gap_pile_max_above_edge = 0.7; %... and only where the population below the gap peaks within this of the chl edge (trigger noise; underway piles 0.37-0.60, a real small-Euk cluster in MVCO ~1.0)
 cfg.sig.syn_ref_max_size = -0.5;    %file's Syn reference from Syn-named events no larger than this (real Syn peak -1.5 to -0.75; broad large PE components named Syn otherwise move it) ...
 cfg.sig.syn_ref_min_n = 20;         %... when there are at least this many (else all Syn-named events)
+cfg.sig.syn_ref_above_edge = true;  %... from those clearly above the chl trigger edge (edge_pro_band) when there are that many (PE+chl trigger files)
+cfg.sig.catchall_peeuk_det = true;  %catch-all PE euks need chl:size above detritus_max_chlSSC, as main-rule PE euks
 cfg.sig.syn_ref_spec_min_n = 20;    %Syn reference PE:chl from those with a measured Syn-type spectrum (GL3 clear of floor, GL2:GL3 > syn_min_GL2GL3) when at least this many
 cfg.sig.syn_PEchl_default = -0.2;  %used when a file has no Syn
 cfg.sig.syn_size_default = -1.24;

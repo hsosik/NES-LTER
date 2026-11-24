@@ -329,6 +329,19 @@ synr = syn;
 if sum(syn & F.size <= sig.syn_ref_max_size) >= sig.syn_ref_min_n
     synr = syn & F.size <= sig.syn_ref_max_size;
 end
+% ... and, in files triggered on PE as well as chl, from Syn-named events clearly above
+% the chl trigger edge when there are syn_ref_min_n of them (Nov 2026). In winter EN661
+% 05Feb(20) Sample(27) a tight cluster of tiny PE-triggered events below the chl edge
+% (size -2.5, PE:chl +1.4) outnumbered the real Syn (size -1.1, PE:chl 0); the reference
+% went to it and the real Syn became Euk with Syn (the Syn rescue already has this rule).
+% Only where those events have Syn-like PE:chl: where the Syn-named events above the edge
+% are a broad particle component (EN661 06Feb(5) Sample(5), PE:chl -1.3) the rule is skipped
+if sig.syn_ref_above_edge && isfield(edge, 'BL3')
+    sa = synr & F.BL3 > edge.BL3 + sig.edge_pro_band;
+    if sum(sa) >= sig.syn_ref_min_n && abs(median(F.PEchl(sa)) - sig.syn_PEchl_default) < sig.syn_PEchl_tol
+        synr = sa;
+    end
+end
 info.syn_ref_n_above = sum(syn & ~synr);
 syn_PEchl = median(F.PEchl(synr)); syn_size = median(F.size(synr));
 syn_GL2GL3 = median(F.GL2GL3(synr)); syn_BL3 = median(F.BL3(synr));
@@ -848,6 +861,9 @@ if any(left) && sum(refset) >= 50
     ok(nl == 2) = fz.size(nl == 2) > syn_size - min(sig.syn_size_max_below, max(sig.syn_size_tol_below, sig.syn_size_sd * syn_size_sdv)) & fz.size(nl == 2) < smax2 & ...
         fz.GL2(nl == 2) >= syn_PE_floor & fz.PEchl(nl == 2) > syn_PEchl - sig.syn_PEchl_tol & fz.PEchl(nl == 2) < syn_PEchl + max(sig.syn_PEchl_tol, sig.syn_PEchl_sd * syn_PEchl_sdv);
     ok(nl == 3 | nl == 4) = fz.size(nl == 3 | nl == 4) > syn_size + sig.peeuk_size_above_syn;
+    % ... with chl like a cell, as the main PE-euk rule (Nov 2026): faint PE on large detritus
+    % (chl:size about -1) took PE-euk neighbours in EN661 06Feb(5) Sample(5)
+    if sig.catchall_peeuk_det, ok(nl == 3 | nl == 4) = ok(nl == 3 | nl == 4) & fz.chlSSC(nl == 3 | nl == 4) > sig.detritus_max_chlSSC; end
     % the catch-all adds no Pro (Nov 2026): Pro come only from components named Pro.
     % Catch-all Pro were mostly faint events just above the chl trigger, smaller than
     % the file's Pro (8,153 in 77 underway Pro-setting files, 4% of them old-class Pro,
