@@ -131,8 +131,14 @@ GL1 220), so any steps in that period come from the optics (or a bead lot change
   read about 0.1 log lower than 1 µm beads in 2026 than in 2020.
 - **GL1 (532 nm scatter through OD2, used for large cells since Aug 2019):** stable. The 1/0.5
   ratio is 0.77–0.80 and the 6/1 ratio is 1.29–1.32, except for a −0.04 step between AE2426
-  (Nov 2024) and EN727 (Jan 2025). No service record covers that step, and it partly recovers in
-  2025. The AR104 GL1 1/0.5 ratio (0.55) comes from its lower GL1 voltage (180 V), where the
+  (Nov 2024) and EN727 (Jan 2025). The between-cruise bead checks
+  (`generate_between_beadstats`) place it. The 11 Dec 2024 bead mix is not the cause: GL1 6/1 is
+  1.30–1.33 in both the old-mix runs (3–6 Dec) and the new-mix runs (11–17 Dec). The step comes
+  between 17 Dec 2024 (1.32) and 14 Jan 2025 (1.25), during the low-signal peak doubling in the
+  lab log. After the 11–14 Feb 2025 flow-cell replacement and PZT power adjustment, it settles at
+  1.26–1.29. The 1 µm GL1 peak also became much tighter then (rsd 0.064 → 0.03–0.04).
+  So the 2025–26 GL1 size scale for large particles sits about 0.03–0.04 log lower relative to the
+  1 µm bead than in 2019–2024. The new mix shifted SSC and FSC 6/1 by +0.02 to +0.03. The AR104 GL1 1/0.5 ratio (0.55) comes from its lower GL1 voltage (180 V), where the
   0.5 µm bead sits near the floor.
 - **Before Aug 2019** the cruises aren't comparable: OD2 placement and voltages differ. The
   PT-transfer cruises (EN608 to AR31A) show transferred constants, not measurements.
@@ -237,6 +243,25 @@ calibration. They land where the 2026 cultures do, after a filter-layout change 
 | `classifier_dev/classifier_config.m`, `assign_class_v2.m` | `cfg.gl1_merge_bead = [0.5 2]` replaces raw-count `cfg.gl1_merge` |
 | `Calibration Curve/compile_cc_histograms.m` | Coulter modes per log diameter (`CCSummary_saved_14Nov2026.mat`) |
 | Cruise data | `beadstat.mat` installed for EN608, AR28B, AR29, EN617, AR31A; `FCSfileinfo.mat` and `beadstat.mat` made for AR104 |
+
+**Can spectral channels reduce the culture calibration residuals? (tested 24 Nov 2026, scratch analysis)**
+Calibration residuals (log Coulter volume − fit on merged scatter) were regressed on per-culture
+spectral ratios, with leave-one-out (LOO) cross-validation.
+- **2026 (13 cultures, no T. weissflogii; fit rms 0.17, LOO 0.20):**
+  - Scatter ratio 532/488: no relation (r = 0.09). LOO 0.215, slightly worse.
+  - Chl excitation ratio GL4−BL3 (bead units): r = 0.56, p = 0.05. LOO 0.177, coefficient +0.33.
+    The sign matches the Mie absorption picture: green cells (low ratio) scatter more at 532 nm
+    and are oversized. But the effect rests on Dunaliella and I. galbana/Isochrysis; Pavlova and
+    Nano don't follow it.
+- **2019 (12 cultures, SSC 488 with OD2):** pigment ratio r = 0.06. LOO gets worse (0.24 → 0.26).
+- **Some residuals belong to the culture and recur seven years apart:** I. galbana +0.18/+0.17,
+  Micromonas −0.15/−0.19, Pavlova −0.19/−0.39. This points to shape or refractive index, not noise,
+  and none of these channels captures it. The diatom outlier (+0.63) has an ordinary pigment ratio.
+- **Adding chl fluorescence intensity** (BL3 or GL4) lowers LOO to 0.16–0.18. But it is a second
+  size proxy, it varies with photoacclimation in the field, and BL3 saturates for the three
+  largest cultures. Not recommended.
+- **Verdict:** not worth adding with 12–13 cultures. More cultures per group, especially diatoms,
+  would be needed before trying group-specific calibrations keyed on the classifier groups.
 
 **Not done yet:**
 - Class-file volumes have not been regenerated for any cruise (rerun wrapper steps 5–6).
