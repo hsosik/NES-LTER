@@ -118,13 +118,28 @@ end
 % GL2:GL3 below euk_chl.max_GL2GL3 are unassigned: the particles have low GL2:GL3, while
 % dim real Euks at the low-chl edge of a continuous cloud (EN655 C16N14, TN368 C80N23)
 % keep their cloud's GL2:GL3
-info.euk_chl_cut = NaN; info.n_euk_lowchl = 0;
+info.euk_chl_cut = NaN; info.n_euk_lowchl = 0; info.n_euk_dim = 0; info.n_euk_highpe = 0; info.euk_ridge = NaN(1, 3);
 if isfield(cfg.sig, 'euk_chl') && cfg.sig.euk_chl.on && isfield(info.trigger_edges, 'BL3')
     F = info.features;
     core = class == 1 & F.BL3 > info.trigger_edges.BL3 + cfg.sig.euk_chl.core_above_edge & isfinite(F.chlSSC);
     if sum(core) >= cfg.sig.euk_chl.core_min_n
         info.euk_chl_cut = min(cfg.sig.euk_chl.cut_max, median(F.chlSSC(core)) - cfg.sig.euk_chl.below_core);
         low = class == 1 & F.chlSSC < info.euk_chl_cut & F.GL2GL3 < cfg.sig.euk_chl.max_GL2GL3;
+        % small dim particles (EN661 C07N05: size -2 to -1, BL3 near the trigger edge)
+        % pass the chl:size cut; small Euks need relatively more chl, so also cut along a
+        % shallower line, BL3 = a + ridge_slope * size through the clear Euks, at
+        % ridge_k of their robust SDs (at least ridge_min_sd) below it
+        b = cfg.sig.euk_chl.ridge_slope; a = median(F.BL3(core) - b * F.size(core));
+        rsd = max(cfg.sig.euk_chl.ridge_min_sd, 1.4826 * mad(F.BL3(core) - (a + b * F.size(core)), 1));
+        info.euk_ridge = [a b rsd];
+        dim = class == 1 & F.BL3 < a + b * F.size - cfg.sig.euk_chl.ridge_k * rsd;
+        info.n_euk_dim = sum(dim & ~low); low = low | dim;
+        % near the chl trigger, events with PE:chl well above the clear Euks' (between
+        % Euk and Syn; EN644 C02N02, 43 m: 178 small events hand left unassigned) are
+        % not Euk
+        pc = median(F.PEchl(core));
+        pe = class == 1 & F.BL3 < info.trigger_edges.BL3 + cfg.sig.euk_chl.pe_edge_win & F.PEchl > pc + cfg.sig.euk_chl.pe_above_core;
+        info.n_euk_highpe = sum(pe & ~low); low = low | pe;
         class(low) = 0; info.n_euk_lowchl = sum(low);
     end
 end
