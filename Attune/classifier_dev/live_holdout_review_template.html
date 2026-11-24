@@ -1,0 +1,274 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live held-out review</title>
+<style>
+:root { --bg:#fafafa; --fg:#1d2330; --mut:#6b7280; --line:#d6d9de; --card:#fff; --acc:#2557a7; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#16181d; --fg:#e6e8ec; --mut:#9aa1ad; --line:#353a45; --card:#1f2229; --acc:#7aa7ff; } }
+:root[data-theme="dark"] { --bg:#16181d; --fg:#e6e8ec; --mut:#9aa1ad; --line:#353a45; --card:#1f2229; --acc:#7aa7ff; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; padding:8px 16px; border-bottom:1px solid var(--line); background:var(--card); position:sticky; top:0; z-index:2; }
+header h1 { font-size:16px; margin:0; }
+.mut { color:var(--mut); }
+button { font:inherit; padding:3px 10px; border:1px solid var(--line); border-radius:6px; background:var(--card); color:var(--fg); cursor:pointer; }
+button.on { color:#fff; border-color:transparent; }
+input, select, textarea { font:inherit; color:var(--fg); background:var(--card); border:1px solid var(--line); border-radius:5px; padding:2px 6px; }
+main { display:grid; grid-template-columns:260px 1fr; min-height:calc(100vh - 50px); }
+@media (max-width:900px) { main { grid-template-columns:1fr; } #side { max-height:220px; } }
+#side { border-right:1px solid var(--line); overflow:auto; }
+#side table { border-collapse:collapse; width:100%; font-size:12px; }
+#side td { padding:3px 8px; border-bottom:1px solid var(--line); white-space:nowrap; }
+#side tr { cursor:pointer; } #side tr.cur td { background:rgba(37,87,167,.15); }
+#view { padding:12px 16px; overflow:auto; }
+.row { margin:6px 0 14px; }
+.row h3 { margin:0 0 4px; font-size:14px; }
+.row img { display:block; max-width:100%; image-rendering:pixelated; border:1px solid var(--line); background:#fff; }
+.axes { display:flex; gap:4px; font-size:13px; max-width:1116px; margin-top:2px; } .axes span { flex:1 1 0; text-align:center; line-height:1.25; } .axes small { color:var(--mut); font-size:11px; }
+table.cnt { border-collapse:collapse; font-size:13px; margin:6px 0; } table.cnt th, table.cnt td { padding:2px 10px; border-bottom:1px solid var(--line); text-align:right; } table.cnt th:first-child, table.cnt td:first-child { text-align:left; }
+#verdict { border:1px solid var(--line); border-radius:8px; padding:10px 12px; background:var(--card); margin:8px 0; max-width:1116px; }
+#vbtns button { margin:2px 6px 2px 0; }
+#cls label { margin-right:10px; font-size:13px; }
+#note { width:100%; min-height:38px; margin-top:6px; }
+.pill { display:inline-block; padding:0 6px; border-radius:8px; color:#fff; font-size:11px; }
+.legend span { display:inline-block; margin-right:12px; font-size:12px; } .legend i { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:4px; vertical-align:-1px; }
+.err { color:#c0392b; } code { font-size:12px; }
+#reveal { margin-top:8px; font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Live held-out review</h1>
+  <span class="mut" id="build"></span>
+  <label><input type="checkbox" id="blind" checked> blind (A/B)</label>
+  <label>show <select id="filter"><option value="all">all runs</option><option value="todo">not reviewed</option><option value="done">reviewed</option></select></label>
+  <span>reviewer <input id="reviewer" placeholder="your name" style="width:110px"></span>
+  <span id="savestate" class="mut"></span>
+</header>
+<main>
+  <div id="side"><table id="list"></table></div>
+  <div id="view">
+    <div id="info"></div>
+    <div class="legend" id="legend"></div>
+    <div id="rows"></div>
+    <div id="verdict">
+      <div id="vbtns"></div>
+      <div id="cls" style="margin-top:6px"></div>
+      <textarea id="note" placeholder="note (Enter saves)"></textarea>
+      <div id="reveal"></div>
+      <div class="mut" id="revmeta" style="font-size:12px;margin-top:4px"></div>
+    </div>
+    <div class="mut" style="font-size:12px">Keys: ←/→ previous/next run, 1–4 verdict, n next not reviewed.</div>
+  </div>
+</main>
+<script src="review_data.js"></script>
+<script>
+const D = window.HOLDOUT, R = D.runs, $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const when = s => { const t = new Date(s); return s && !isNaN(t) ? t.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : esc(s); };
+const CLS = [['c1', 'Euk', '#009900'], ['c2', 'Syn', '#ff8c00'], ['c7', 'Pro', '#0059ff'], ['c34', 'PE euk', '#e600bf'], ['c8', 'Syn on particle', '#d90000']];
+// verdicts: blind keys and their meaning once the classifier row is known
+const VB = [['A_wrong', 'A wrong'], ['B_wrong', 'B wrong'], ['ambiguous', 'ambiguous'], ['ok', 'both fine (OK)']];
+const VU = [['classifier_wrong', 'v2 wrong'], ['old_wrong', 'old classes wrong'], ['ambiguous', 'ambiguous'], ['ok', 'OK']];
+const VCOL = { classifier_wrong: '#c0392b', old_wrong: '#8e44ad', ambiguous: '#d68910', ok: '#2e8b57' };
+// axis ranges (log10, bead-relative) as drawn by holdout_review
+const LIM = { 'size': [-2.6, 2.8], 'SSC': [-3.2, 2.6], 'SYBR (BL1)': [-1.6, 3.2], 'chl (BL3)': [-1.3, 3.2], 'PE (GL2)': [-3.5, 1.7], 'PE:chl': [-4.4, 1.8], 'GL2:GL3': [-2.5, 1.5], 'chl:size': [-1, 3], 'chl pulse shape': [-0.8, 0.8], 'PE:chl minus bacteria': [-2.5, 2.0] };
+// panel labels: [x, y] pairs; older builds stored them as one flat column-major list (x labels, then y labels)
+function panels(v) {
+  if (v.length && Array.isArray(v[0])) return v;
+  if (v.length && v[0].includes(' vs ')) return v.map(s => { const [y, x] = s.split(' vs '); return [x, y]; });
+  const n = v.length / 2; return v.slice(0, n).map((x, i) => [x, v[i + n]]);
+}
+const rng = k => LIM[k] ? `${LIM[k][0]} to ${LIM[k][1]}` : '';
+const unblind = (vb, autoIs) => vb === 'A_wrong' ? (autoIs === 'A' ? 'classifier_wrong' : 'old_wrong') : vb === 'B_wrong' ? (autoIs === 'B' ? 'classifier_wrong' : 'old_wrong') : vb;
+let cur = 0;
+$('build').textContent = `${D.build} · ${R.length} runs`;
+$('legend').innerHTML = CLS.map(c => `<span><i style="background:${c[2]}"></i>${c[1]}</span>`).join('') + '<span><i style="background:#737373"></i>unassigned</span><span class="mut">differences row: grey = same label, red = labelled differently</span>';
+
+// ---------- verdict store (as the classification review viewer: CSV beside the page, merged by run, newest wins) ----------
+const COLS = ['file', 'set', 'runtype', 'class_affected', 'verdict_blind', 'classifier_row', 'verdict', 'verdict_revised', 'note', 'reviewer', 'saved', 'build'];
+const DEC_NAME = D.decisions_name, DEC_PATH = D.decisions_path, BUILD = D.build;
+const LSK = 'live-holdout-review:' + DEC_PATH, LSR = 'attune-review:reviewer';
+const DEC = {};
+function mergeIn(rows) {
+  let n = 0;
+  for (const r of rows || []) {
+    if (!r || !r.file) continue;
+    const row = Object.fromEntries(COLS.map(c => [c, r[c] == null ? '' : String(r[c])])), o = DEC[row.file];
+    if (!o || row.saved > o.saved) { DEC[row.file] = row; n++; }
+  }
+  return n;
+}
+const csvq = s => /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+const toCSV = () => '﻿' + [COLS.join(','), ...Object.values(DEC).map(r => COLS.map(c => csvq(r[c] || '')).join(','))].join('\r\n') + '\r\n';
+function parseCSV(t) {
+  t = t.replace(/^﻿/, '');
+  const out = []; let row = [], f = '', q = false;
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (q) { if (ch === '"') { if (t[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += ch; }
+    else if (ch === '"') q = true;
+    else if (ch === ',') { row.push(f); f = ''; }
+    else if (ch === '\n' || ch === '\r') { if (ch === '\r' && t[i + 1] === '\n') i++; row.push(f); out.push(row); row = []; f = ''; }
+    else f += ch;
+  }
+  if (f !== '' || row.length) { row.push(f); out.push(row); }
+  if (!out.length) return [];
+  const hdr = out[0].map(s => s.trim().toLowerCase());
+  return out.slice(1).filter(r => r.some(x => x !== '')).map(r => Object.fromEntries(hdr.map((h, j) => [h, r[j] ?? ''])));
+}
+function lsGet(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { } }
+function idb(mode, fn) {
+  return new Promise((res, rej) => {
+    const rq = indexedDB.open('holdout-review', 1);
+    rq.onupgradeneeded = () => rq.result.createObjectStore('h');
+    rq.onerror = () => rej(rq.error);
+    rq.onsuccess = () => { try { const tx = rq.result.transaction('h', mode), r = fn(tx.objectStore('h')); tx.oncomplete = () => res(r.result); tx.onerror = tx.onabort = () => rej(tx.error); } catch (e) { rej(e); } };
+  });
+}
+const idbGet = k => idb('readonly', s => s.get(k)).catch(() => null);
+const idbPut = (k, v) => idb('readwrite', s => s.put(v, k)).catch(() => null);
+const canWrite = () => typeof window.showDirectoryPicker === 'function';
+let dir = null, known = null, asked = false, dirty = false, saving = null, again = false, saveMsg = '', saveErr = '';
+async function readDisk() {
+  try { const fh = await dir.getFileHandle(DEC_NAME); return parseCSV(await (await fh.getFile()).text()); }
+  catch (e) { if (e.name === 'NotFoundError') return []; throw e; }
+}
+async function attach(h) { dir = h; saveErr = ''; mergeIn(await readDisk()); await save(); draw(); }
+async function connect(pick) {
+  try {
+    if (known && !pick && await known.requestPermission({ mode: 'readwrite' }) === 'granted') return await attach(known);
+    if (known && !pick) { saveErr = 'permission to write to the folder was not given'; return showSave(); }
+    const h = await window.showDirectoryPicker({ id: 'holdout-review', mode: 'readwrite' });
+    if (D.decisions_dir_name && h.name !== D.decisions_dir_name &&
+      !confirm(`You chose "${h.name}", but the verdicts belong in\n${D.decisions_dir}\n\nSave ${DEC_NAME} in "${h.name}" anyway?`)) return showSave();
+    known = h; await idbPut(DEC_PATH, h); await attach(h);
+  } catch (e) { if (e.name !== 'AbortError') saveErr = e.message; showSave(); }
+}
+async function save() {
+  lsSet(LSK, JSON.stringify(Object.values(DEC)));
+  if (!dir) return showSave();
+  if (saving) { again = true; return saving; }
+  saving = (async () => {
+    try {
+      let merged = 0;
+      do {
+        again = false;
+        merged += mergeIn(await readDisk());
+        const w = await (await dir.getFileHandle(DEC_NAME, { create: true })).createWritable();
+        await w.write(toCSV()); await w.close();
+      } while (again);
+      dirty = false; saveErr = ''; saveMsg = 'saved ' + new Date().toLocaleTimeString();
+      if (merged) draw();
+    } catch (e) { saveErr = e.message || String(e); }
+    saving = null; showSave();
+  })();
+  return saving;
+}
+function download() {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([toCSV()], { type: 'text/csv' })); a.download = DEC_NAME; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function showSave() {
+  let h;
+  if (dir && saveErr) h = `<span class="err">Could not save: ${esc(saveErr)}</span> <button data-a="retry">retry</button>`;
+  else if (dir) h = `✓ ${saving || dirty ? 'saving…' : esc(saveMsg || 'connected')}: <code>${esc(dir.name)}\\${esc(DEC_NAME)}</code>`;
+  else if (!canWrite()) h = `This browser can't save files (use Chrome or Edge); verdicts are kept in this browser. <button data-a="dl">Download CSV</button>`;
+  else h = (saveErr ? `<span class="err">${esc(saveErr)}</span> ` : '') + (dirty ? '<b>not saved to the file yet</b> ' : '') + `<button data-a="connect">${known ? 'Reconnect' : 'Choose folder'}</button>`;
+  if (canWrite()) h += ` <button data-a="dl">CSV</button>`;
+  $('savestate').innerHTML = h;
+}
+$('savestate').addEventListener('click', e => { const a = e.target.dataset.a; if (a === 'connect') connect(false); else if (a === 'dl') download(); else if (a === 'retry') save(); });
+
+// ---------- page ----------
+const visible = () => R.map((r, i) => i).filter(i => { const d = DEC[R[i].file], f = $('filter').value; return f === 'all' || (f === 'todo') === !(d && d.verdict); });
+function setDec(patch) {
+  const r = R[cur], o = DEC[r.file] || { file: r.file };
+  DEC[r.file] = { ...o, ...patch, file: r.file, set: r.set, runtype: r.runtype, classifier_row: r.auto_is, reviewer: $('reviewer').value.trim(), saved: new Date().toISOString(), build: BUILD };
+  dirty = true;
+  if (canWrite() && !dir && !asked) { asked = true; lsSet(LSK, JSON.stringify(Object.values(DEC))); connect(false); } else save();
+  draw();
+}
+function verdict(k) {
+  flushNote();
+  const r = R[cur], d = DEC[r.file] || {};
+  if ($('blind').checked) {
+    // first blind verdict is kept; later clicks record a revised verdict
+    if (!d.verdict_blind) setDec({ verdict_blind: k, verdict: unblind(k, r.auto_is) });
+    else setDec({ verdict_revised: unblind(k, r.auto_is) });
+  } else {
+    if (!d.verdict) setDec({ verdict: k }); else setDec({ verdict_revised: k });
+  }
+}
+let noteTimer = null, noteFor = -1;
+function flushNote() {
+  if (noteTimer === null) return;
+  clearTimeout(noteTimer); noteTimer = null;
+  const keep = cur; cur = noteFor;
+  const d = DEC[R[cur].file], v = $('note').value.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+  if (v !== ((d && d.note) || '')) setDec({ note: v });
+  cur = keep;
+}
+$('note').addEventListener('input', () => { noteFor = cur; clearTimeout(noteTimer); noteTimer = setTimeout(flushNote, 800); });
+$('note').addEventListener('blur', flushNote);
+$('note').addEventListener('keydown', e => { if (e.key === 'Escape' || e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('note').blur(); } });
+$('reviewer').value = lsGet(LSR, '');
+$('reviewer').addEventListener('change', () => lsSet(LSR, $('reviewer').value.trim()));
+$('cls').addEventListener('change', () => setDec({ class_affected: [...document.querySelectorAll('#cls input:checked')].map(x => x.value).join(' ') }));
+$('vbtns').addEventListener('click', e => { const b = e.target.closest('button'); if (b) verdict(b.dataset.v); });
+$('blind').addEventListener('change', draw);
+$('filter').addEventListener('change', draw);
+$('list').addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (tr) { flushNote(); cur = +tr.dataset.i; draw(); } });
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'TEXTAREA' || e.target.tagName === 'INPUT') return;
+  const v = visible(), p = v.indexOf(cur);
+  if (e.key === 'ArrowRight' && p < v.length - 1) { flushNote(); cur = v[p + 1]; draw(); }
+  else if (e.key === 'ArrowLeft' && p > 0) { flushNote(); cur = v[p - 1]; draw(); }
+  else if (e.key === 'n') { const t = R.findIndex((r, i) => i > cur && !(DEC[r.file] && DEC[r.file].verdict)); if (t >= 0) { cur = t; draw(); } }
+  else if ('1234'.includes(e.key) && e.key.length === 1) verdict(($('blind').checked ? VB : VU)[+e.key - 1][0]);
+});
+function pill(d) { const v = d && (d.verdict_revised || d.verdict); return v ? `<span class="pill" style="background:${VCOL[v]}">${v.replace('_', ' ')}</span>` : ''; }
+function draw() {
+  const blind = $('blind').checked, v = visible();
+  if (!v.includes(cur) && v.length) cur = v[0];
+  $('list').innerHTML = v.map(i => { const r = R[i]; return `<tr data-i="${i}" class="${i === cur ? 'cur' : ''}"><td>${i + 1}</td><td>${esc(r.cruise)} ${esc(r.runtype)}</td><td>${pill(DEC[r.file])}</td></tr>`; }).join('');
+  const r = R[cur]; if (!r) { $('info').textContent = 'No runs to show.'; return; }
+  const d = DEC[r.file] || {}, done = !!d.verdict, show = !blind || done;
+  const lab = w => blind && !done ? w : (w === r.auto_is ? 'v2' : 'old classes');
+  const rowA = r.auto_is === 'A' ? 'a' : 'h', rowB = r.auto_is === 'A' ? 'h' : 'a';
+  $('info').innerHTML = `<b>${esc(r.file)}</b><br><span class="mut">run ${cur + 1} of ${R.length} · ${esc(r.cruise)} · ${esc(r.runtype)} file · ${esc(r.when)} · ${r.n} events · set ${esc(r.set)}</span>` +
+    (show ? `<br><span class="mut">${r.control ? 'control (inside the pass range)' : 'outside the pass range: ' + esc(r.why)}<br>${esc(r.flags)}</span>` : '') +
+    `<table class="cnt"><tr><th>class</th><th>${lab('A')}</th><th>${lab('B')}</th></tr>` +
+    CLS.filter(c => r.counts[c[0]][0] + r.counts[c[0]][1] > 0).map(c => {
+      const h = r.counts[c[0]][0], a = r.counts[c[0]][1], A = r.auto_is === 'A' ? a : h, B = r.auto_is === 'A' ? h : a;
+      return `<tr><td><i style="display:inline-block;width:9px;height:9px;background:${c[2]};margin-right:5px"></i>${c[1]}</td><td>${A}</td><td>${B}</td></tr>`;
+    }).join('') + `</table>`;
+  const axes = `<div class="axes">${panels(r.views).map(([x, y]) => `<span><b>${esc(y)}</b> vs <b>${esc(x)}</b><br><small>x ${rng(x)} · y ${rng(y)} (log10)</small></span>`).join('')}</div>`;
+  $('rows').innerHTML = `<div class="row"><h3>${lab('A')}</h3><img src="frames/${r.id}_${rowA}.png" alt="labelling A">${axes}</div>` +
+    `<div class="row"><h3>${lab('B')}</h3><img src="frames/${r.id}_${rowB}.png" alt="labelling B">${axes}</div>` +
+    `<div class="row"><h3>differences</h3><img src="frames/${r.id}_d.png" alt="events labelled differently">${axes}</div>`;
+  const V = blind ? VB : VU, cv = blind ? (d.verdict_revised ? null : d.verdict_blind) : (d.verdict_revised || d.verdict);
+  $('vbtns').innerHTML = (done && blind ? '<span class="mut">revise: </span>' : '') + V.map(([k, t], j) => {
+    const on = blind ? k === d.verdict_blind && !d.verdict_revised : k === cv;
+    return `<button data-v="${k}" class="${on ? 'on' : ''}" style="${on ? 'background:' + (VCOL[blind ? unblind(k, r.auto_is) : k]) : ''}" title="key ${j + 1}">${t}</button>`;
+  }).join('');
+  const ca = (d.class_affected || '').split(' ');
+  $('cls').innerHTML = '<span class="mut">class affected: </span>' + CLS.slice(0, 4).map(c => `<label><input type="checkbox" value="${c[1].split(' ')[0]}" ${ca.includes(c[1].split(' ')[0]) ? 'checked' : ''}>${c[1]}</label>`).join('');
+  if (document.activeElement !== $('note')) $('note').value = d.note || '';
+  $('reveal').innerHTML = done ? `Verdict: <b>${esc((d.verdict || '').replace('_', ' '))}</b>` + (d.verdict_revised ? ` → revised: <b>${esc(d.verdict_revised.replace('_', ' '))}</b>` : '') +
+    (blind ? ` · A was the <b>${r.auto_is === 'A' ? 'v2' : 'old classes'}</b>` : '') : '';
+  $('revmeta').textContent = done ? `${d.reviewer || 'someone'}, ${when(d.saved)}` : 'not reviewed';
+}
+(async () => {
+  mergeIn(D.decisions || []);
+  try { mergeIn(JSON.parse(lsGet(LSK, '[]'))); } catch (e) { }
+  known = canWrite() ? await idbGet(DEC_PATH) : null;
+  showSave(); draw();
+})();
+</script>
+</body>
+</html>
