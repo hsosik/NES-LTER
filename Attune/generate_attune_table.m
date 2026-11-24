@@ -52,7 +52,12 @@ SynPart_count = NaN(length(filelist), 1); %class 8: Syn on particle, count only 
 syntype_classes = {2 'Syn'; 5 'Euk_with_Syn'; 8 'Syn_on_particle'};
 syntype_codes = {1 'typeA'; 2 'typeB'; 3 'typeC'; 9 'type_unusable'};
 SynTypeCount = NaN(length(filelist), size(syntype_classes, 1)*size(syntype_codes, 1));
-flag_codes = {1 'Flag_lowchl_Syn_pigment'; 2 'Flag_below_Euk_chl_gap'; 3 'Flag_chl_edge_noise'; 4 'Flag_Pro_like'};
+flag_codes = {1 'Flag_lowchl_Syn_pigment'; 2 'Flag_below_Euk_chl_gap'; 3 'Flag_chl_edge_noise'; 4 'Flag_Pro_like'; ...
+    5 'Flag_Euk_chl_size_cut'; 6 'Flag_split_Syn_merged_green_part'; 7 'Flag_split_Syn_unpaired_green_part'; ...
+    8 'Flag_split_Syn_unpaired_blue_part'; 9 'Flag_split_other_green_part'};
+%flags 6-9: laser dropout, a Syn recorded as two events. Pairs are merged into one event (flag 6 = the
+%merged green part). Flag 7 (unpaired green part) is a separate Syn count, not in Syn_count (Syn total =
+%Syn_count + Flag_split_Syn_unpaired_green_part_count); flags 6, 8 and 9 are not counted
 Pro_near_trigger_fraction = NaN(length(filelist), 1); %class_meta.pro_near_trigger_frac (Pro-setting files)
 ProMeasured = NaN(length(filelist), 1); %class_meta.pro_measured: the setting the file was classified with
 FlagCount = NaN(length(filelist), size(flag_codes, 1));

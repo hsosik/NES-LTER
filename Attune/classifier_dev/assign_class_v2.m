@@ -19,6 +19,44 @@ function [class, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, pro_measured)
 %
 % Nov 2026, classifier redesign prototype
 
+% laser dropout, split Syn (Nov 2026): in EN661 5-6 Feb 2021 (while #LASER2DELAY was 305, with
+% slow flow) and single files of EN649 and EN668 the instrument often recorded one Syn as two
+% events with the same Time stamp: the blue-laser part (FSC, SSC, BL channels; no green-laser PE)
+% and right after it the green-laser part (GL channels; no SSC/chl pulse). Unmerged, the green
+% parts were a tiny, chl-poor cluster below the chl trigger (named Syn, or setting the Syn
+% reference) and the blue parts were Euks (+34% old classes, +51% v2 over neighbouring files).
+% A pair = a blue part (bright PE under blue with Syn-like PE:chl under blue, GL2 far below BL2,
+% narrow GL2 pulse) followed within dropout_pair_dt Time units by an event with PE under green
+% well above PE under blue (65% of blue parts in the EN661 episode). The pair is merged into the
+% blue part's row before anything else: blue-laser channels from the blue part, green-laser
+% channels from the green part; the green part's row is then left out (flag 6). Merged blue parts
+% have SSC within ~7% of whole Syn in neighbouring files, chl ~23% lower (off-core passage).
+% Only in files with at least dropout_min_split pairs: elsewhere the tests flagged real Syn under
+% other PE gains (AR92, HRS2609) and preserved runs had blue-only events with no green parts
+sig = cfg.sig; n = size(fcsdat, 1);
+mergedg = false(n, 1); noblue = false(n, 1); nogreen = false(n, 1); info.n_split_pairs = 0;
+pn = {fcshdr.par.name};
+if sig.noblue_on && all(ismember({'GL2-A' 'BL2-A' 'BL3-A' 'SSC-W' 'BL3-W' 'GL2-W' 'Time'}, pn))
+    lc = @(d, s) log10(max(d(:, find(strcmp(pn, s), 1)), 1)); wc = @(d, s) d(:, find(strcmp(pn, s), 1));
+    blue_part = @(d) lc(d, 'BL2-A') > sig.nogreen_min_BL2 & lc(d, 'BL2-A') - lc(d, 'BL3-A') > sig.nogreen_min_BL2BL3 & ...
+        lc(d, 'GL2-A') - lc(d, 'BL2-A') < -sig.noblue_min_GL2BL2 & wc(d, 'GL2-W') < sig.nogreen_max_GL2W;
+    green_part = @(d) lc(d, 'GL2-A') - lc(d, 'BL2-A') > sig.noblue_min_GL2BL2 & wc(d, 'SSC-W') < sig.noblue_max_SSCW & ...
+        wc(d, 'BL3-W') < sig.noblue_max_BL3W & lc(d, 'GL2-A') > sig.split_min_GL2;
+    bp = blue_part(fcsdat); tm = wc(fcsdat, 'Time');
+    rg = lc(fcsdat, 'GL2-A'); rb = lc(fcsdat, 'BL2-A');
+    ib = find(bp(1:end - 1));
+    pr = tm(ib + 1) - tm(ib) <= sig.dropout_pair_dt & rg(ib + 1) - rb(ib + 1) > sig.merge_min_GL2BL2 & rg(ib + 1) > sig.split_min_GL2 & ~bp(ib + 1);
+    ib = ib(pr);
+    info.n_split_pairs = numel(ib);
+    if numel(ib) >= sig.dropout_min_split
+        gcol = startsWith(pn, 'GL');
+        fcsdat(ib, gcol) = fcsdat(ib + 1, gcol);
+        mergedg(ib + 1) = true;
+        noblue = green_part(fcsdat) & ~mergedg;  % green parts left unpaired
+        nogreen = blue_part(fcsdat);             % blue parts left unpaired (merged rows now carry green PE)
+    end
+end
+info.n_merged = sum(mergedg); info.n_unpaired_blue = sum(nogreen);
 [F, finfo] = attune_features(fcsdat, fcshdr, ref);
 n = height(F);
 class = zeros(n, 1);
@@ -66,7 +104,9 @@ if isfield(edge, 'BL3'), chl_min = max(chl_min, edge.BL3 + sig.trigger_margin); 
 pe_min = sig.pe_min_GL2;
 if isfield(edge, 'GL2'), pe_min = max(pe_min, edge.GL2 + sig.trigger_margin); end
 has_pe = F.GL2 > pe_min & F.PEchl > sig.pe_min_PEchl & F.BL3 > sig.chl_min;
-has_chl = (F.BL3 > chl_min | has_pe) & F.SSC > finfo.floor.SSC + 0.1;
+% split-Syn parts (merged green parts, unpaired parts) are left out of every rule
+has_pe(noblue | mergedg) = false;
+has_chl = (F.BL3 > chl_min | has_pe) & F.SSC > finfo.floor.SSC + 0.1 & ~noblue & ~nogreen & ~mergedg;
 X = [F.size F.BL3 F.PEchl F.GL2GL3];
 X = X(has_chl, :);
 info.n_has_chl = sum(has_chl);
@@ -98,7 +138,7 @@ info.n_fit_wide_excluded = sum(~fitok);
 if size(X, 1) < 50
     info.ncomp = 0; info.comp = table;
     info.syn_type = zeros(n, 1, 'uint8'); info.flag = zeros(n, 1, 'uint8'); info.features = F; %nothing assigned
-    info.euk_chl_gap = -Inf; info.n_euk_below_gap = 0; info.syn_rescued = 0; info.n_euk_synpe = 0;
+    info.euk_chl_gap = -Inf; info.n_euk_below_gap = 0; info.syn_rescued = 0; info.n_euk_synpe = 0; info.n_noblue = sum(noblue); info.n_syn_noblue = 0; info.n_syn_nogreen = sum(nogreen); info.dropout_frac_syn = NaN;
     return
 end
 
@@ -150,7 +190,7 @@ end
 if isempty(best) %no mixture could be fitted (too few events): nothing assigned
     info.ncomp = 0; info.comp = table;
     info.syn_type = zeros(n, 1, 'uint8'); info.flag = zeros(n, 1, 'uint8'); info.features = F; %nothing assigned
-    info.euk_chl_gap = -Inf; info.n_euk_below_gap = 0; info.syn_rescued = 0; info.n_euk_synpe = 0;
+    info.euk_chl_gap = -Inf; info.n_euk_below_gap = 0; info.syn_rescued = 0; info.n_euk_synpe = 0; info.n_noblue = sum(noblue); info.n_syn_noblue = 0; info.n_syn_nogreen = sum(nogreen); info.dropout_frac_syn = NaN;
     return
 end
 info.ncomp = best.NumComponents;
@@ -1016,10 +1056,27 @@ if ~pro_measured
     fl(class == 0 & fl == 0 & ~has_pe & at_chl & F.size <= syn_size & F.SSC > finfo.floor.SSC + 0.1) = 4;
 end
 fl(class == 0 & fl == 0 & euk_chl_low) = 5;
+% split-Syn parts are not classified (nothing should reach them; kept explicit). Flag 6: green
+% part merged into the preceding event (not counted; the merged event is classified as usual);
+% 7: unpaired green part with a Syn-type spectrum (GL2:GL3 above syn_min_GL2GL3, PE no brighter
+% than the file's Syn by more than noblue_syn_GL2_above), a separate Syn count (Syn total = class
+% 2 + flag 7); 8: unpaired blue part, not counted; 9: other unpaired green parts, not counted.
+% dropout_frac_syn (file QC): (merged pairs + flag 7) / (Syn + flag 7); where it is high, Syn chl
+% and FSC read low (merged blue parts ~23% and ~44% below whole Syn)
+class(noblue | nogreen | mergedg) = 0;
+if any(class == 2), gl2s = median(F.GL2(class == 2)); else, gl2s = Inf; end
+syn_noblue = noblue & F.GL2GL3 > sig.syn_min_GL2GL3 & F.GL2 < gl2s + sig.noblue_syn_GL2_above;
+fl(mergedg) = 6; fl(noblue) = 9; fl(syn_noblue) = 7; fl(nogreen) = 8;
+info.n_noblue = sum(noblue);
+info.n_syn_noblue = sum(syn_noblue);
+info.n_syn_nogreen = sum(nogreen);
+info.dropout_frac_syn = (info.n_merged + info.n_syn_noblue) / max(1, sum(class == 2) + info.n_syn_noblue);
 info.flag = fl;
 info.flag_names = {'Syn-pigment particle, low chl (degraded Syn/Euk, grazer, detritus)' 'below Euk chl gap' ...
     'trigger-noise pile at the chl edge (capped files)' 'Pro-like (no PE, no larger than Syn) in a file without Pro settings: Pro lower bound' ...
-    'Euk chl:size cut (low chl for its size)'};
+    'Euk chl:size cut (low chl for its size)' 'green part of a split Syn, merged into the preceding blue part: not counted' ...
+    'unpaired green part of a split Syn (Syn-like PE under green, no SSC/chl pulse): separate Syn count' ...
+    'unpaired blue part of a split Syn (no green-laser PE): not counted' 'unpaired green part, not Syn-like: not counted'};
 info.syn_type_names = sig.syn_type_names; info.syn_type_edges = sig.syn_type_edges;
 info.features = F;
 end

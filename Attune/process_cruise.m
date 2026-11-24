@@ -317,7 +317,7 @@ if isfield(bmeta, 'source'), src = string(bmeta.source); end
 codes = class_codes();
 fcsfile = strcat(p.fpath, Fi.fcslist);
 names = Fi.fcslist; t = Fi.matdate_start; pro = Fi.pro_measured;
-nev = nan(n, 1); ncomp = nan(n, 1); counts = nan(n, 10); err = strings(n, 1);
+nev = nan(n, 1); ncomp = nan(n, 1); counts = nan(n, 11); err = strings(n, 1);
 tgf = 0.8; % preserved: count only the last 80% of acquisition time (as the hand gates)
 if pres
     rt = Fi.runtype; pmeta = table2struct(Fi(:, {'cast' 'niskin' 'sample_label' 'repeat' 'sizefrac' 'vol_analyzed'}));
@@ -367,6 +367,7 @@ parfor (k = 1:n, M)
             'pro_measured', pro(k), 'pro_near_trigger_frac', pro_near_trigger(cls, info, pro(k)), ...
             'ncomp', field_or(info, 'ncomp', NaN), 'comp', field_or(info, 'comp', table), ...
             'trigger_edges', field_or(info, 'trigger_edges', field_or(info, 'edges', struct()))); % hbac: info.edges
+        o.class_meta.dropout_frac_syn = field_or(info, 'dropout_frac_syn', NaN); % laser-dropout QC: (merged pairs + flag 7) / (Syn + flag 7); high: Syn chl and FSC read low
         if pres
             o.time_gate = time_gate(fcsdat, fcshdr, tgf);
             o.notes(6) = "time_gate: events in the last " + 100*tgf + "% of acquisition time; " + ...
@@ -406,14 +407,14 @@ parfor (k = 1:n, M)
         end
         nev(k) = numel(cls); ncomp(k) = field_or(info, 'ncomp', NaN);
         counts(k, :) = [sum(cls == 0) sum(cls == 1) sum(cls == 2) sum(cls == 3) sum(cls == 4) ...
-            sum(cls == 5) sum(cls == 7) sum(cls == 8) sum(cls == 9) sum(o.flag > 0)];
+            sum(cls == 5) sum(cls == 7) sum(cls == 8) sum(cls == 9) sum(o.flag > 0) sum(o.flag == 7)];
     catch ME
         err(k) = string(ME.identifier) + ": " + string(ME.message);
         warning('process_cruise:classify', '%s: %s', Fi.fcslist{k}, ME.message)
     end
 end
 L = [table(string(Fi.fcslist), t, pro, nev, ncomp, 'VariableNames', {'file' 'time' 'pro_measured' 'n_events' 'ncomp'}) ...
-    array2table(counts, 'VariableNames', {'n0' 'n1_euk' 'n2_syn' 'n3_crypto_dim' 'n4_crypto_bright' 'n5_euk_syn' 'n7_pro' 'n8_syn_particle' 'n9_bact' 'n_flagged'}) ...
+    array2table(counts, 'VariableNames', {'n0' 'n1_euk' 'n2_syn' 'n3_crypto_dim' 'n4_crypto_bright' 'n5_euk_syn' 'n7_pro' 'n8_syn_particle' 'n9_bact' 'n_flagged' 'n_syn_unpaired_green'}) ...
     table(err, 'VariableNames', {'error'})];
 if pres, L.runtype = string(rt); end
 % a run on some files (Files, NewOnly) keeps the log rows of the other files
@@ -482,7 +483,11 @@ codes.bact_type = "bact_type (SYBR runs, class 9 only): 1 = LNA, 2 = HNA (low / 
     "class_meta.hbac.hna: method 'fixed' = no SYBR valley, split nominal), 0 = not bacteria";
 codes.flag = "flag (class 0 only): 1 = Syn-pigment particle with low chl (degraded Syn/Euk, grazer, detritus), " + ...
     "2 = below the Euk chl gap, 3 = trigger-noise pile at the chl edge (pre-2019 files), " + ...
-    "4 = Pro-like (no PE, no larger than Syn) in a file run without Pro settings: Pro lower bound, 0 = none";
+    "4 = Pro-like (no PE, no larger than Syn) in a file run without Pro settings: Pro lower bound, " + ...
+    "5 = Euk left out by the per-file Euk chl:size cut, " + ...
+    "6 = green part of a Syn recorded as two events (laser dropout), merged into the preceding blue part (that event carries both): not counted, " + ...
+    "7 = unpaired green part of a split Syn (Syn-like PE under green, no SSC/chl pulse): a separate Syn count, not in class 2 (Syn total = class 2 + flag 7), " + ...
+    "8 = unpaired blue part of a split Syn (no green-laser PE): not counted, 9 = unpaired green part, not Syn-like: not counted, 0 = none";
 end
 
 
