@@ -84,7 +84,9 @@ function panels(v) {
 const rng = k => LIM[k] ? `${LIM[k][0]} to ${LIM[k][1]}` : '';
 const unblind = (vb, autoIs) => vb === 'A_wrong' ? (autoIs === 'A' ? 'classifier_wrong' : 'old_wrong') : vb === 'B_wrong' ? (autoIs === 'B' ? 'classifier_wrong' : 'old_wrong') : vb;
 let cur = 0;
-$('build').textContent = `${D.build} · ${R.length} runs`;
+$('build').textContent = `${D.build} · ${R.length} files`;
+if (D.title) { document.title = D.title; document.querySelector('h1').textContent = D.title; }
+if (D.other_href) $('build').insertAdjacentHTML('afterend', `<a href="${esc(D.other_href)}">${esc(D.other_name)}</a>`);
 $('legend').innerHTML = CLS.map(c => `<span><i style="background:${c[2]}"></i>${c[1]}</span>`).join('') + '<span><i style="background:#737373"></i>unassigned</span><span class="mut">differences row: grey = same label, red = labelled differently</span>';
 
 // ---------- verdict store (as the classification review viewer: CSV beside the page, merged by run, newest wins) ----------
