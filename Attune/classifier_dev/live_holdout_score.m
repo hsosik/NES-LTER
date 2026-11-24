@@ -1,5 +1,5 @@
-function H = live_holdout_score(sets, outdir)
-% function H = live_holdout_score(sets, outdir)
+function H = live_holdout_score(sets, outdir, sigover)
+% function H = live_holdout_score(sets, outdir, sigover)
 % Score assign_class_v2 on the live held-out lists (live_holdout_lists) against
 % the old classes (archived, via cruise_paths). One row per file: counts per class
 % (old/v2), agreement as in score_agreement (agreement_pe_merged: PE euk 3/4/5 as
@@ -15,6 +15,8 @@ function H = live_holdout_score(sets, outdir)
 %
 % sets   - default {'T' 'L1' 'L2'} (R is the untouched reserve)
 % outdir - default output/live_holdout
+% sigover - optional struct of cfg.sig fields to override (e.g. struct('euk_chl_in_v2', true)),
+%          for comparing classifier settings on the same lists
 % Saves outdir/score_<set>.mat (H) and outdir/failures_<set>.csv (file, cruisedir,
 % class, old, v2, ratio) for live_holdout_review.
 %
@@ -24,6 +26,7 @@ here = fileparts(mfilename('fullpath'));
 addpath(here, fileparts(here))
 if nargin < 1 || isempty(sets), sets = {'T' 'L1' 'L2'}; end
 if nargin < 2 || isempty(outdir), outdir = fullfile(here, 'output', 'live_holdout'); end
+if nargin < 3, sigover = struct(); end
 L = readtable(fullfile(outdir, 'holdout_lists.csv'), 'TextType', 'string');
 [~, commit] = system(['git -C "' here '" rev-parse --short HEAD']); commit = strtrim(commit);
 S = table;
@@ -31,7 +34,7 @@ for s = 1:numel(sets)
     Ls = L(L.set == sets{s}, :);
     rows = cell(height(Ls), 1);
     parfor i = 1:height(Ls)
-        rows{i} = score_one(Ls(i, :));
+        rows{i} = score_one(Ls(i, :), sigover);
     end
     H = vertcat(rows{:});
     H.commit = repmat(string(commit), height(H), 1);
@@ -59,12 +62,13 @@ disp(S)
 writetable(S, fullfile(outdir, 'summary.csv'));
 end
 
-function r = score_one(Li)
+function r = score_one(Li, sigover)
 root = '\\sosiknas1\lab_data\Attune\cruise_data\';
 cd0 = char(Li.cruisedir); fn = char(Li.file);
 P = cruise_paths(cd0, Root=root);
 cfg = classifier_config(); cfg.cruise = extractAfter(cd0, '_');
 cfg.gl1_is_od2_scatter = strcmpi(attune_config(cfg.cruise).OD2, 'GL1');
+for f = fieldnames(sigover)', cfg.sig.(f{1}) = sigover.(f{1}); end
 [dat, hdr] = fca_readfcs(fullfile(P.basepath, 'FCS', fn));
 ref = bead_reference(load_beadstat(P.bead_dir), Li.time, cfg);
 [new, info] = assign_class_v2(dat, hdr, ref, cfg, Li.pro_measured);
@@ -75,10 +79,10 @@ r = table(Li.set, Li.cruisedir, Li.file, Li.time, Li.pro_measured, numel(new), s
     sum(old == new & old ~= 0) / max(1, sum(either)), sum(o34 == n34 & o34 ~= 0) / max(1, sum(either)), ...
     sum(old == 1), sum(new == 1), sum(old == 2), sum(new == 2), sum(ismember(old, [3 4])), sum(ismember(new, [3 4 5])), ...
     sum(old == 7), sum(new == 7), sum(new == 8), sum(old == 0 & new ~= 0), sum(old ~= 0 & new == 0), ...
-    sum(info.flag == 1), sum(info.flag == 2), sum(info.flag == 3), ...
+    sum(info.flag == 1), sum(info.flag == 2), sum(info.flag == 3), info.euk_chl_gap, info.n_euk_below_gap, sum(info.flag == 5), sum(old == 1 & info.flag == 5), ...
     'VariableNames', {'set' 'cruisedir' 'file' 'time' 'pro_measured' 'n' 'n_phyto' 'agreement' 'agreement_pe_merged' ...
     'old_euk' 'new_euk' 'old_syn' 'new_syn' 'old_peeuk' 'new_peeuk' 'old_pro' 'new_pro' 'new_synpart' 'n_added' 'n_dropped' ...
-    'flag_synpig' 'flag_below_gap' 'flag_edge_pile'});
+    'flag_synpig' 'flag_below_gap' 'flag_edge_pile' 'euk_chl_gap' 'n_euk_below_gap' 'n_euk_chlcut' 'n_euk_chlcut_old_euk'});
 end
 
 function s = summarize(H, name)

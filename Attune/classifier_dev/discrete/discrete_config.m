@@ -63,6 +63,7 @@ cfg.sig.pro_floor.max_valley_ratio = 0.25;%... and the valley between below this
 cfg.sig.lp_lda_min_median = 2;  %... applied if the Pro-side events' median score is at least this
 cfg.sig.lp_lda_dominant = [0.75 1.2]; %... or if at least this fraction of candidates is on the Pro side and their median at least this
 cfg.sig.lp_extend_p = 0.99;        %large_pro_lda: Pro extended to candidates within this chi2 quantile of the picked Pro's spread (Inf: off)
+cfg.sig.euk_chl_in_v2 = false;        %the cut is applied here after the discrete Pro steps, not inside assign_class_v2
 cfg.sig.euk_chl.on = true;            %per-run Euk chl:size cut (assign_class_discrete)
 cfg.sig.euk_chl.core_above_edge = 0.8; %... from the run's Euks this far above the BL3 trigger edge ...
 cfg.sig.euk_chl.core_min_n = 30;       %... at least this many ...

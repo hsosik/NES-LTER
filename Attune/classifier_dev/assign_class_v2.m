@@ -513,7 +513,7 @@ end
 % whole small-Euk cluster (peak ~1.0 above the edge) fell below the minimum between
 % the two; underway trigger-noise piles peak 0.37-0.60 above the edge
 euk_below_gap = false(n, 1);
-info.euk_chl_gap = -Inf;
+info.euk_chl_gap = -Inf; info.euk_gap_peak = NaN;
 if isfield(edge, 'BL3')
     cand = ismember(class, [0 1]) & ~has_pe & F.size < syn_size + sig.euk_gap_size_above & F.BL3 > edge.BL3 - 0.05 & ...
         F.SSC > finfo.floor.SSC + 0.1;
@@ -524,6 +524,16 @@ if isfield(edge, 'BL3')
         up = find(gk >= edge.BL3 + sig.euk_gap_min_above_edge);
         if ~isempty(up)
             [fm, ip] = max(fk(up)); ip = up(ip); best = Inf;
+            % a large trigger pile can reach past euk_gap_min_above_edge: the window's
+            % highest density is then the pile's falling slope at the window's lower
+            % end, not a peak, and the gap above it is never searched (AR39B
+            % 08Oct2019d Sample(113): pile 5x the Euk peak, gap at BL3 0-0.3 between
+            % them, 670 pile events named Euk). Use the highest local maximum above it
+            if sig.euk_gap_peak_local && ip == up(1) && ip > 1 && fk(ip - 1) > fk(ip)
+                lm = up(2:end - 1); lm = lm(fk(lm) >= fk(lm - 1) & fk(lm) >= fk(lm + 1));
+                if ~isempty(lm), [fm, k] = max(fk(lm)); ip = lm(k); end
+            end
+            info.euk_gap_peak = gk(ip);
             for j = ip - 1:-1:2
                 if gk(j) <= edge.BL3, break, end
                 if fk(j) <= fk(j - 1) && fk(j) <= fk(j + 1) && fk(j) < sig.euk_gap_frac * fm && ...
@@ -858,6 +868,75 @@ if any(left) && sum(refset) >= 50
     info.catchall_classes = arrayfun(@(x) sum(left & class == x), [1 2 3 4 5 7 8]);
 end
 info.trace.catchall = left;
+% per-file Euk chl:size cut (Nov 2026; from assign_class_discrete, where preserved runs
+% get it after their own Pro steps, so discrete_config turns this copy off). Faint
+% Syn-sized particles near the chl trigger, with low chl for their size and PE:chl
+% between Euk and Syn, can form their own small Euk components (live EN644
+% 24Aug2019d Sample(41): 336 such Euks, chl:size 0.42 vs the file's Euks 1.46,
+% about 0.3 above the chl edge, no chl gap below them). Reference: the file's clear
+% Euks, at least euk_chl.core_above_edge above the BL3 trigger edge (>= core_min_n).
+% Euks are unassigned (flag 5) where
+%  - chl:size is below the clear Euks' median less below_core (cut no higher than
+%    cut_max) and GL2:GL3 below max_GL2GL3, or
+%  - BL3 is below the line BL3 = a + ridge_slope*size through the clear Euks by
+%    ridge_k robust SDs, or
+%  - within pe_edge_win of the chl edge with PE:chl pe_above_core above the clear Euks'
+% Applied after the catch-all, so no unassigned event is re-added as Euk.
+euk_chl_low = false(n, 1); info.euk_chl_cut = NaN; info.euk_ridge = NaN(1, 3); info.euk_chl_ceiling = NaN; info.euk_chl_pile_peak = NaN;
+info.n_euk_lowchl = 0; info.n_euk_dim = 0; info.n_euk_highpe = 0;
+if sig.euk_chl_in_v2 && sig.euk_chl.on && isfield(edge, 'BL3')
+    ec = sig.euk_chl;
+    ec_core = class == 1 & F.BL3 > edge.BL3 + ec.core_above_edge & isfinite(F.chlSSC);
+    if sum(ec_core) >= ec.core_min_n
+        info.euk_chl_cut = min(ec.cut_max, median(F.chlSSC(ec_core)) - ec.below_core);
+        ec_low = class == 1 & F.chlSSC < info.euk_chl_cut & F.GL2GL3 < ec.max_GL2GL3;
+        info.n_euk_lowchl = sum(ec_low);
+        ec_b = ec.ridge_slope; ec_a = median(F.BL3(ec_core) - ec_b * F.size(ec_core));
+        ec_rsd = max(ec.ridge_min_sd, 1.4826 * mad(F.BL3(ec_core) - (ec_a + ec_b * F.size(ec_core)), 1));
+        info.euk_ridge = [ec_a ec_b ec_rsd];
+        ec_dim = class == 1 & F.BL3 < ec_a + ec_b * F.size - ec.ridge_k * ec_rsd;
+        info.n_euk_dim = sum(ec_dim & ~ec_low); ec_low = ec_low | ec_dim;
+        ec_pc = median(F.PEchl(ec_core));
+        ec_pe = class == 1 & F.BL3 < edge.BL3 + ec.pe_edge_win & F.PEchl > ec_pc + ec.pe_above_core;
+        info.n_euk_highpe = sum(ec_pe & ~ec_low); ec_low = ec_low | ec_pe;
+        % only where non-phyto particles pile up at the chl trigger (Nov 2026, live): the
+        % low chl:size, no-PE particles (Euk or unassigned) must peak in chl within
+        % pile_win of the BL3 edge, and only those below the first valley above that peak
+        % are cut. Without a pile (HRS2303 05May2023: a separate low-chl cluster 0.6 above
+        % the edge, old-class Euks) a per-file cut only splits a wide Euk cluster; above a
+        % valley (AR82A, EN649: large low-chl:size cells 1-2 above the edge) the cells are
+        % not part of the pile
+        pl_ceil = -Inf;
+        if ec.pile_gate
+            % detritus by chl:size (below detritus_max_chlSSC) is already non-phyto and
+            % well apart from the Euks; a cloud of it at the trigger is not a pile of
+            % Euk-like particles (HRS2303 2May2023(2) Sample(13): large particles at
+            % chl:size ~ -1 made the "pile", and a separate small-Euk group was cut)
+            pl_lp = ismember(class, [0 1]) & ~has_pe & F.chlSSC < info.euk_chl_cut & F.chlSSC > sig.detritus_max_chlSSC & ...
+                F.BL3 > edge.BL3 - 0.05 & F.SSC > finfo.floor.SSC + 0.1;
+            pl_lp = pl_lp | ec_low;
+            pl_x = F.BL3(pl_lp) - edge.BL3;
+            if numel(pl_x) >= ec.pile_min_n
+                [pl_f, pl_g] = ksdensity(pl_x, 'NumPoints', 300, 'Bandwidth', ec.pile_bw);
+                [pl_fm, pl_ip] = max(pl_f);
+                if pl_g(pl_ip) <= ec.pile_win
+                    pl_ceil = Inf;
+                    for pl_j = pl_ip + 1:numel(pl_f) - 1
+                        if pl_f(pl_j) <= pl_f(pl_j - 1) && pl_f(pl_j) < pl_f(pl_j + 1) && max(pl_f(pl_j + 1:end)) >= ec.pile_valley_rise * pl_f(pl_j)
+                            pl_ceil = pl_g(pl_j); break
+                        end
+                    end
+                end
+                info.euk_chl_pile_peak = pl_g(pl_ip);
+            end
+            ec_low = ec_low & F.BL3 - edge.BL3 < pl_ceil;
+        else
+            pl_ceil = Inf;
+        end
+        info.euk_chl_ceiling = pl_ceil;
+        euk_chl_low = ec_low; class(ec_low) = 0;
+    end
+end
 % rule boundaries for plotting (plot_v2_rules); values as used in this file
 R = struct();
 R.detritus_chlSSC = sig.detritus_max_chlSSC;
@@ -911,6 +990,7 @@ info.syn_type = st;
 %     chl trigger edge, no larger than the file's Syn (peak size). Such files do not
 %     get class 7, and their chl trigger cuts off dim Pro, so these events count
 %     only as a lower bound for Pro (Nov 2026)
+% 5 = Euk left out by the per-file Euk chl:size cut (low chl for its size)
 fl = zeros(n, 1, 'uint8');
 if isfield(info.trace, 'euksyn_lowchl'), fl(class == 0 & info.trace.euksyn_lowchl) = 1; end
 fl(class == 0 & fl == 0 & euk_below_gap) = 2;
@@ -919,9 +999,11 @@ if ~pro_measured
     if isfield(edge, 'BL3'), at_chl = F.BL3 >= edge.BL3; else, at_chl = F.BL3 > sig.chl_min; end
     fl(class == 0 & fl == 0 & ~has_pe & at_chl & F.size <= syn_size & F.SSC > finfo.floor.SSC + 0.1) = 4;
 end
+fl(class == 0 & fl == 0 & euk_chl_low) = 5;
 info.flag = fl;
 info.flag_names = {'Syn-pigment particle, low chl (degraded Syn/Euk, grazer, detritus)' 'below Euk chl gap' ...
-    'trigger-noise pile at the chl edge (capped files)' 'Pro-like (no PE, no larger than Syn) in a file without Pro settings: Pro lower bound'};
+    'trigger-noise pile at the chl edge (capped files)' 'Pro-like (no PE, no larger than Syn) in a file without Pro settings: Pro lower bound' ...
+    'Euk chl:size cut (low chl for its size)'};
 info.syn_type_names = sig.syn_type_names; info.syn_type_edges = sig.syn_type_edges;
 info.features = F;
 end
