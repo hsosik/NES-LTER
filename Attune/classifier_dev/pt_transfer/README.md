@@ -477,3 +477,10 @@ come from Coulter modes in both years (2026: `CCSummary_saved_10Sep2026.mat`, CC
 - AMBOPO is *Alexandrium minutum*; labelled dinoflagellate in the map (−0.38). Pptp02 stays
   unconfirmed.
 - `field_pigment_map('replot')` redraws from the saved .mat.
+
+## Bead ratio history (bead_ratio_history.m, Nov 2026)
+`T = bead_ratio_history()` collects per-run 1/0.5 and 6/1 µm FCB bead peak ratios (FSC-H, SSC-H,
+GL1-H for the current layout) from every cruise's `beadstat.mat`, and plots them against the Thermo
+service dates. Output: `output/pt_transfer/bead_ratio_history.png` and `.mat`.
+FSC steps by ±0.1–0.18 at the service events. SSC 6/1 drifts −0.1 from 2020 to 2026. GL1 is stable
+to ±0.03. See CALIBRATION_SUMMARY section 5.

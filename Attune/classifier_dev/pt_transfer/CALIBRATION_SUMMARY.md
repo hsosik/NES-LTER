@@ -103,6 +103,49 @@ For large cells the 2019 (488 nm) line is steeper than the 2026 merged line (lar
   - +0.3–0.45 at 1000–3000 µm³ (the gap between the calibrations: +0.3–0.4)
 - **Cryptophytes** (phycoerythrin absorbs at 532 nm) go the other way.
 
+**Caveat, scatter geometry changed between the calibrations.** Thermo service reports (see
+`attune_optics_changes.md` in the shared notes) record blocker-bar (FSC obscuration) adjustments in
+Jan 2018, Jul 2018, 6 Aug 2019 (twice, with a blue-laser realignment), and 22 Feb 2021 (between
+EN661 and EN668). They also record a blue laser replacement on 22 Sep 2022 (realigned 29 Nov 2022),
+another blue realignment on 21 Jun 2024, and PM alignment checks on 23 Oct 2019, 13 May 2022 and
+12 Feb 2026. Bead normalization removes gain changes, but not a change in the collection cone,
+which shifts large cells relative to the 1 µm bead. Part of the 2019-vs-2026 gap could be geometry
+rather than pigment.
+
+**Bead size ratios across cruises** (`bead_ratio_history.m`). These are 1/0.5 µm and 6/1 µm
+peak ratios from every FCB bead run in each cruise's `beadstat.mat`. Both beads in a ratio come
+from the same run, so gain cancels. Voltages were the same from EN644 to HRS2609 (SSC 220, FSC 280,
+GL1 220), so any steps in that period come from the optics (or a bead lot change), not from settings.
+
+![bead ratios](../output/pt_transfer/bead_ratio_history.png)
+
+- **FSC moves with the service events.** The 6/1 ratio:
+  - goes up about 0.10 after the Feb 2021 blocker-bar adjustment (EN661 1.14 → EN668 1.23)
+  - drops about 0.18 across the Sep–Nov 2022 blue-laser replacement (AR70B 1.29 → EN695 1.10)
+  - goes up about 0.16 across the Jun 2024 realignment and Jul 2024 flow-cell replacement
+    (EN715 1.06 → EN720 1.22)
+
+  So FSC normalized to beads is not comparable across these periods for large particles.
+- **SSC (488 nm):** the 1/0.5 ratio stays within ±0.02 (0.82–0.86). The 6/1 ratio drops about
+  0.06 at Feb 2021 (1.02 → 0.95), then falls slowly to about 0.89 in 2026. In total, 6 µm beads
+  read about 0.1 log lower than 1 µm beads in 2026 than in 2020.
+- **GL1 (532 nm scatter through OD2, used for large cells since Aug 2019):** stable. The 1/0.5
+  ratio is 0.77–0.80 and the 6/1 ratio is 1.29–1.32, except for a −0.04 step between AE2426
+  (Nov 2024) and EN727 (Jan 2025). No service record covers that step, and it partly recovers in
+  2025. The AR104 GL1 1/0.5 ratio (0.55) comes from its lower GL1 voltage (180 V), where the
+  0.5 µm bead sits near the floor.
+- **Before Aug 2019** the cruises aren't comparable: OD2 placement and voltages differ. The
+  PT-transfer cruises (EN608 to AR31A) show transferred constants, not measurements.
+- **For volumes:** after 2019, large cells take their size from GL1, which holds to about ±0.03,
+  and small cells take it from SSC near the 1 µm bead, which holds to ±0.02. So the merged volumes
+  are consistent across cruises to within these amounts. The 0.1 SSC drift at 6 µm matters only for
+  any use of SSC alone at large sizes.
+- **For the 2019 vs 2026 calibration gap:** the beads can't separate geometry from pigment,
+  because the calibrations used different channels and OD2 placement. The 6/1 ratio in the
+  2026 large-cell channel (GL1, 1.29) is about 0.06 above the pre-Aug 2019 OD2-on-SSC value
+  (1.23). If cells behave like beads, the configuration explains about 0.06 of the 0.3–0.4 gap,
+  which leaves most of it to pigment absorption.
+
 Cells in the merge window (≈ 5–30 µm³) are too small for this to matter (model +0.03–0.07; field
 +0.03), so the SSC/GL1 merge is consistent. Composition matters most for large cells, and differs
 between the two wavelengths.
