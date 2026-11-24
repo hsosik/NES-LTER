@@ -80,7 +80,7 @@ end
 % in surface CHL runs without hand Pro, e.g. EN661 C07N05, EN668 C014N03) and a mixture
 % weight >= lp_comp_min_weight (deep Pro comps 0.11, 0.46; small comps of half hand Euks,
 % half unassigned, 0.024-0.051, in surface CHL runs: AR92 C01N02, MVCO MV418N01, EN668 C001N01)
-info.n_pro_comp_euk = 0;
+info.n_pro_comp_euk = 0; info.pro_comp_sib = [];
 if assign_pro && ~info.pro_swap.applied && ~info.large_pro.accepted && isfinite(cfg.sig.lp_comp_min_score) ...
         && isfield(info, 'gmm') && ~isempty(info.gmm) && isfield(info, 'comp') && istable(info.comp) && isfield(info.trace, 'has_chl')
     F = info.features; mu = info.comp;
@@ -88,6 +88,19 @@ if assign_pro && ~info.pro_swap.applied && ~info.large_pro.accepted && isfinite(
     scm = cfg.sig.lp_lda(1) * mu.chlSSC + cfg.sig.lp_lda(2) * mu.GL2GL3 + cfg.sig.lp_lda(3);
     pc = find(mu.label == 1 & scm > cfg.sig.lp_comp_min_score & mu.SSC < syn_size + cfg.sig.lp_size_above_syn ...
         & mu.BL3 < cfg.sig.lp_max_BL3 & mu.chlSSC >= cfg.sig.lp_comp_min_chlSSC & mu.weight >= cfg.sig.lp_comp_min_weight);
+    % v2 can split a deep Pro cluster into two components that differ only in GL2:GL3
+    % (HB1907 C04N02 CHL, 60 m: GL2:GL3 -0.10 and +0.18, size/BL3/PE:chl within 0.08; the
+    % +0.18 one is on the Euk side of lp_lda, 530 hand Pro). Euk components whose mean is
+    % within lp_comp_sib_tol of a converted one in size, BL3 and PE:chl, with chl:size >=
+    % lp_comp_min_chlSSC, are converted with it
+    if ~isempty(pc) && isfinite(cfg.sig.lp_comp_sib_tol)
+        t = cfg.sig.lp_comp_sib_tol; sib = false(height(mu), 1);
+        for k = pc(:)'
+            sib = sib | (abs(mu.SSC - mu.SSC(k)) < t & abs(mu.BL3 - mu.BL3(k)) < t & abs(mu.PEchl - mu.PEchl(k)) < t);
+        end
+        sib = find(sib & mu.label == 1 & mu.chlSSC >= cfg.sig.lp_comp_min_chlSSC);
+        info.pro_comp_sib = setdiff(sib(:)', pc(:)'); pc = union(pc(:)', sib(:)');
+    end
     if ~isempty(pc)
         hc = info.trace.has_chl; ci = zeros(size(class));
         ci(hc) = cluster(info.gmm, [F.size(hc) F.BL3(hc) F.PEchl(hc) F.GL2GL3(hc)]);
@@ -154,8 +167,39 @@ elseif isfield(info, 'trace') && isfield(info.trace, 'wide_pulse')
     w = class == 7 & info.trace.wide_pulse;
     class(w) = 0; info.n_pro_wide_wrapper = sum(w);
 end
+% A separate cluster on the BL3 trigger floor called Pro beside the real Pro (EN688
+% C11N23 pro_hi, 14 m: v2 Pro component at size -1.96, BL3 -1.64 = edge + 0.14, chl:size
+% 0.32 vs Pro 0.71, A/H -0.23 vs 0.00; 7,180 events, none hand Pro; BL3 valley at -1.30
+% with 38 events/bin against peaks of 1,494 and 764). Where auto Pro BL3 (0.05 bins,
+% 3-bin mean) has a peak within pro_floor.max_above_edge of the edge, a second peak at
+% least pro_floor.min_sep above it, both >= pro_floor.min_peak, and a valley below
+% pro_floor.max_valley_ratio x the smaller peak, Pro below the valley are unassigned
+% (fired on no other held-out pro run, 105 runs)
+info.pro_floor = struct('valley', NaN, 'n_removed', 0);
+if cfg.sig.pro_floor.on && isfield(info.trigger_edges, 'BL3') && sum(class == 7) >= 200
+    v = pro_floor_valley(info.features.BL3(class == 7), info.trigger_edges.BL3, cfg.sig.pro_floor);
+    if isfinite(v)
+        f = class == 7 & info.features.BL3 < v;
+        class(f) = 0; info.pro_floor = struct('valley', v, 'n_removed', sum(f));
+    end
+end
 info.pro = pro_completeness(info, class, cfg);
 info.discrete_cfg = cfg.sig;
+end
+
+function v = pro_floor_valley(b, e, pf)
+% BL3 valley between a trigger-floor peak and a higher Pro peak (NaN if none)
+v = NaN; b = b(isfinite(b));
+ed = e:0.05:max(b) + 0.05; if numel(ed) < 8, return, end
+s = movmean(histcounts(b, ed), 3); x = ed(1:end - 1) + 0.025;
+lo = find(x <= e + pf.max_above_edge); if isempty(lo), return, end
+[pl, il] = max(s(lo)); il = lo(il);
+up = find(x >= x(il) + pf.min_sep); if isempty(up), return, end
+[ph, ih] = max(s(up)); ih = up(ih);
+[pv, iv] = min(s(il:ih)); iv = iv + il - 1;
+if pl >= pf.min_peak && ph >= pf.min_peak && pv <= pf.max_valley_ratio * min(pl, ph) && iv > il && iv < ih
+    v = x(iv);
+end
 end
 
 function [class, s] = large_pro(class, info, cfg, pro_run)

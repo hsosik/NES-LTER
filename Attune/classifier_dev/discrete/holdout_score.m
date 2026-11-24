@@ -78,6 +78,10 @@ for i = 1:height(L)
     else
         h = hand; h(h == 4) = 7; h(ismember(h, [5 6])) = 34; h(h == 3) = 0;
         if contains(fn, 'EN727') && contains(fn, ["_C19N13" "_C19N02" "_C09N01" "_C06N06"]), h(h == 7) = 0; end
+        % EN687 C16N19 and C15N05 CHL (2.7-2.8 m): the hand "Pro" (size -1, BL3 0.2, GL2
+        % -1.7) are the population hand-gated Euk in the same sample's pro run; real Pro
+        % (BL3 ~ -1.2 to -1.4) are below the CHL trigger (user OK 23 Nov 2026)
+        if contains(fn, ["EN687_Aug2022_preserved(1)_phyto_CHL_SSC_C16N19" "EN687_Aug2022_preserved(1)_phyto_CHL_SSC_C15N05"]), h(h == 7) = 0; end
         a = double(auto); a(ismember(a, [3 4 5])) = 34;
     end
     if any(h ~= 0)
