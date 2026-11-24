@@ -104,8 +104,40 @@ if assign_pro && ~info.pro_swap.applied && ~info.large_pro.accepted && isfinite(
     if ~isempty(pc)
         hc = info.trace.has_chl; ci = zeros(size(class));
         ci(hc) = cluster(info.gmm, [F.size(hc) F.BL3(hc) F.PEchl(hc) F.GL2GL3(hc)]);
-        m = class == 1 & ismember(ci, pc);
+        m = class == 1;
+        % with them their small end, which v2 unassigned as Pro-like Euk (euk_prolike) before
+        % this step: HB1907 C04N02 CHL (60 m), ~480 hand Pro smaller than the Syn peak left
+        % at 0, or restored to Euk below (Nov 2026)
+        if (~isfield(cfg.sig, 'lp_comp_take_prolike') || cfg.sig.lp_comp_take_prolike) && all(isfield(info.trace, {'euk_prolike' 'after_syncheck'}))
+            m = m | (class == 0 & info.trace.euk_prolike & info.trace.after_syncheck == 1);
+        end
+        m = m & ismember(ci, pc);
         class(m) = 7; info.n_pro_comp_euk = sum(m); info.pro_comp_euk = pc(:)';
+    end
+end
+% the same sibling rule after large_pro: large_pro decides event by event on lp_lda, so a
+% component split off a deep Pro cluster by higher GL2:GL3 stays Euk (AR39B C12N07(1) CHL,
+% 77 m: component GL2:GL3 +0.38 vs +0.04, size/BL3/PE:chl within 0.1 of the main Pro
+% component, chl:size 1.20 vs run Euks 2.06; 314 of 5,195 hand Pro named Euk). Euk
+% components within lp_comp_sib_tol of a component that is mostly Pro after large_pro,
+% small, dim and with chl:size >= lp_comp_min_chlSSC, become Pro (Nov 2026)
+info.n_pro_sib_after_lp = 0; info.pro_sib_after_lp = [];
+if info.large_pro.accepted && (~isfield(cfg.sig, 'lp_sib_after_large') || cfg.sig.lp_sib_after_large) && isfinite(cfg.sig.lp_comp_sib_tol) ...
+        && isfield(info, 'gmm') && ~isempty(info.gmm) && isfield(info, 'comp') && istable(info.comp) && isfield(info.trace, 'has_chl')
+    F = info.features; mu = info.comp; t = cfg.sig.lp_comp_sib_tol;
+    if sum(class == 2) >= 20, syn_size = median(F.size(class == 2)); else, syn_size = cfg.sig.syn_size_default; end
+    hc = info.trace.has_chl; ci = zeros(size(class));
+    ci(hc) = cluster(info.gmm, [F.size(hc) F.BL3(hc) F.PEchl(hc) F.GL2GL3(hc)]);
+    np = accumarray(ci(hc), class(hc) == 7, [height(mu) 1]); nn = accumarray(ci(hc), 1, [height(mu) 1]);
+    pk = find(np >= 100 & np > 0.5 * nn); sib = false(height(mu), 1);
+    for k = pk(:)'
+        sib = sib | (abs(mu.SSC - mu.SSC(k)) < t & abs(mu.BL3 - mu.BL3(k)) < t & abs(mu.PEchl - mu.PEchl(k)) < t);
+    end
+    sib(pk) = false;
+    sib = find(sib & mu.label == 1 & mu.chlSSC >= cfg.sig.lp_comp_min_chlSSC & mu.SSC < syn_size + cfg.sig.lp_size_above_syn & mu.BL3 < cfg.sig.lp_max_BL3);
+    if ~isempty(sib)
+        m = class == 1 & ismember(ci, sib);
+        class(m) = 7; info.n_pro_sib_after_lp = sum(m); info.pro_sib_after_lp = sib(:)';
     end
 end
 % small Euks v2 unassigned as Pro-like (euk_prolike: no PE, smaller than the Syn peak,
