@@ -924,6 +924,17 @@ if any(left) && sum(refset) >= 50
     info.catchall_classes = arrayfun(@(x) sum(left & class == x), [1 2 3 4 5 7 8]);
 end
 info.trace.catchall = left;
+% Euk with Syn carries a whole Syn, so its PE (GL2) is at least one Syn's: below the
+% euksyn_min_syn_PE_prc percentile of this file's Syn PE it is a Euk with faint PE,
+% not Euk with Syn (Nov 2026: AR92, half the Euk with Syn sat below 99% of the file's
+% Syn in PE). Applied after every route into class 5 (Syn-check rejects, PE euks,
+% catch-all) and before the Euk chl:size cut, which then also checks these Euks
+info.euksyn_min_GL2 = NaN; info.n_euksyn_weak = 0;
+if sig.euksyn_min_syn_PE_prc > 0 && sum(class == 2) >= 50
+    info.euksyn_min_GL2 = prctile(F.GL2(class == 2), sig.euksyn_min_syn_PE_prc);
+    weak = class == 5 & F.GL2 < info.euksyn_min_GL2;
+    class(weak) = 1; info.n_euksyn_weak = sum(weak);
+end
 % per-file Euk chl:size cut (Nov 2026; from assign_class_discrete, where preserved runs
 % get it after their own Pro steps, so discrete_config turns this copy off). Faint
 % Syn-sized particles near the chl trigger, with low chl for their size and PE:chl
