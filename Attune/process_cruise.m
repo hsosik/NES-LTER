@@ -34,7 +34,9 @@ function p = process_cruise(cruise, opt)
 %             that steps through the cruise, flags unusual files and saves review
 %             decisions to bead_calibrated\review_decisions.csv (classifier_dev\review)
 %   volume    batch_mergedSSC2volume: adds volume_cubic_microns etc. to the class files
-%   table     generate_attune_table -> bead_calibrated\AttuneTable.mat
+%   table     generate_attune_table -> bead_calibrated\AttuneTable.mat (every file; Review_exclude =
+%             1 for files marked exclude in the class review, left out of the EDI tables.
+%             After a review: apply_review_excludes(cruise) updates the tables built already)
 %   metadata  match_Attune_underway_LTER -> bead_calibrated\AttuneTable_uw_match.mat
 %   movie     attune_lter_moviemaker (optional)
 %   voldists  get_cruise_voldists_fromEDItable2, Plot_Voldists_function (optional)

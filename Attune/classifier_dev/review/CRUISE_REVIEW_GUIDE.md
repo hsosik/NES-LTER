@@ -220,8 +220,20 @@ T = review_decisions('EN727');
 bad = T.file(strcmp(T.status, 'exclude'));
 ```
 
-**Class review decisions are records only.** No processing step reads them yet, so
-marking a file exclude does not remove it from `AttuneTable`.
+**Exclude is the final post-review flag.** `AttuneTable` keeps every row and has a
+`Review_exclude` column, set to 1 for files marked exclude. The EDI tables
+(`generate_attune_table_EDI_*`) leave those rows out. The other statuses and the notes
+are records only.
+
+- `generate_attune_table` (the table step) sets the column from `review_decisions.csv`.
+- Reviews usually come after the tables are built. After reviewing a cruise, update the
+  column in the existing tables (`AttuneTable`, `AttuneTable_uw_match` and
+  `AttuneVolTable`), then regenerate the EDI table:
+
+  ```matlab
+  apply_review_excludes("AR92")
+  generate_attune_table_EDI_one_cruise('\\sosiknas1\Lab_data\Attune\cruise_data\20250814_AR92\bead_calibrated\')
+  ```
 
 Rebuilding the page keeps earlier decisions; each one shows the build it was made on.
 `archive_cruise_outputs` carries the decisions into a new `bead_calibrated` only with

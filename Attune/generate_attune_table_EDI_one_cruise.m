@@ -32,6 +32,10 @@ cruiseStr = test{2};
 
 AttuneTable = Attune.AttuneVolTable; 
 AttuneTable(AttuneTable.QC_flag == 0, :) = []; 
+% files marked exclude in the class review (Review_exclude, see apply_review_excludes)
+if ismember('Review_exclude', AttuneTable.Properties.VariableNames)
+    AttuneTable(AttuneTable.Review_exclude == 1, :) = [];
+end
 
 Attune2EDI = table;
 Attune2EDI.cruise = string(repmat(cruiseStr,length(AttuneTable{:,1}),1));

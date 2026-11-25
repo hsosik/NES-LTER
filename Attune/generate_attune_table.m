@@ -223,7 +223,11 @@ AttuneTable = [AttuneTable array2table(FlagCount, 'VariableNames', strcat(flag_c
 AttuneTable.Num_particles = Num_particles; 
 AttuneTable.QC_flag = Attune.FCSfileinfo.QC_flag;
 AttuneTable.QC_flowrates = Attune.FCSfileinfo.QC_flowrates; 
-AttuneTable.QC_dataintegrity = Attune.FCSfileinfo.QC_dataintegrity; 
+AttuneTable.QC_dataintegrity = Attune.FCSfileinfo.QC_dataintegrity;
+% final post-review flag (Nov 2026): 1 = marked exclude in the class review
+% (bead_calibrated\review_decisions.csv). Every row is kept here; the EDI tables leave
+% these out. After a later review, update with apply_review_excludes(cruise)
+AttuneTable.Review_exclude = review_exclude_column(AttuneTable.Filename, fullfile(classpath, '..', 'review_decisions.csv'));
 
 AttuneTable.Scatter_hv = Scatter_hv; 
 
@@ -239,7 +243,8 @@ else
     if numel(notes) >= 5 %assign_class_v2 class files: class, syn_type and flag code descriptions
         table_metadata = [table_metadata; {notes(1); notes(4); notes(5); ...
             'Crypto_dim/Crypto_bright = classes 3/4 (together = Euk_w_PE); Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Syn type counts by class; flags are class 0 events'; ...
-            'Pro_count/biovolume/carbon NaN in files run without Pro settings; Pro_lower_bound_count = Pro-like events (flag 4) there, NaN in Pro-setting files; Pro_near_trigger_fraction = share of Pro within 0.1 log of the SSC or chl trigger edge (Pro-setting files)'}];
+            'Pro_count/biovolume/carbon NaN in files run without Pro settings; Pro_lower_bound_count = Pro-like events (flag 4) there, NaN in Pro-setting files; Pro_near_trigger_fraction = share of Pro within 0.1 log of the SSC or chl trigger edge (Pro-setting files)'; ...
+            'Review_exclude = 1: file marked exclude in the class review (review_decisions.csv); rows kept here, left out of the EDI tables'}];
     end
 end
 
