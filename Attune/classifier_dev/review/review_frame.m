@@ -57,7 +57,7 @@ for r = 1:nrow
                 if strcmp(rows{r}, 'v2')
                     % flagged events (class 0) as their own density layers
                     P = dens(P, ix, ok & c == 0 & fl == 0, R.col0, .55);
-                    for t = 1:3, P = dens(P, ix, ok & c == 0 & fl == t, R.flag_cols(t, :), .8); end
+                    for t = 1:size(R.flag_cols, 1), P = dens(P, ix, ok & c == 0 & fl == t, R.flag_cols(t, :), .8); end
                 else
                     P = dens(P, ix, ok & c == 0, R.col0, .55);
                 end

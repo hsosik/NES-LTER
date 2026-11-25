@@ -81,7 +81,7 @@ kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:3px; 
     <div class="striphead" style="margin-top:6px">
       <b style="color:var(--fg)">QC metric</b> <select id="metric"></select>
       <span>shaded band: running median ± z·scale of neighbouring files</span>
-      <label style="margin-left:auto" title="Euk chl gap / Syn PE gap found, missing or moved compared with neighbouring files. Off: listed as notes only (on EN727 both gaps switch on and off between neighbouring files; Syn and Euk counts barely change, but the below-gap and Pro-tail flag counts follow the Euk gap)"><input id="gapflag" type="checkbox"> count gap changes (and below-gap / Pro-tail flags) as unusual</label>
+      <label style="margin-left:auto" title="Euk chl gap / Syn PE gap found, missing or moved compared with neighbouring files. Off: listed as notes only (on EN727 both gaps switch on and off between neighbouring files; Syn and Euk counts barely change, but the below-gap and chl-edge pile flag counts follow the Euk gap)"><input id="gapflag" type="checkbox"> count gap changes (and below-gap / chl-edge pile flags) as unusual</label>
       <span>flag at |z| &gt; <input id="zthr" type="number" value="4" min="1" max="20" step="0.5" style="width:60px"></span>
     </div>
     <details id="mcount" style="font-size:12px;margin:2px 0 4px"><summary id="mcsum" title="choose which QC metrics can make a file unusual; unticked metrics are still listed, as notes"></summary>
@@ -132,7 +132,10 @@ const METRICS_PH = [
   { key: 'un', label: 'unassigned (log)', f: q => lg(q.n0), floor: .12 },
   { key: 'flag1', label: 'flag: Syn-pigment particle (log)', f: q => lg(q.flag1), floor: .3 },
   { key: 'flag2', label: 'flag: below Euk chl gap (log)', f: q => lg(q.flag2), floor: .3, minor: true }, // follows the Euk chl gap on/off
-  { key: 'flag3', label: 'flag: Pro tail (log)', f: q => lg(q.flag3), floor: .35, minor: true }, // on EN727 set only in files without a Euk chl gap
+  { key: 'flag3', label: 'flag: chl-edge noise pile (log)', f: q => lg(q.flag3), floor: .35, minor: true }, // trigger-noise pile at the chl edge (pre-2019); on EN727 set only in files without a Euk chl gap
+  // flags 4 and 5 (blank on pages built before they were saved)
+  { key: 'flag4', label: 'flag: Pro lower bound (log)', f: q => q.flag4 === undefined ? NaN : lg(q.flag4), floor: .3 }, // Pro-like events in files without Pro settings
+  { key: 'flag5', label: 'flag: Euk below chl:size cut (log)', f: q => q.flag5 === undefined ? NaN : lg(q.flag5), floor: .3 },
   // catch-all Euk and Syn, each as a share of its class (blank on pages built before the split)
   { key: 'catch', label: 'catch-all Euk share of Euk', f: q => q.catchall_euk_share, floor: .04, abs: v => v > .25 },
   { key: 'catchsyn', label: 'catch-all Syn share of Syn', f: q => q.catchall_syn_share, floor: .04 },
@@ -444,7 +447,7 @@ function side() {
   const rows = [['agreement with old', f.agreement, 3], ['catch-all total', f.n_catchall], ['catch-all Euk (share of Euk)', `${fmt(f.n_catchall_euk)} (${fmt(f.catchall_euk_share)})`], ['catch-all Syn (share of Syn)', `${fmt(f.n_catchall_syn)} (${fmt(f.catchall_syn_share)})`], ['Euk chl gap', f.euk_chl_gap], ['Syn PE gap', f.syn_PE_gap], ['Syn PE floor', f.syn_PE_floor],
     ['Syn ref size / chl', `${fmt(f.syn_ref_size)} / ${fmt(f.syn_ref_BL3)}`], ['Syn ref PE:chl / GL2:GL3', `${fmt(f.syn_ref_PEchl)} / ${fmt(f.syn_ref_GL2GL3)}`],
     ['Syn types A / B / C', `${fmt(f.syn_type1)} / ${fmt(f.syn_type2)} / ${fmt(f.syn_type3)}`], ['untyped Syn (share)', `${fmt(f.syn_untyped)} (${fmt(f.syn_untyped_share)})`],
-    ['flags: ' + R.flag_names.join(' / '), `${fmt(f.flag1)} / ${fmt(f.flag2)} / ${fmt(f.flag3)}`], ['crypto-type events, split', `${fmt(f.crypto_n)}, ${f.crypto_split_accepted ? 'two groups' : 'PE floor'}`],
+    ['flags: ' + R.flag_names.join(' / '), R.flag_names.map((_, i) => fmt(f['flag' + (i + 1)])).join(' / ')], ['crypto-type events, split', `${fmt(f.crypto_n)}, ${f.crypto_split_accepted ? 'two groups' : 'PE floor'}`],
     ['mixture components', f.ncomp], ['trigger-edge pile', f.edge_pile_frac, 3]];
   for (const [k, v, d] of rows) if (!(k.startsWith('agreement') && f.old_n1 === undefined)) h += `<tr><td>${k}</td><td>${fmt(v, d || 2)}</td></tr>`;
   h += '</table><h3>Keys</h3><div class="mut"><kbd>←</kbd><kbd>→</kbd> step, <kbd>Shift</kbd> ×10, <kbd>n</kbd>/<kbd>p</kbd> next/previous unusual, <kbd>Home</kbd>/<kbd>End</kbd>; review status: <kbd>o</kbd> OK, <kbd>x</kbd> problem, <kbd>e</kbd> exclude, <kbd>?</kbd> needs another look (same key again clears), <kbd>m</kbd> note (<kbd>Esc</kbd> to leave it)</div>';

@@ -14,7 +14,7 @@ for k = [0 1 2 3 4 5 7 8]
     q.(sprintf('n%d', k)) = sum(cls == k);
 end
 fl = zeros(size(cls)); if isfield(info, 'flag'), fl = double(info.flag(:)); end
-for t = 1:3, q.(sprintf('flag%d', t)) = sum(fl == t); end
+for t = 1:5, q.(sprintf('flag%d', t)) = sum(fl == t); end % see review_config flag_names
 st = zeros(size(cls)); if isfield(info, 'syn_type'), st = double(info.syn_type(:)); end
 synb = ismember(cls, [2 5 8]);
 for t = 1:3, q.(sprintf('syn_type%d', t)) = sum(synb & st == t); end

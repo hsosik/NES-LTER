@@ -42,7 +42,11 @@ R.rare_outline = false;  % dark outline round rare-class points
 % (PUB:PEB low/mid/high), untyped dark grey, everything else light grey
 R.syn_type_cols = [.9 .45 0; .8 0 .3; .15 .35 .85];
 R.syn_untyped_col = [.2 .2 .2];
-R.flag_cols = [.6 .4 .2; .75 .68 .45; .45 .65 .85]; % density layers (class 0): flag 1 Syn-pigment particle, 2 below Euk chl gap, 3 Pro tail
-R.flag_names = {'Syn-pigment particle' 'below Euk chl gap' 'Pro tail'};
+% unassigned events by assign_class_v2 flag (density layers, class 0): 1 Syn-pigment
+% particle, 2 below the Euk chl gap, 3 trigger-noise pile at the chl edge (pre-2019),
+% 4 Pro-like event in a file without Pro settings (Pro lower bound), 5 Euk below the
+% per-file chl:size cut. Flags 6-9 (split-Syn parts) are not drawn
+R.flag_cols = [.6 .4 .2; .75 .68 .45; .45 .65 .85; .62 .58 .95; .6 .8 .5];
+R.flag_names = {'Syn-pigment particle' 'below Euk chl gap' 'chl-edge noise pile' 'Pro lower bound' 'Euk below chl:size cut'};
 R.diff_cols = [.85 0 0; 0 .3 1; .55 0 .75];        % v2 adds, v2 drops, relabelled
 end
