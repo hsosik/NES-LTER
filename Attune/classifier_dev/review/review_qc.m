@@ -21,10 +21,18 @@ for t = 1:3, q.(sprintf('syn_type%d', t)) = sum(synb & st == t); end
 q.syn_untyped = sum(synb & st == 9);
 q.syn_untyped_share = q.syn_untyped / max(1, sum(synb));
 q.n_catchall = fieldor(info, 'n_catchall', NaN);
-% catch-all additions by class (info.catchall_classes: classes 1 2 3 4 5 7 8). Shares
-% are of the class's final count; the total is mostly Syn in Syn-rich files, so it
-% is not divided by the Euk count
-cc = nan(1, 7); if isfield(info, 'catchall_classes') && numel(info.catchall_classes) == 7, cc = double(info.catchall_classes(:)'); end
+% catch-all additions by class (classes 1 2 3 4 5 7 8). Shares are of the class's
+% final count; the total is mostly Syn in Syn-rich files, so it is not divided by
+% the Euk count. Counted from the final classes of the catch-all
+% events (info.trace.catchall): later steps, e.g. the per-file Euk chl:size cut, can
+% unassign catch-all Euks, which info.catchall_classes (taken at the catch-all step)
+% still counts (AR92 15Aug(9) Sample(32): 202 there, 3 left as Euk)
+cc = nan(1, 7);
+if isfield(info, 'trace') && isfield(info.trace, 'catchall') && numel(info.trace.catchall) == numel(cls)
+    ca = info.trace.catchall(:); cc = arrayfun(@(x) sum(ca & cls == x), [1 2 3 4 5 7 8]);
+elseif isfield(info, 'catchall_classes') && numel(info.catchall_classes) == 7
+    cc = double(info.catchall_classes(:)');
+end
 if q.n_catchall == 0, cc = zeros(1, 7); end
 q.n_catchall_euk = cc(1);
 q.n_catchall_syn = cc(2);

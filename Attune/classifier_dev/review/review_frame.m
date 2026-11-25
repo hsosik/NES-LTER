@@ -54,7 +54,7 @@ for r = 1:nrow
                     img(y0 + (1:W), x0 + (1:W), :) = P;
                     continue
                 end
-                if strcmp(rows{r}, 'v2')
+                if strcmp(rows{r}, 'v2') && isfield(R, 'show_flags') && R.show_flags
                     % flagged events (class 0) as their own density layers
                     P = dens(P, ix, ok & c == 0 & fl == 0, R.col0, .55);
                     for t = 1:size(R.flag_cols, 1), P = dens(P, ix, ok & c == 0 & fl == t, R.flag_cols(t, :), .8); end

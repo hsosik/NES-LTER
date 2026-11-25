@@ -42,6 +42,10 @@ R.rare_outline = false;  % dark outline round rare-class points
 % (PUB:PEB low/mid/high), untyped dark grey, everything else light grey
 R.syn_type_cols = [.9 .45 0; .8 0 .3; .15 .35 .85];
 R.syn_untyped_col = [.2 .2 .2];
+% show_flags: draw unassigned events in their flag colours below (true) or all in
+% plain grey (false, default: fewer colours to read; the flag counts stay in the QC
+% metrics and table)
+R.show_flags = false;
 % unassigned events by assign_class_v2 flag (density layers, class 0): 1 Syn-pigment
 % particle, 2 below the Euk chl gap, 3 trigger-noise pile at the chl edge (pre-2019),
 % 4 Pro-like event in a file without Pro settings (Pro lower bound), 5 Euk below the

@@ -417,7 +417,7 @@ function legend() {
   }
   let h = sw(R.col0, 'unassigned') + R.codes.map((k, i) => sw(R.cols[i], R.names[i] + (R.rare.includes(k) ? ' (points)' : ''))).join('');
   h += '<span style="color:#333">Syn type panel (Syn, Euk with Syn, Syn on particle):</span>' + ['A', 'B', 'C'].map((t, i) => sw(R.syn_type_cols[i], 'type ' + t)).join('') + sw(R.syn_untyped_col, 'untyped') + sw([.6, .6, .6], 'other');
-  h += R.flag_names.map((t, i) => sw(R.flag_cols[i], 'flag: ' + t)).join('');
+  if (R.show_flags) h += R.flag_names.map((t, i) => sw(R.flag_cols[i], 'flag: ' + t)).join(''); // frames built with flag colours only
   if (F.some(f => f.nrow === 3)) h += sw(R.diff_cols[0], 'v2 adds') + sw(R.diff_cols[1], 'v2 drops') + sw(R.diff_cols[2], 'relabelled');
   h += '<span>lines: <b>- -</b> trigger edge, <span style="color:' + rgb(colOf(1)) + '">··· Euk chl gap, — Euk chl-size line, -·- Euk min size</span>, <span style="color:' + rgb(colOf(5)) + '">- - Euk with Syn cut (below: unassigned, flag 1)</span>, <span style="color:' + rgb(colOf(2)) + '">··· Syn PE floor</span>, <span style="color:' + rgb(colOf(7)) + '">- - Pro wide-pulse cut (pulse-shape panel)</span>, Syn type edges</span>';
   $('legend').innerHTML = h;
