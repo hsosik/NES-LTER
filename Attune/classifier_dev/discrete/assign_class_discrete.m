@@ -29,7 +29,10 @@ function [class, info] = assign_class_discrete(fcsdat, fcshdr, ref, cfg, runtype
 %            edge), frac_near_edge (Pro within cfg.sig.pro_edge_band of the edge),
 %            lower_bound (false only when the cluster is shown complete: at least
 %            cfg.sig.pro_edge_min_n Pro clear of the edge; meaningful for CHL runs only,
-%            since dim Pro sit at the edge in Pro runs too)
+%            since dim Pro sit at the edge in Pro runs too); n_lowchl, frac_lowchl
+%            (unassigned Pro-like events with chl:size below lp_min_chlSSC, as a
+%            fraction of them plus the Pro), uncertain (frac_lowchl above
+%            cfg.sig.pro_lowchl_max_frac: Pro not separable from low-chl particles)
 %
 % Nov 2026, discrete-sample classifier development
 
@@ -339,6 +342,11 @@ if sum(euk) < g.lp_min_n && use_lda, [class, s] = large_pro_lda(class, F, syn_si
 % Fit on all the file's Euks (the larger Euks are the reference group: in deep
 % samples the small dim "Euks" can be almost all Pro); K = 1-3 by BIC
 cand = find(euk & isfinite(F.GL2GL3) & isfinite(F.chlSSC));
+% events below the Pro chl:size floor (detritus-like) are left out of the fit: with them in,
+% the lowest group was either a detritus group (rejected by lp_min_chlSSC, so the fixed
+% boundary ran) or detritus merged with the Pro (accepted), depending on the random start
+% (EN687 pro_C05N08: 498-625 vs 1280 Pro across seeds)
+if ~isfield(g, 'lp_fit_above_floor') || g.lp_fit_above_floor, cand = cand(F.chlSSC(cand) >= g.lp_min_chlSSC); end
 s.ncand = numel(cand);
 if numel(cand) < g.lp_min_n, return, end
 X = [F.chlSSC(cand) F.GL2GL3(cand)];
@@ -518,7 +526,21 @@ function p = pro_completeness(info, class, cfg)
 % lower_bound is false only where the cluster is shown complete; fewer than
 % pro_edge_min_n Pro cannot show it (calibrate_pro_chl: CHL runs with 52-249
 % Pro well above the edge had 1-2% of the Pro run's Pro)
-p = struct('n', sum(class == 7), 'peak_above_edge', NaN, 'frac_near_edge', NaN, 'lower_bound', true);
+p = struct('n', sum(class == 7), 'peak_above_edge', NaN, 'frac_near_edge', NaN, 'lower_bound', true, 'n_lowchl', 0, 'frac_lowchl', NaN, 'uncertain', false);
+% Pro-like events left unassigned for low chl:size: no PE, no larger than Syn +
+% lp_size_above_syn, in the Pro's own BL3 range, chl:size below lp_min_chlSSC. Many of
+% them next to the Pro mean the sample's Pro are not separable from faded or detrital
+% particles and the Pro count is uncertain (EN687 pro_C10N10: 578 such events beside 770
+% Pro, frac 0.43; hand gate unusable)
+F = info.features; g = cfg.sig;
+if p.n >= g.lp_min_group_n
+    if sum(class == 2) >= 20, syn_size = median(F.size(class == 2)); else, syn_size = g.syn_size_default; end
+    b = prctile(F.BL3(class == 7), [5 95]);
+    low = class == 0 & F.PEchl < g.pe_min_PEchl & F.size < syn_size + g.lp_size_above_syn ...
+        & F.BL3 >= b(1) & F.BL3 <= b(2) & F.chlSSC < g.lp_min_chlSSC;
+    p.n_lowchl = sum(low); p.frac_lowchl = p.n_lowchl / (p.n_lowchl + p.n);
+    p.uncertain = p.frac_lowchl > g.pro_lowchl_max_frac;
+end
 if ~isfield(info.trigger_edges, 'BL3') || p.n < cfg.sig.pro_edge_min_n, return, end
 x = info.features.BL3(class == 7) - info.trigger_edges.BL3;
 g = linspace(0, 3, 301);

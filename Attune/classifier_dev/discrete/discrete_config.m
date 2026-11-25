@@ -101,6 +101,7 @@ cfg.sig.pro_edge_band = 0.1;               %Pro this close to the chl trigger ed
 cfg.sig.pro_edge_min_n = 400;  %(was 100: CHL runs with 127-364 Pro clear of the edge were wrong or surface: AR39B C6N14 227 vs Pro run 9602, EN688 C10N18 364 at 0.41x, AR92 C26N05 2.8 m 169, EN727 C10N08 127)              %fewer Pro than this: no completeness estimate, lower_bound true
 cfg.sig.pro_lb_min_peak_above_edge = 0.3;  %lower bound if the Pro chl mode is closer than this to the edge ...
 cfg.sig.pro_lb_max_frac_near_edge = 0.1;   %... or more than this fraction of Pro is at the edge %Pro runs (assign_class_discrete): Pro chl:size 0.27-1.32, so keep the live cut
+cfg.sig.pro_lowchl_max_frac = 0.2;   %Pro count uncertain (info.pro.uncertain) if Pro-like events left unassigned for low chl:size are more than this fraction of them plus the Pro (assign_class_discrete pro_completeness; EN687 pro_C10N10 0.43, C05N08 0.52; held-out runs whose hand Pro match (auto/hand 0.8-1.4) at most 0.14; 12 of the other 14 runs above 0.2 have no hand Pro)
 % SYBR bacteria runs (assign_class_hbac); hand-gated SYBR runs, 6 cruises:
 % bacteria chlx (BL3-BL1) 0.35 +- 0.14, pex (GL2-BL1) -0.52 +- 0.18, BL1-SSC >= ~0,
 % SSC 5-95% -2.6 to -1.5; Syn PE:chl 5th percentile -0.77, Euk -1.95 to -1.2

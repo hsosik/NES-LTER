@@ -83,6 +83,12 @@ for i = 1:height(L)
         % (BL3 ~ -1.2 to -1.4) are below the CHL trigger (user OK 23 Nov 2026)
         if contains(fn, ["EN687_Aug2022_preserved(1)_phyto_CHL_SSC_C16N19" "EN687_Aug2022_preserved(1)_phyto_CHL_SSC_C15N05"]), h(h == 7) = 0; end
         a = double(auto); a(ismember(a, [3 4 5])) = 34;
+        % EN687 pro_C05N08 and pro_C10N10 (tuning): the hand Pro gate is a band along the
+        % trigger floor (BL3 -1.1 to -0.5) running from size -2 to +0.5, well past Syn size;
+        % C05N08's compact Pro clump at size ~-1.8 is a small part of it; C10N10's ~3200-event
+        % group at Syn size has chl:size 0.03-1.28 (median 0.65), half below the Pro floor.
+        % Not usable for quantifying Pro: Pro left out of both labellings (user, 25 Nov 2026)
+        if contains(fn, ["EN687_Aug2022_preserved(2)_phyto_CHL_SSC_pro_C05N08" "EN687_Aug2022_preserved(2)_phyto_CHL_SSC_pro_C10N10"]), h(h == 7) = 0; a(a == 7) = 0; end
     end
     if any(h ~= 0)
         late = dat(:, 1) >= min(dat(h ~= 0, 1)); h(~late) = 0; a(~late) = 0;
