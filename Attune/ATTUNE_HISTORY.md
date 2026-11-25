@@ -151,7 +151,7 @@ The full dated list, with evidence from the bead ratios, is in the shared sessio
 | 5 Oct 2023 | Software 5.3; new FPGA firmware with a 375 pulse-width limit | EN706 / AR77 |
 | 17 Jan 2024 | Gear pump replaced | AR79 / EN712 |
 | 21 Jun 2024 | Blue laser alignment adjusted; rotary valve head replaced | EN715 / EN720 |
-| Jul 2024 | Whole PZT assembly replaced, including the flow cell. **FSC 6/1 +0.16** | EN715 / EN720 |
+| 2–8 Jul 2024 | Interrogation assembly (flow cell) and tube lifter replaced; laser path optics adjusted; blocker bar and sled adjusted. **FSC 6/1 +0.16** | EN715 / EN720 |
 | Dec 2024 – Jan 2025 | Bead doubling at low signal. **GL1 6/1 −0.07, no service visit** | AE2426 / EN727 |
 | 11–14 Feb 2025 | Interrogation assembly (flow cell) and rotary valve replaced; PZT power adjusted; software 6.2.2 (FPGA 20.10.12.8); preventive maintenance with alignment checks on 14 Feb | EN727 / AR87A |
 | 12 Feb 2026 | Preventive maintenance | AR99 / HRS2601 |
@@ -235,7 +235,7 @@ See `classifier_dev/README.md`.
 - **Hellmanex.** The settings sheet says cleaning with Hellmanex began at AR34. The log shows first use at EN627 (Feb 2019).
 - **EN655 voltages.** The settings sheet lists only BL2 360 → 380; the log says GL2 changed too.
 - **HRS2303 GL2 threshold.** The log says "200 to 100" and then "1.0 x 1000". The FCS headers show 1000 and 2000.
-- **Missing service report.** The only visit without a report is the Jul 2024 PZT and flow-cell replacement (2 and 9 Jul 2024). It is known only from the lab log.
+- **Jul 2024 visit.** The lab log says "the whole PZT assembly including the flow cell" was replaced on 2 and 9 Jul. The service report (2–8 Jul) lists the interrogation assembly and tube lifter, plus laser-path, blocker-bar and sled adjustments.
 - **24 Jan 2019 visit.** The lab log records only "a thorough cleaning". The service report shows a Contrad soak of the flow cell and a blocker-bar adjustment, one week before EN627.
 
 ---
