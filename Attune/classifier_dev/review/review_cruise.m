@@ -1,23 +1,25 @@
 function Q = review_cruise(cruise, opts)
 % function Q = review_cruise(cruise, opts)
-% Classification review for a whole cruise, without writing class files: classify
-% every sample with assign_class_v2 (in parallel), write one review frame per sample
-% and the HTML viewer (index.html) into the review folder. Open index.html in a browser.
-% process_cruise can produce the same output during classification by calling
-% review_sample in its loop and review_viewer after it.
+% TEST review for a whole cruise, without writing class files: classify every sample
+% with assign_class_v2 (in parallel), write one review frame per sample and the HTML
+% viewer (index.html) into opts.outdir. Open index.html in a browser.
+% A cruise's own review (<cruise>\bead_calibrated\review) must match its class files,
+% so it is built only by process_cruise(cruise, Steps="classify"), which writes the
+% class files and the review from the same classification. This function refuses to
+% write there (and into any ...\bead_calibrated\review folder).
 %
-% opts (all optional):
-%   .outdir    review folder (default <cruise>\bead_calibrated\review)
+% opts:
+%   .outdir    review folder (required; not a cruise's bead_calibrated\review)
 %   .root      cruise_data root passed to attune_cruise_settings
 %   .files     [] all; a number n: n files spread over the cruise; or a list of names
 %   .old       true (default): compare with existing class files in bead_calibrated\class
 %              (agreement metric, old counts) where they match the event count
 %   .parallel  true (default when a pool can start): parfor over files
 %   .decisions review decisions file the viewer reads and saves to (default
-%              <cruise>\bead_calibrated\review_decisions.csv; see review_decisions)
+%              outdir\review_decisions.csv, kept apart from the cruise's own decisions)
 % Returns the QC structs (also saved as review_qc.mat in outdir); files that fail are
 % listed in review_errors.txt.
-% e.g. review_cruise('EN727')
+% e.g. review_cruise('EN727', struct('outdir', 'C:\...\output\review_EN727_test', 'files', 200))
 %
 % Nov 2026, classification review
 
@@ -32,8 +34,13 @@ s = attune_cruise_settings(cruise, opts.root);
 c = s.config;
 bp = fullfile(s.basepath, 'bead_calibrated');
 P = cruise_paths(s.folder, Root=fileparts(s.basepath)); % old classes, FCSfileinfo, beads (archive-aware)
-outdir = opts.outdir; if isempty(outdir), outdir = fullfile(bp, 'review'); end
-decfile = opts.decisions; if isempty(decfile), decfile = fullfile(bp, 'review_decisions.csv'); end
+outdir = char(opts.outdir);
+if isempty(outdir) || review_is_cruise_dir(outdir)
+    error('review_cruise:cruiseReview', ['A cruise''s own review must match its class files: build it with ' ...
+        'process_cruise("%s", Steps="classify"). review_cruise writes test reviews only; give opts.outdir ' ...
+        'outside any ...\\bead_calibrated\\review folder.'], s.cruise);
+end
+decfile = opts.decisions; if isempty(decfile), decfile = fullfile(outdir, 'review_decisions.csv'); end
 build = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm')); % this classification run
 if ~exist(fullfile(outdir, 'frames'), 'dir'), mkdir(fullfile(outdir, 'frames')); end
 

@@ -13,6 +13,9 @@ function T = review_prototype(cruise, nfiles, first, outdir, use_old)
 if nargin < 5 || isempty(use_old), use_old = true; end
 here = fileparts(mfilename('fullpath'));
 addpath(here, fileparts(here), fileparts(fileparts(here)))
+if review_is_cruise_dir(outdir) % a cruise's own review must match its class files
+    error('review_prototype:cruiseReview', 'Not into a cruise''s own review folder; build that with process_cruise(cruise, Steps="classify").');
+end
 s = attune_cruise_settings(cruise);
 c = s.config;
 bp = fullfile(s.basepath, 'bead_calibrated');

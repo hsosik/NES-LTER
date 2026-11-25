@@ -65,7 +65,10 @@ function p = process_cruise(cruise, opt)
 %             files read FCSfileinfo.mat and beadstat.mat from here, so copy them in first.
 %   Parallel  true/false: parfor over files in classify (default: true when a pool can start)
 %   Review    true (default): build the classification and bead reviews. A run on some
-%             files (Files, NewOnly) updates their frames and keeps the rest.
+%             files (Files, NewOnly) updates their frames and keeps the rest. The
+%             classification review always matches the class files: classify refuses
+%             Review=false where a review exists, and review_cruise (no class files)
+%             cannot write a cruise's own review.
 %   Root      folder of cruise folders (default \\sosiknas1\Lab_data\Attune\cruise_data\)
 % Options kept in a struct s can be passed as c = namedargs2cell(s); process_cruise(cruise, c{:})
 %
@@ -329,6 +332,12 @@ else
 end
 % classification review: frame and QC per file in the loop, viewer after it
 do_review = opts.review; revdir = fullfile(p.outpath, 'review'); R = []; Q = cell(n, 1);
+% the review must always match the class files: classifying without updating an
+% existing review would leave its frames showing other classes
+if ~do_review && exist(fullfile(revdir, 'review_qc.mat'), 'file')
+    error('process_cruise:reviewOutOfSync', ['%s has a classification review; classifying with Review=false ' ...
+        'would leave it out of sync with the new class files. Run with Review=true.'], revdir);
+end
 % SYBR (hbac) preserved runs: own panels and QC, on their own page review\hbac\
 revdir_h = fullfile(revdir, 'hbac'); Rh = []; Qh = cell(n, 1);
 if do_review
