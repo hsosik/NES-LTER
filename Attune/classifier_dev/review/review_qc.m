@@ -21,7 +21,15 @@ for t = 1:3, q.(sprintf('syn_type%d', t)) = sum(synb & st == t); end
 q.syn_untyped = sum(synb & st == 9);
 q.syn_untyped_share = q.syn_untyped / max(1, sum(synb));
 q.n_catchall = fieldor(info, 'n_catchall', NaN);
-q.catchall_share = q.n_catchall / max(1, q.n1);
+% catch-all additions by class (info.catchall_classes: classes 1 2 3 4 5 7 8). Shares
+% are of the class's final count; the total is mostly Syn in Syn-rich files, so it
+% is not divided by the Euk count
+cc = nan(1, 7); if isfield(info, 'catchall_classes') && numel(info.catchall_classes) == 7, cc = double(info.catchall_classes(:)'); end
+if q.n_catchall == 0, cc = zeros(1, 7); end
+q.n_catchall_euk = cc(1);
+q.n_catchall_syn = cc(2);
+q.catchall_euk_share = q.n_catchall_euk / max(1, q.n1);
+q.catchall_syn_share = q.n_catchall_syn / max(1, q.n2);
 q.euk_chl_gap = finite_or_nan(fieldor(info, 'euk_chl_gap', NaN));
 q.syn_PE_gap = finite_or_nan(fieldor(info, 'syn_PE_gap', NaN));
 q.syn_PE_floor = finite_or_nan(fieldor(info, 'syn_PE_floor', NaN));
