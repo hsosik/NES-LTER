@@ -137,6 +137,18 @@ const METRICS_PH = [
   { key: 'catch', label: 'catch-all Euk share of Euk', f: q => q.catchall_euk_share, floor: .04, abs: v => v > .25 },
   { key: 'catchsyn', label: 'catch-all Syn share of Syn', f: q => q.catchall_syn_share, floor: .04 },
   { key: 'untyped', label: 'untyped Syn share', f: q => q.syn_untyped_share, floor: .04, abs: v => v > .25 },
+  // cluster positions of the final classes (median, bead-relative log): a cluster that
+  // jumps away from its neighbours' position has likely taken a different population
+  // (blank on pages built before these were saved, or with too few events)
+  { key: 'synSize', label: 'Syn cluster size', f: q => q.syn_size, floor: .03 },
+  { key: 'synChl', label: 'Syn cluster chl', f: q => q.syn_chl, floor: .08 },
+  { key: 'synPE', label: 'Syn cluster PE', f: q => q.syn_pe, floor: .08 },
+  { key: 'synIqr', label: 'Syn cluster size spread (IQR)', f: q => q.syn_size_iqr, floor: .015 },
+  { key: 'eukSize', label: 'Euk cluster size', f: q => q.euk_size, floor: .06 },
+  { key: 'eukChl', label: 'Euk cluster chl', f: q => q.euk_chl, floor: .07 },
+  { key: 'crySize', label: 'crypto cluster size', f: q => q.cry_size, floor: .1 },
+  { key: 'cryChl', label: 'crypto cluster chl', f: q => q.cry_chl, floor: .12 },
+  { key: 'cryPE', label: 'crypto cluster PE', f: q => q.cry_pe, floor: .12 },
   { key: 'srPEchl', label: 'Syn ref PE:chl', f: q => q.syn_ref_PEchl, floor: .06 },
   { key: 'srGL', label: 'Syn ref GL2:GL3', f: q => q.syn_ref_GL2GL3, floor: .05 },
   { key: 'srBL3', label: 'Syn ref chl', f: q => q.syn_ref_BL3, floor: .06 },

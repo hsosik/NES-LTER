@@ -34,6 +34,13 @@ q.euk_chl_gap = finite_or_nan(fieldor(info, 'euk_chl_gap', NaN));
 q.syn_PE_gap = finite_or_nan(fieldor(info, 'syn_PE_gap', NaN));
 q.syn_PE_floor = finite_or_nan(fieldor(info, 'syn_PE_floor', NaN));
 q.syn_PE_noise = finite_or_nan(fieldor(info, 'syn_PE_noise', NaN));
+% cluster positions of the final classes (bead-relative log units): median size, chl
+% (BL3) and PE (GL2), and for Syn the size spread (IQR). The viewer compares them with
+% neighbouring files, so an abrupt shift of a cluster (a class taking a different
+% population) shows. NaN when the class has too few events for a stable median
+q = add_cluster(q, info, cls == 2, 'syn', 50, true);
+q = add_cluster(q, info, cls == 1, 'euk', 50, false);
+q = add_cluster(q, info, ismember(cls, [3 4]), 'cry', 20, false);
 sr = fieldor(info, 'syn_ref', struct());
 for f = {'size' 'BL3' 'PEchl' 'GL2GL3'}
     q.(['syn_ref_' f{1}]) = finite_or_nan(fieldor(sr, f{1}, NaN));
@@ -59,6 +66,17 @@ q.euk_min_size = fieldor(rl, 'euk_min_size', NaN);
 q.trig = fieldor(info, 'trigger_edges', struct());
 q.pro_AH_max = fieldor(info, 'pro_AH_max', NaN); % Pro wide-pulse cut (chl pulse-shape panel)
 if isfield(info, 'syn_type_edges'), q.syn_type_edges = info.syn_type_edges(:)'; else, q.syn_type_edges = [NaN NaN]; end
+end
+
+function q = add_cluster(q, info, m, nm, nmin, spread)
+v = nan(1, 4);
+if isfield(info, 'features') && sum(m) >= nmin
+    F = info.features;
+    v(1:3) = [median(F.size(m), 'omitnan') median(F.BL3(m), 'omitnan') median(F.GL2(m), 'omitnan')];
+    v(4) = iqr(F.size(m));
+end
+q.([nm '_size']) = v(1); q.([nm '_chl']) = v(2); q.([nm '_pe']) = v(3);
+if spread, q.([nm '_size_iqr']) = v(4); end
 end
 
 function v = fieldor(s, f, d)
