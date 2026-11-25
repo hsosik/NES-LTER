@@ -84,6 +84,10 @@ kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:3px; 
       <label style="margin-left:auto" title="Euk chl gap / Syn PE gap found, missing or moved compared with neighbouring files. Off: listed as notes only (on EN727 both gaps switch on and off between neighbouring files; Syn and Euk counts barely change, but the below-gap and Pro-tail flag counts follow the Euk gap)"><input id="gapflag" type="checkbox"> count gap changes (and below-gap / Pro-tail flags) as unusual</label>
       <span>flag at |z| &gt; <input id="zthr" type="number" value="4" min="1" max="20" step="0.5" style="width:60px"></span>
     </div>
+    <details id="mcount" style="font-size:12px;margin:2px 0 4px"><summary id="mcsum" title="choose which QC metrics can make a file unusual; unticked metrics are still listed, as notes"></summary>
+      <div id="mclist" style="display:flex;flex-wrap:wrap;gap:2px 14px;margin-top:4px"></div>
+      <div style="margin-top:4px"><button id="mcall">all</button> <button id="mcnone">none</button> <span class="mut">unticked metrics are listed as notes; * minor, counts only with "count gap changes" ticked; remembered for this cruise in this browser</span></div>
+    </details>
     <canvas id="ts2" height="90"></canvas>
   </section>
   <section class="card" id="frame"><svg id="fsvg"></svg><div id="legend"></div></section>
@@ -195,8 +199,12 @@ function stats() {
       if (m.abs && Number.isFinite(v) && m.abs(v)) q.why.push({ m, z: 9, txt: `${m.label} high: ${fmt(v)}` });
     });
   }
-  F.forEach(q => q.unusual = q.why.some(r => !r.minor || $('gapflag').checked));
+  F.forEach(q => q.unusual = q.why.some(counts));
 }
+// which reasons make a file unusual: the metric is ticked under "metrics that count",
+// and gap changes / minor metrics only when "count gap changes" is ticked
+const OFF = new Set();
+const counts = r => !OFF.has(r.m.key) && (!r.minor || $('gapflag').checked);
 
 // ---------- state ----------
 let cur = 0;
@@ -395,7 +403,7 @@ function side() {
     h += `<tr><td><span class="sw" style="background:${k ? rgb(colOf(k)) : rgb(R.col0)}"></span>${nameOf(k)}</td>` + (f.old_n1 !== undefined ? `<td>${old === undefined ? '' : fmt(old)}</td>` : '') + `<td>${fmt(f['n' + k])}</td></tr>`;
   }
   h += `</table><div class="mut">${fmt(f.n_events)} events; trigger ${f.trigger}${f.pro_measured ? '; Pro run' : ''}</div>`;
-  h += '<h3>Unusual</h3>' + (f.why.length ? f.why.map(r => `<div class="why"${r.minor ? ' style="color:var(--mut)"' : ''}>• ${r.minor ? 'note: ' : ''}${r.txt}</div>`).join('') : '<div class="mut">nothing beyond the thresholds</div>');
+  h += '<h3>Unusual</h3>' + (f.why.length ? f.why.map(r => `<div class="why"${counts(r) ? '' : ' style="color:var(--mut)"'}>• ${counts(r) ? '' : 'note: '}${r.txt}</div>`).join('') : '<div class="mut">nothing beyond the thresholds</div>');
   h += '<h3>QC</h3><table>';
   if (HB) {
     const hr = [['bacteria (HNA fraction)', `${fmt(f.n9)} (${fmt(f.hna_frac)})`], ['HNA / LNA split', `${f.hna_method || '–'}${f.hna_method === 'valley' ? ', dip ' + fmt(f.hna_dip) : ' (nominal)'}`],
@@ -421,7 +429,7 @@ function list() {
   const u = V.map(i => [F[i], i]).filter(([f]) => f.unusual);
   const which = V.length < N ? ` ${$('prosel').selectedOptions[0].textContent.replace(/ only.*/, '')}` : '';
   let h = `<h3 style="margin:0 0 4px;font-size:13px">Unusual files: ${u.length} of ${V.length}${which}</h3><table><tr><th>#</th><th>file</th><th>time</th><th style="text-align:left">review</th><th style="text-align:left">why</th></tr>`;
-  for (const [f, i] of u) h += `<tr data-i="${i}" class="${i === cur ? 'cur' : ''}"><td>${i + 1}</td><td style="text-align:left">${f.file}</td><td>${f.time.replace('T', ' ')}</td><td style="text-align:left">${pill(DEC[f.file])}</td><td style="text-align:left">${f.why.map(r => r.minor ? `<span class="mut">${r.txt}</span>` : r.txt).join('; ')}</td></tr>`;
+  for (const [f, i] of u) h += `<tr data-i="${i}" class="${i === cur ? 'cur' : ''}"><td>${i + 1}</td><td style="text-align:left">${f.file}</td><td>${f.time.replace('T', ' ')}</td><td style="text-align:left">${pill(DEC[f.file])}</td><td style="text-align:left">${f.why.map(r => counts(r) ? r.txt : `<span class="mut">${r.txt}</span>`).join('; ')}</td></tr>`;
   h += '</table>';
   // every file with a decision, in time order; decisions for files not in this build last
   const idx = Object.fromEntries(F.map((f, i) => [f.file, i]));
@@ -601,7 +609,7 @@ function review() {
     (d.build && d.build !== BUILD ? ` <span class="old">— decided on an older build (${esc(d.build)}; this one ${esc(BUILD)})</span>` : '') : 'not reviewed';
 }
 function badge() {
-  const f = F[cur], n = f.why.filter(r => !r.minor || $('gapflag').checked).length;
+  const f = F[cur], n = f.why.filter(counts).length;
   $('fbadge').innerHTML = (f.unusual ? `<span class="badge">${n} unusual</span>` : '<span class="badge ok">ok</span>') + ' ' + pill(DEC[f.file]);
 }
 function decisionsChanged() { review(); badge(); list(); drawStrips(); }
@@ -637,6 +645,21 @@ $('prosel').onchange = e => { lsSet(LSP, e.target.value); setView(e.target.value
 $('metric').onchange = drawStrips; $('xmode').onchange = drawStrips;
 $('gapflag').onchange = () => { stats(); list(); go(cur); };
 $('zthr').onchange = e => { zthr = +e.target.value || 4; stats(); list(); go(cur); };
+// metrics that count: one checkbox per metric on this page (a metric's gap-change notes
+// follow its box); the unticked set is kept per cruise in localStorage
+const LSM = 'attune-review:metrics-off:' + D.cruise;
+const MSHOWN = METRICS.filter(m => m.key !== 'agree' || hasOld);
+try { JSON.parse(lsGet(LSM, '[]')).forEach(k => OFF.add(k)); } catch (e) { }
+function mcSync() {
+  $('mclist').innerHTML = MSHOWN.map(m => `<label><input type="checkbox" data-k="${m.key}" ${OFF.has(m.key) ? '' : 'checked'}> ${m.label}${m.minor || m.gap ? ' *' : ''}</label>`).join('');
+  const off = MSHOWN.filter(m => OFF.has(m.key));
+  $('mcsum').textContent = `metrics that count as unusual: ${off.length ? (MSHOWN.length - off.length) + ' of ' + MSHOWN.length + ' (off: ' + off.map(m => m.label.replace(/ \(.*\)$/, '')).join(', ') + ')' : 'all ' + MSHOWN.length}`;
+}
+function mcApply() { lsSet(LSM, JSON.stringify([...OFF])); mcSync(); stats(); list(); go(cur); }
+$('mclist').onchange = e => { const k = e.target.dataset.k; if (!k) return; e.target.checked ? OFF.delete(k) : OFF.add(k); mcApply(); };
+$('mcall').onclick = () => { OFF.clear(); mcApply(); };
+$('mcnone').onclick = () => { MSHOWN.forEach(m => OFF.add(m.key)); mcApply(); };
+mcSync();
 document.addEventListener('keydown', e => {
   const tg = e.target.tagName;
   if (tg === 'TEXTAREA' || tg === 'SELECT' || tg === 'INPUT' && !['range', 'checkbox'].includes(e.target.type) || e.ctrlKey || e.metaKey || e.altKey) return;
