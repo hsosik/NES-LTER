@@ -163,6 +163,63 @@ end
 % GL2:GL3 below euk_chl.max_GL2GL3 are unassigned: the particles have low GL2:GL3, while
 % dim real Euks at the low-chl edge of a continuous cloud (EN655 C16N14, TN368 C80N23)
 % keep their cloud's GL2:GL3
+% dim cryptophytes named Syn: v2 names components by PE spectrum only (GL2:GL3 above
+% syn_min_GL2GL3 = Syn), and weak crypto PE reads near the Euks' chl spillover spectrum,
+% so a dim crypto cluster can be named Syn. The Syn check rejects it, and v2's re-check
+% then splits it event by event at PE:chl = Euk + euksyn_min_PEchl_above_euk (EN727
+% C20N02 CHL: one component, size 0.78, BL3 2.25, PE:chl -1.40, GL2:GL3 0.60; 177 to
+% class 5, 683 to Euk; user: dim crypto). A Syn-named component that the Syn check mostly
+% rejected becomes crypto (3) as a whole when it is much larger than Syn, its PE:chl is
+% between the clear Euks' and Syn's, and its chl:size is Euk-like (Nov 2026)
+info.n_crypto_from_syn = 0; info.crypto_from_syn = [];
+dc = cfg.sig.dimcrypto;
+if dc.on && isfield(info, 'gmm') && ~isempty(info.gmm) && isfield(info, 'comp') && istable(info.comp) ...
+        && all(isfield(info.trace, {'has_chl' 'after_gmm' 'after_syncheck'})) && isfield(info.trigger_edges, 'BL3') && sum(class == 2) >= 20
+    F = info.features; mu = info.comp;
+    core = class == 1 & F.BL3 > info.trigger_edges.BL3 + cfg.sig.euk_chl.core_above_edge & isfinite(F.chlSSC);
+    if sum(core) >= cfg.sig.euk_chl.core_min_n
+        pc = median(F.PEchl(core)); cc = median(F.chlSSC(core));
+        syn_size = median(F.size(class == 2)); syn_pe = median(F.PEchl(class == 2));
+        hc = info.trace.has_chl; ci = zeros(size(class));
+        ci(hc) = cluster(info.gmm, [F.size(hc) F.BL3(hc) F.PEchl(hc) F.GL2GL3(hc)]);
+        rej = info.trace.after_gmm == 2 & info.trace.after_syncheck == 0;
+        nr = accumarray(ci(hc), rej(hc), [height(mu) 1]); nn = accumarray(ci(hc), 1, [height(mu) 1]);
+        % a tight cluster, not a broad catch-all component: spread of the rejected events in
+        % size and PE:chl (EN727 C20N02 0.18 / 0.16; catch-alls that also passed the other
+        % tests, AR61B pro_C32N10, MV337N04, TN368 C02N12, EN687 C05N08: 0.53-0.79)
+        sdS = zeros(height(mu), 1); sdP = sdS; hr = hc & rej;
+        if any(hr)
+            sdS = accumarray(ci(hr), F.size(hr), [height(mu) 1], @std, Inf); sdP = accumarray(ci(hr), F.PEchl(hr), [height(mu) 1], @std, Inf);
+        end
+        k = find(mu.label == 2 & nr >= dc.min_n & nr >= dc.min_rejected_frac * nn & mu.SSC > syn_size + dc.size_above_syn ...
+            & mu.PEchl > pc + dc.PEchl_above_euk & mu.PEchl < syn_pe - dc.PEchl_below_syn & mu.chlSSC > cc - dc.chlSSC_below_euk ...
+            & sdS < dc.max_sd_size & sdP < dc.max_sd_PEchl);
+        if ~isempty(k)
+            m = ismember(ci, k) & rej & ismember(class, [1 5]);
+            class(m) = 3; info.n_crypto_from_syn = sum(m); info.crypto_from_syn = k(:)';
+        end
+    end
+end
+% crypto in a crypto-named component dropped by v2's event-level PE test: PE must be
+% peeuk_spill_sd robust SDs above the large Euks' PE:chl-vs-chl trend, and a second,
+% mid-PE:chl Euk group widens that SD (EN649 C21N18 CHL, 3 m: spill SD 0.38; a clean
+% crypto component, 61 events, 53 hand PE euk, GL2:GL3 -0.20, PE:chl -0.71, sat ~2.3 SD
+% above the trend; 52 went to 0 and the catch-all put 46 back as Euk). Events v2 had
+% as crypto before that test keep it when their spectrum is crypto-type, they are
+% clearly larger than Syn and their PE:chl is well above the clear Euks' (Nov 2026)
+info.n_crypto_kept = 0;
+ck = cfg.sig.cryptokeep;
+if ck.on && all(isfield(info.trace, {'after_pro_pe'})) && isfield(info.trigger_edges, 'BL3') && sum(class == 2) >= 20
+    F = info.features;
+    core = class == 1 & F.BL3 > info.trigger_edges.BL3 + cfg.sig.euk_chl.core_above_edge & isfinite(F.chlSSC);
+    if sum(core) >= cfg.sig.euk_chl.core_min_n
+        syn_size = median(F.size(class == 2));
+        m = info.trace.after_pro_pe == 3 & ~ismember(class, [3 4 5]) & F.GL2GL3 < cfg.sig.peeuk_max_GL2GL3 ...
+            & F.size > syn_size + cfg.sig.peeuk_size_above_syn & F.PEchl > median(F.PEchl(core)) + ck.PEchl_above_euk ...
+            & F.chlSSC > cfg.sig.detritus_max_chlSSC;
+        class(m) = 3; info.n_crypto_kept = sum(m);
+    end
+end
 info.euk_chl_cut = NaN; info.n_euk_lowchl = 0; info.n_euk_dim = 0; info.n_euk_highpe = 0; info.euk_ridge = NaN(1, 3);
 if isfield(cfg.sig, 'euk_chl') && cfg.sig.euk_chl.on && isfield(info.trigger_edges, 'BL3')
     F = info.features;

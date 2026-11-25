@@ -75,6 +75,8 @@ cfg.sig.euk_chl.ridge_k = 3.5;         %... by this many of their robust SDs ...
 cfg.sig.euk_chl.ridge_min_sd = 0.1;    %... the SD at least this
 cfg.sig.euk_chl.pe_edge_win = 1.0;     %also unassign Euks within this of the BL3 trigger edge ...
 cfg.sig.euk_chl.pe_above_core = 0.8;   %... with PE:chl this far above the clear Euks' median
+cfg.sig.cryptokeep = struct('on', true, 'PEchl_above_euk', 0.5);  %events v2 had as crypto before its event-level PE test keep it with a crypto spectrum, size > Syn + peeuk_size_above_syn and PE:chl this far above the clear Euks (assign_class_discrete; EN649 C21N18)
+cfg.sig.dimcrypto = struct('on', true, 'min_n', 100, 'min_rejected_frac', 0.8, 'size_above_syn', 1.0, 'PEchl_above_euk', 0.5, 'PEchl_below_syn', 0.5, 'chlSSC_below_euk', 0.4, 'max_sd_size', 0.35, 'max_sd_PEchl', 0.35);  %Syn-named components the Syn check rejected that are dim crypto (assign_class_discrete; EN727 C20N02)
 cfg.sig.euk_restore_margin = 0.5;  %v2 Pro-like small Euks back to Euk where the Pro-vs-Euk score (lp_lda) is below -this (Euk side, with a margin)
 % Pro runs (assign_class_discrete pro_component_swap): Pro as large as Syn named Euk,
 % dimmer groups (trigger floor, faint smear) named Pro (EN655 C15N09)
