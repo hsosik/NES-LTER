@@ -146,9 +146,12 @@ const METRICS_PH = [
   { key: 'synIqr', label: 'Syn cluster size spread (IQR)', f: q => q.syn_size_iqr, floor: .015 },
   { key: 'eukSize', label: 'Euk cluster size', f: q => q.euk_size, floor: .06 },
   { key: 'eukChl', label: 'Euk cluster chl', f: q => q.euk_chl, floor: .07 },
-  { key: 'crySize', label: 'crypto cluster size', f: q => q.cry_size, floor: .1 },
-  { key: 'cryChl', label: 'crypto cluster chl', f: q => q.cry_chl, floor: .12 },
-  { key: 'cryPE', label: 'crypto cluster PE', f: q => q.cry_pe, floor: .12 },
+  { key: 'dcrySize', label: 'dim crypto cluster size', f: q => q.dcry_size, floor: .1 },
+  { key: 'dcryChl', label: 'dim crypto cluster chl', f: q => q.dcry_chl, floor: .12 },
+  { key: 'dcryPE', label: 'dim crypto cluster PE', f: q => q.dcry_pe, floor: .12 },
+  { key: 'bcrySize', label: 'bright crypto cluster size', f: q => q.bcry_size, floor: .1 },
+  { key: 'bcryChl', label: 'bright crypto cluster chl', f: q => q.bcry_chl, floor: .12 },
+  { key: 'bcryPE', label: 'bright crypto cluster PE', f: q => q.bcry_pe, floor: .12 },
   { key: 'srPEchl', label: 'Syn ref PE:chl', f: q => q.syn_ref_PEchl, floor: .06 },
   { key: 'srGL', label: 'Syn ref GL2:GL3', f: q => q.syn_ref_GL2GL3, floor: .05 },
   { key: 'srBL3', label: 'Syn ref chl', f: q => q.syn_ref_BL3, floor: .06 },
@@ -180,12 +183,18 @@ const METRICS = HB ? METRICS_HB : METRICS_PH;
 const HALF = 10;
 let zthr = 4;
 const median = a => { const s = [...a].sort((x, y) => x - y), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+// neighbours only within NB_HOURS: across a longer gap (e.g. Pro-setting runs a day
+// apart) the water has changed, and a file with fewer than 4 neighbours in range gets
+// no z-score
+const NB_HOURS = 6;
+const TMS = F.map(f => Date.parse(f.time));
 function neighbours(i) {
-  // up to HALF files on each side with the same Pro setting, excluding i
-  const out = [], pm = F[i].pro_measured;
-  for (let j = i - 1; j >= 0 && out.length < HALF; j--) if (F[j].pro_measured === pm) out.push(j);
+  // up to HALF files on each side with the same Pro setting, within NB_HOURS, excluding i
+  const out = [], pm = F[i].pro_measured, lim = NB_HOURS * 3600e3;
+  const near = j => !(Math.abs(TMS[j] - TMS[i]) > lim); // keep when a time is missing
+  for (let j = i - 1; j >= 0 && out.length < HALF && near(j); j--) if (F[j].pro_measured === pm) out.push(j);
   const n1 = out.length;
-  for (let j = i + 1; j < N && out.length < n1 + HALF; j++) if (F[j].pro_measured === pm) out.push(j);
+  for (let j = i + 1; j < N && out.length < n1 + HALF && near(j); j++) if (F[j].pro_measured === pm) out.push(j);
   return out;
 }
 const NB = F.map((_, i) => neighbours(i));

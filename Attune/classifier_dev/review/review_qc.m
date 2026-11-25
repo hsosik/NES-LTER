@@ -40,7 +40,10 @@ q.syn_PE_noise = finite_or_nan(fieldor(info, 'syn_PE_noise', NaN));
 % population) shows. NaN when the class has too few events for a stable median
 q = add_cluster(q, info, cls == 2, 'syn', 50, true);
 q = add_cluster(q, info, cls == 1, 'euk', 50, false);
-q = add_cluster(q, info, ismember(cls, [3 4]), 'cry', 20, false);
+% dim and bright crypto apart: they sit ~1.5 log apart in PE, so a median over both
+% jumps with the dim:bright mix
+q = add_cluster(q, info, cls == 3, 'dcry', 20, false);
+q = add_cluster(q, info, cls == 4, 'bcry', 20, false);
 sr = fieldor(info, 'syn_ref', struct());
 for f = {'size' 'BL3' 'PEchl' 'GL2GL3'}
     q.(['syn_ref_' f{1}]) = finite_or_nan(fieldor(sr, f{1}, NaN));
