@@ -25,10 +25,10 @@ pn = {fcshdr.par.name};
 eb = [NaN NaN];
 if sum(new == 1) >= 50, eb = robustfit(F.size(new == 1), F.BL3(new == 1))'; end
 F.dEuk = F.BL3 - (eb(1) + eb(2) * F.size);
-old(~ismember(old, [0 1 2 3 4 5 7 8])) = 0;
-codes = [1 2 3 4 5 7 8];
-names = {'Euk' 'Syn' 'dim crypto' 'bright crypto' 'Euk with Syn' 'Pro' 'Syn on particle'};
-cols = [0 .6 0; 1 .55 0; 0 .75 .9; .95 0 .75; .45 .1 .75; 0 .35 1; .85 0 0]; %Euk green, Syn orange, dim crypto cyan, bright crypto magenta, Euk with Syn purple, Pro blue, Syn-on-particle red
+old(~ismember(old, [0 1 2 3 4 5 7 8 10])) = 0;
+codes = [1 2 3 4 5 7 8 10];
+names = {'Euk' 'Syn' 'dim crypto' 'bright crypto' 'Euk with Syn' 'Pro' 'Syn on particle' 'low-chl Euk-like'};
+cols = [0 .6 0; 1 .55 0; 0 .75 .9; .95 0 .75; .45 .1 .75; 0 .35 1; .85 0 0; .6 .75 .1]; %Euk green, Syn orange, dim crypto cyan, bright crypto magenta, Euk with Syn purple, Pro blue, Syn-on-particle red, low-chl Euk-like (class 10) olive
 % rare classes are drawn last, larger, opaque and outlined so they stand out
 % over the abundant ones; unassigned events are drawn in mid grey beneath
 rare = ismember(codes, [3 4 5 8]);

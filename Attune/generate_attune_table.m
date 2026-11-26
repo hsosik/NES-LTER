@@ -44,8 +44,8 @@ Scatter_hv = NaN(length(filelist), 1);
 % classes and per-event codes added with assign_class_v2 (Nov 2026):
 % count, biovolume, carbon of single classes; Syn-type and flag counts
 % (NaN for class files without syn_type / flag, i.e. older classifiers)
-newclass = [3 4 5];
-newclassnames = {'Crypto_dimX' 'Crypto_brightX' 'Euk_with_SynX'};
+newclass = [3 4 5 10];
+newclassnames = {'Crypto_dimX' 'Crypto_brightX' 'Euk_with_SynX' 'Euk_like_low_chlX'}; %10: low-chl Euk-like cells, identity uncertain (not in the Euk columns)
 NewCount = NaN(length(filelist), numel(newclass));
 NewBiovol = NewCount; NewCarbon = NewCount;
 SynPart_count = NaN(length(filelist), 1); %class 8: Syn on particle, count only (not Syn size or carbon)
@@ -193,13 +193,16 @@ if ismember('pro_measured', Attune.FCSfileinfo.Properties.VariableNames)
     pm(isnan(pm)) = fpm(isnan(pm));
 end
 if any(~isnan(pm))
-    % Pro not measured: Pro columns empty, and the Pro-like events (flag 4) give a
-    % lower bound; in Pro-setting files the lower bound is empty (Nov 2026)
+    % Pro not measured: Pro columns empty, and the lower bound is the Pro above the chl
+    % trigger that v2 calls class 7 there (assign_class_v2, pro_in_euk_runs) plus the
+    % remaining Pro-like events (flag 4); in Pro-setting files the lower bound is empty
+    % (Nov 2026)
     nopro = pm == 0;
+    pro_eukrun = AttuneTable.Pro_count; pro_eukrun(isnan(pro_eukrun)) = 0;
     AttuneTable.Pro_count(nopro) = NaN;
     AttuneTable.Pro_biovolume(nopro) = NaN;
     AttuneTable.Pro_carbon(nopro) = NaN;
-    AttuneTable.Pro_lower_bound_count = FlagCount(:, 4);
+    AttuneTable.Pro_lower_bound_count = FlagCount(:, 4) + pro_eukrun;
     AttuneTable.Pro_lower_bound_count(~nopro) = NaN;
     AttuneTable.Pro_measured = pm;
 else
@@ -243,8 +246,8 @@ else
     table_metadata = {notes(2); classpath; string(datetime())};
     if numel(notes) >= 5 %assign_class_v2 class files: class, syn_type and flag code descriptions
         table_metadata = [table_metadata; {notes(1); notes(4); notes(5); ...
-            'Crypto_dim/Crypto_bright = classes 3/4 (together = Euk_w_PE); Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Syn type counts by class; flags are class 0 events'; ...
-            'Pro_count/biovolume/carbon NaN in files run without Pro settings; Pro_lower_bound_count = Pro-like events (flag 4) there, NaN in Pro-setting files; Pro_near_trigger_fraction = share of Pro within 0.1 log of the SSC or chl trigger edge (Pro-setting files)'; ...
+            'Crypto_dim/Crypto_bright = classes 3/4 (together = Euk_w_PE); Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Euk_like_low_chl = class 10 (low-chl Euk-like cells, identity uncertain; not in the Euk columns); Syn type counts by class; flags are class 0 events'; ...
+            'Pro_count/biovolume/carbon NaN in files run without Pro settings; Pro_lower_bound_count = class 7 (Pro above the chl trigger) plus Pro-like events (flag 4) there, NaN in Pro-setting files; Pro_near_trigger_fraction = share of Pro within 0.1 log of the SSC or chl trigger edge (Pro-setting files)'; ...
             'Review_exclude = 1: file marked exclude in the class review (review_decisions.csv); rows kept here, left out of the EDI tables'}];
     end
 end

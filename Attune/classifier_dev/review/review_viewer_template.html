@@ -129,6 +129,7 @@ const METRICS_PH = [
   { key: 'cry', label: 'crypto dim+bright (log)', f: q => lg(q.n3 + q.n4), floor: .25 },
   { key: 'es', label: 'Euk with Syn (log)', f: q => lg(q.n5), floor: .35 },
   { key: 'sp', label: 'Syn on particle (log)', f: q => lg(q.n8), floor: .35 },
+  { key: 'c10', label: 'low-chl Euk-like (log)', f: q => q.n10 === undefined ? NaN : lg(q.n10), floor: .35 }, // class 10 (blank on pages built before it existed)
   { key: 'un', label: 'unassigned (log)', f: q => lg(q.n0), floor: .12 },
   { key: 'flag1', label: 'flag: Syn-pigment particle (log)', f: q => lg(q.flag1), floor: .3 },
   { key: 'flag2', label: 'flag: below Euk chl gap (log)', f: q => lg(q.flag2), floor: .3, minor: true }, // follows the Euk chl gap on/off

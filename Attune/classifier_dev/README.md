@@ -874,3 +874,30 @@ Investigation in `output/syn_type_d` (scans of 1,000 underway files each from AR
 - **Caveats.**
   - About 10% of summer type A (dim and close to the first edge) is still counted as B.
   - In preserved runs the edges assume one shift, 0.06, for all cruises (observed +0.04 to +0.10 per cruise).
+
+### Trigger pile vs cells; Pro in runs without Pro settings; class 10 (26 Nov 2026)
+
+Found while following an AR77 low-chl Euk branch (shared notes: `ar77_dim_euk.md`) and the AE2426 alternating Euk/Pro runs.
+
+- **Telling the trigger-noise pile from cells** (`edge_pop_is_pile`). In about 500 underway files from every cruise:
+  - the pre-2019 pile has chl pulses 0.24–0.33 (log10 A/H) shorter than the pulse reference, a chl spread (robust SD) of 0.02–0.03, 90–95% of events within 0.1 of the chl edge, and no size–chl relation;
+  - every cell population near the edge (Syn, Pro, small Euks, the AR77 branch, flag 4 and 5 groups after 2019) has pulses like the reference, a chl spread of 0.07–0.4, and chl rising with size.
+  - A population is the pile when its median pulse is more than `pile_AH_below_ref` (0.15) below the reference. Without a pulse-width column it is the pile when its chl spread is below 0.06, more than 70% of it lies within 0.1 of the edge, and |rho(size, chl)| is below 0.2.
+- **Pro in runs without Pro settings** (`pro_in_euk_runs`).
+  - The chl trigger cuts the Pro cluster, and the part above it was left unassigned. In AE2426 08Nov Euk runs it sat below the Euk chl gap (flag 2); about 30% of the neighbouring Pro runs' Pro lie above the Euk run's edge.
+  - Unassigned no-PE events at or above the chl edge become class 7 when they are cells. Their size runs from Syn − 1.1 to Syn + 0.25 and their chl:size is below 1.4. If they are the pile they stay unassigned, with flag 3. `info.pro_lower_bound` is set and `class_meta.pro_lower_bound` saves it.
+  - Euks are not taken. In summer cruises the small Euks are one cluster reaching Syn size, and fixed limits only sliced it: a first version took 10–45% of the Euks in TN368, EN655, EN668, EN685 and EN687.
+  - **AE2426 8–10 Nov, 460 Euk runs:** Euk-run Pro divided by the neighbouring Pro runs' Pro above the Euk-run edge has a median of 0.99. Euk + Pro divided by the Pro runs' Euk + Pro is 0.96–1.03 (10–90%), and Euk is unchanged.
+  - **Underway survey (508 files):** Pro appears in 207 of 444 files without Pro settings, about 193,000 events, all previously unassigned. AR39B (94,600) and EN657 (23,600) gain most. EN657's old classes called many of these Euk.
+  - Pre-2019 files where the pile dominates (`edge_pile_capped`) get no Pro.
+- **Class 10, low-chl Euk-like cells** (`dim_euk_class`, identity uncertain).
+  - **The AR77 branch (11–13 Oct):** a compact no-PE group 0.35–0.6 above Syn in size, at chl:size about 0.6 against about 1.4 for bright Euks, with narrow chl pulses like Syn's. It is 40–80% of the Euk-like events while present, and almost absent from the matching preserved sample.
+  - **The flipping it fixes:** the Euk chl:size cut's pile gate called the branch Euk in one file and unassigned (flag 5) in the next.
+  - **The rule:** fixed limits relative to Syn, so the count follows the cells rather than what else is in the file. No PE, size Syn + 0.25 to Syn + 1.0, chl:size between the detritus cut and `dim_euk_max_chlSSC` (0.8), at least 200 of them, and cells rather than the pile.
+  - **Alternatives tried:**
+    - a limit of 1.0 also took 10–30% of summer Euks, whose small-Euk cluster peaks at chl:size 1.0–1.4;
+    - a test for a separate low mode made the AR77 count flip with the branch's shape (33 jumps over 3× in 65 files).
+  - **AR77, 65 files:** Euk jumps over 3× fall from 8 to 4; class 10 jumps 11 times, against 6 for the same events counted regardless of class. Summer cruises lose 2–8% of Euks to class 10.
+- **Downstream:** class 10 is in `generate_attune_table` (Euk_like_low_chl count, biovolume and carbon; not in the Euk columns), `process_cruise` (codes and the class log), the review config, QC and viewer, and `plot_class_cytograms`. Pro_lower_bound_count in files without Pro settings is class 7 + flag 4.
+- **Preserved runs:** `discrete_config` turns both switches off. The discrete wrapper assigns Pro in CHL runs itself, and class 10 is not yet tested against the hand gates.
+- **Class files written before this change** (e.g. AR77, classified 25 Nov) are out of step with v2 until classified again with `process_cruise`.

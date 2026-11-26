@@ -10,9 +10,10 @@ function q = review_qc(cls, info, old)
 cls = double(cls(:));
 q = struct();
 q.n_events = numel(cls);
-for k = [0 1 2 3 4 5 7 8]
+for k = [0 1 2 3 4 5 7 8 10]
     q.(sprintf('n%d', k)) = sum(cls == k);
 end
+q.pro_lower_bound = double(fieldor(info, 'pro_lower_bound', false)); % class 7 in a file without Pro settings: a lower bound
 fl = zeros(size(cls)); if isfield(info, 'flag'), fl = double(info.flag(:)); end
 for t = 1:5, q.(sprintf('flag%d', t)) = sum(fl == t); end % see review_config flag_names
 st = zeros(size(cls)); if isfield(info, 'syn_type'), st = double(info.syn_type(:)); end
@@ -63,9 +64,9 @@ q.crypto_n = fieldor(cs, 'n', 0);
 q.crypto_split_accepted = double(fieldor(cs, 'accepted', false));
 q.agreement = NaN;
 if ~isempty(old)
-    o = double(old(:)); o(~ismember(o, [0 1 2 3 4 5 7 8])) = 0;
+    o = double(old(:)); o(~ismember(o, [0 1 2 3 4 5 7 8 10])) = 0;
     q.agreement = sum(o == cls & o ~= 0) / max(1, sum(o ~= 0 | cls ~= 0));
-    for k = [0 1 2 3 4 5 7 8]
+    for k = [0 1 2 3 4 5 7 8 10]
         q.(sprintf('old_n%d', k)) = sum(o == k);
     end
 end

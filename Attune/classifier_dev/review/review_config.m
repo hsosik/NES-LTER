@@ -40,9 +40,9 @@ R.format = 'png'; % 'png' (indexed colour) or 'jpg'
 R.ncolors = 128; % colours in an indexed PNG
 
 % classes: code, name, colour; abundant ones drawn as density, rare ones as points
-R.codes = [1 2 3 4 5 7 8];
-R.names = {'Euk' 'Syn' 'dim crypto' 'bright crypto' 'Euk with Syn' 'Pro' 'Syn on particle'};
-R.cols = [0 .6 0; 1 .55 0; 0 .75 .9; .95 0 .75; .45 .1 .75; 0 .35 1; .85 0 0];
+R.codes = [1 2 3 4 5 7 8 10];
+R.names = {'Euk' 'Syn' 'dim crypto' 'bright crypto' 'Euk with Syn' 'Pro' 'Syn on particle' 'low-chl Euk-like'};
+R.cols = [0 .6 0; 1 .55 0; 0 .75 .9; .95 0 .75; .45 .1 .75; 0 .35 1; .85 0 0; .6 .75 .1];
 R.rare = [3 4 5 8];
 R.col0 = [.45 .45 .45];                          % unassigned
 R.rare_rad = 1;          % rare-class points: (2*rad+1)^2 pixel squares

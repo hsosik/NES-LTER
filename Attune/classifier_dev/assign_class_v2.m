@@ -935,6 +935,64 @@ if sig.euksyn_min_syn_PE_prc > 0 && sum(class == 2) >= 50
     weak = class == 5 & F.GL2 < info.euksyn_min_GL2;
     class(weak) = 1; info.n_euksyn_weak = sum(weak);
 end
+% Pro in runs without Pro settings (Nov 2026): their chl trigger cuts the Pro cluster,
+% and the part above it was left unassigned, by the Euk chl gap (flag 2: AE2426
+% 08Nov alternating Euk runs, ~30% of the neighbouring Pro runs' Pro lie above the Euk
+% run's edge) or as Pro-like (flag 4). Candidates are those unassigned events (Euks
+% are not taken: in summer files the small Euks are one cluster reaching Syn size,
+% which fixed limits would only slice): no PE, at or above the chl edge, size from
+% Syn - pro_eukrun_size_below to Syn + pro_eukrun_size_above, chl:size between the
+% detritus cut and pro_eukrun_max_chlSSC, pulse no wider than the Pro limit, not
+% the capped trigger pile. As a population they are either the trigger-noise pile
+% (edge_pop_is_pile: short chl pulses, or chl collapsed on the edge; flag 3) or
+% cells: class 7, with info.pro_lower_bound set since the trigger cuts the cluster.
+% Single events with very short pulses (pile_AH_below_ref_event below the reference)
+% stay unassigned (flag 3). AE2426 8-10 Nov, 460 Euk runs: Euk-run Pro / the
+% neighbouring Pro runs' Pro above the Euk-run edge, median 0.99; Euk unchanged
+info.pro_eukrun = struct('n_cand', 0, 'pile', false, 'n_pro', 0, 'stats', {[]});
+info.pro_lower_bound = false;
+pro_eukrun_pile = false(n, 1);
+if ~pro_measured && sig.pro_in_euk_runs && isfield(edge, 'BL3') && any(class == 2) && ~info.edge_pile_capped
+    pe_c = class == 0 & ~has_pe & F.BL3 >= edge.BL3 & F.size <= syn_size + sig.pro_eukrun_size_above & ...
+        F.size >= syn_size - sig.pro_eukrun_size_below & F.chlSSC > sig.detritus_max_chlSSC & F.chlSSC < sig.pro_eukrun_max_chlSSC & ...
+        ~info.trace.wide_pulse & ~pile_ev;
+    if isfield(info.trace, 'euksyn_lowchl'), pe_c = pe_c & ~info.trace.euksyn_lowchl; end
+    info.pro_eukrun.n_cand = sum(pe_c);
+    if sum(pe_c) >= sig.pro_eukrun_min_n
+        [isp, st] = edge_pop_is_pile(F, pe_c, edge.BL3, info.pulse_ref_AH, sig);
+        info.pro_eukrun.pile = isp; info.pro_eukrun.stats = st;
+        if isp
+            pro_eukrun_pile = pe_c;
+        else
+            narrow = pe_c & F.BL3_AH < info.pulse_ref_AH - sig.pile_AH_below_ref_event; %false where the reference is NaN
+            class(pe_c & ~narrow) = 7; pro_eukrun_pile = narrow;
+            info.pro_eukrun.n_pro = sum(pe_c & ~narrow);
+            info.pro_lower_bound = true;
+        end
+    end
+end
+% class 10, small Euk-like cells with low chl for their size (Nov 2026; identity
+% uncertain). AR77 11-13 Oct: a compact no-PE branch 0.35-0.6 above Syn in size at
+% chl:size ~0.6 (bright Euks ~1.4), narrow chl pulses like Syn, 40-80% of the Euk-like
+% events while present, almost absent from the matching preserved sample. The Euk
+% chl:size cut's pile gate called it Euk in one file and unassigned (flag 5) in the
+% next. Fixed limits relative to Syn, so the count follows the cells, not what else
+% is in the file: no PE, size Syn + dim_euk_size_above(1) to (2), chl:size between the
+% detritus cut and dim_euk_max_chlSSC; at least dim_euk_min_n of them, and cells, not
+% the trigger pile. (A limit of 1.0 also took 10-30% of the Euks in summer cruises,
+% whose small Euks are one cluster peaking at chl:size 1.0-1.4; 0.8 takes 2-8%. A
+% test for a separate low mode instead made the AR77 count flip with the branch's
+% shape: 33 jumps over 3x in 65 files, against 6 counting the same events by box.)
+info.dim_euk = struct('n', 0, 'pile', false, 'stats', {[]});
+if sig.dim_euk_class && isfield(edge, 'BL3') && any(class == 2)
+    dc = class == 1 & ~has_pe & F.size >= syn_size + sig.dim_euk_size_above(1) & F.size <= syn_size + sig.dim_euk_size_above(2) & ...
+        F.chlSSC > sig.detritus_max_chlSSC & F.chlSSC < sig.dim_euk_max_chlSSC;
+    if sum(dc) >= sig.dim_euk_min_n
+        [isp, st] = edge_pop_is_pile(F, dc, edge.BL3, info.pulse_ref_AH, sig);
+        info.dim_euk.pile = isp; info.dim_euk.stats = st;
+        if ~isp, class(dc) = 10; info.dim_euk.n = sum(dc); end
+    end
+end
 % per-file Euk chl:size cut (Nov 2026; from assign_class_discrete, where preserved runs
 % get it after their own Pro steps, so discrete_config turns this copy off). Faint
 % Syn-sized particles near the chl trigger, with low chl for their size and PE:chl
@@ -1078,6 +1136,7 @@ if ~pro_measured
     fl(class == 0 & fl == 0 & ~has_pe & at_chl & F.size <= syn_size & F.SSC > finfo.floor.SSC + 0.1) = 4;
 end
 fl(class == 0 & fl == 0 & euk_chl_low) = 5;
+fl(class == 0 & pro_eukrun_pile) = 3; %trigger pile found by the Pro-in-Euk-run test
 % split-Syn parts are not classified (nothing should reach them; kept explicit). Flag 6: green
 % part merged into the preceding event (not counted; the merged event is classified as usual);
 % 7: unpaired green part with a Syn-type spectrum (GL2:GL3 above syn_min_GL2GL3, PE no brighter
@@ -1182,4 +1241,24 @@ function ok = pile_near_edge(f, g, e, max_above)
 % within max_above of the chl trigger edge e
 [~, i] = max(f);
 ok = g(i) <= e + max_above;
+end
+
+function [isp, st] = edge_pop_is_pile(F, m, e, ref, sig)
+% is the population m (events near the chl trigger edge e) the trigger-noise pile?
+% The pile (pre-2019 capped files: 90-95% within 0.1 of the edge) has chl pulses
+% 0.24-0.33 (log10 A/H) shorter than the pulse reference, chl spread (robust SD)
+% 0.02-0.03 and no size-chl relation; cell clusters near the edge (Syn, Pro, small
+% Euks, the AR77 branch, flag 4/5 groups after 2019) have pulses like the reference,
+% chl spread 0.07-0.4 and chl rising with size. Pile: median log A/H more than
+% pile_AH_below_ref below the reference; without pulse width (no BL3-A column),
+% chl SD below pile_max_sd_chl, more than pile_min_frac_edge within 0.1 of the edge,
+% and |Spearman rho(size, chl)| below pile_max_rho
+x = F.BL3(m); st = struct('n', sum(m), 'dAH', NaN, 'sd_chl', 1.4826 * mad(x, 1), 'f01', mean(x - e < 0.1), 'rho', NaN);
+if isfinite(ref) && any(isfinite(F.BL3_AH(m))), st.dAH = median(F.BL3_AH(m), 'omitnan') - ref; end
+if sum(m) >= 10, st.rho = corr(F.size(m), x, 'Type', 'Spearman'); end
+if isfinite(st.dAH)
+    isp = st.dAH < -sig.pile_AH_below_ref;
+else
+    isp = st.sd_chl < sig.pile_max_sd_chl && st.f01 > sig.pile_min_frac_edge && abs(st.rho) < sig.pile_max_rho;
+end
 end
