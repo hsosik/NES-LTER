@@ -3,7 +3,7 @@
 The underway Attune NxT (serial 2AFC216190617; blue 488 nm, 50 mW and green 532 nm, 100 mW) has
 run on NES-LTER and partner cruises since January 2018. This page brings together what is recorded
 about how the instrument was set up and serviced, and how its data have been processed. Part 1 is a
-narrative history; Part 2 is a per-cruise reference table.
+narrative history; Part 2 is a per-cruise reference table; Part 3 lists every *Dunaliella* culture run.
 
 **Sources.**
 - Settings history sheet: `\\sosiknas1\lab_data\Attune\Attune_Settings_configuration_history_examplecopy_20221130.xlsx`. It ends in 2022.
@@ -307,3 +307,50 @@ See `classifier_dev/README.md`.
 logged as underway, and are not in the table:
 - AR32, 20190303_AL, HB1907, AR38 and SG2105 are preserved samples only.
 - The `FCSfileinfo` dates for SR1812 and DY131 are 2022 lab runs of preserved or thawed samples.
+
+---
+
+## Part 3. Dunaliella culture runs
+
+*Dunaliella* ("Dun") is the culture most often used to set up and check the instrument: settings choices,
+filter changes, coincidence tests, dilution series and size calibrations.
+
+**How the runs were found** (Nov 2026):
+- File names containing "dun" anywhere under `\\sosiknas1\lab_data\Attune`.
+- Sample and experiment names inside every `.atx` experiment archive. An `.atx` is a zip holding each sample's FCS file plus `experiment.xml` with the sample names.
+- The lab logs.
+
+**What counts as a run:**
+- Dates and times come from each FCS header (`$DATE`, `$BTIM`).
+- Copies of the same run in backups and re-saved workspaces are counted once.
+- The FCS files in the May 2026 size checks are gated exports (one file per gated population).
+- Settings are the FCS header voltages, FSC / SSC / GL1 / BL3. GL1 is the PE channel before Aug 2019 and green side scatter after.
+
+| Date | Experiment | Dun runs | hv FSC/SSC/GL1/BL3 | Purpose | Where |
+|---|---|---|---|---|---|
+| 2018-01-25 | Experiment | 2 (Dunaliella; Dun and Syn mix 1) | 220 / 220, 350 / 400 / 220 | First tests at installation | `cruise_data/20180131_EN608/FCS/setup`, `ATX_FSC_misc_experiments/ATX/Experiment.atx` |
+| 2018-01-30 | Exp_LTER_test1 | 8 (Dun alone; Dun spiked into Iselin dock water at 100 and 200 µl/min) | 140–220 / 260–320 / 300–340 / 300 | Choosing the EN608 settings (Alexi): final FSC 160, SSC 260 | `cruise_data/20180131_EN608/FCS/setup`, `ATX_FSC_misc_experiments/FCS` |
+| 2018-07-16 | Size calibration cruise template; Size calibration bead template | 2 (cruise method; bead method) | 160 / 260 / 300 / 300; 380 / 382 / 282 / 300 | July 2018 size calibration (with Coulter counter) | `Size_calibration_July2018` |
+| 2018-12-07 | Size calibration cruise template | 1 (Heterocapsa + Dun mix) | 160 / 260 / 300 / 250 | Culture mixture; log: "only see one cluster", BL3 lowered to 250 | `Size_calibration_July2018/Het_dun_mix_Dec2018` |
+| 2019-02-01 | New SSC filter check | 6 (Syn + Dun mix, original OD2 vs new filter; SSC 200, 210, 230, 250) | 160 / 200–250 / 340 / 340 | OD2 removed from SSC at the start of EN627 | `ATX_FSC_misc_experiments/ATX/New SSC filter check.atx`; FCS in `Backups_before_win10_install/Settings decisions` |
+| 2019-02-26 to 02-28 | Dunaliella_Isochrisis continuous | 115 (114 consecutive on 26 Feb, one "two days later") | 160 / 200 / 340 / 320 | All-day continuous run of Dun + *I. galbana* on salt-water sheath (stability; samples 38–40 are DI water with carry-over) | `ATX_FSC_misc_experiments/Dunaliella_Isochrisis` |
+| 2019-03-20 | size_cal_OD2_Mar2019; Size_cal_nuetral_Mar2019 | 2 (with OD2; without OD) | 160 / 260 / 340 / 320; 160 / 200 / 340 / 320 | March 2019 size calibration, used for the pre-Aug 2019 calibration | `Size_calibration_March2019/Attune` |
+| 2019-04-12 | New SSC filter check (redo) | 6 (Syn + Dun, SSC 160, 160b, 170, 180, 200, 210) | 160 / 160–210 / 340 / 340 | Setting SSC voltage at the start of AR34B; SSC 160 chosen | `Backups_before_win10_install/Settings decisions` (no `.atx` found) |
+| 2019-07-02 to 07-03 | Dock water June 2019(1) | 6 (Dun and Syn separately; mixes, with and without "avoid coincidence") | 160 / 240 / 350 / 350 | Coincidence troubleshooting | `ATX_FSC_misc_experiments/Coincidence troubleshooting` |
+| 2019-07-04 | Thompson Mob 3 | 10 (Sample(19)–(28) – Dun) | 260 / 260 / 340 / 340 | TN368 mobilization: Dun on Attune and IFCB; counts matched without "exclude coincident events". Six were sent to Mike Ward on 23 Sep 2019 (`Dunaliella to Mike Ward.atx`, same files) | `cruise_data/20190705_TN368/ATX` |
+| 2019-08-15 | Dockwater_filter_config_change | 1 | 280 / 260 / 360 / 340 | Checking the new green-laser filter layout before EN644 | `cruise_data/20190820_EN644/FCS` |
+| 2019-10-21 | Syn and Dun coincidence | 7 (Dunaliella; mixture with Syn ×3; mixture with "exclude coincident events" ×3), plus 1 Syn alone | 280 / 220 / 220 / 340 | Coincidence examples for Mike Ward (Thermo) | `ATX_FSC_misc_experiments/Syn and Dun coincidence 102119.atx` |
+| 2020-07-13 | dun_mira_dilution_test, dun_mira_dilution_test(1) | 24 (two dilution series, 1X to 1:32, duplicates), plus 2 filtered-seawater blanks | 280 / 220 / 220 / 340 | Mira's dilution tests; log: "concentrations look low" | `dilution_experiments_2020`, `MVCO_Attune_Runs_Mira` |
+| 2020-07-16 | dun_mira_dilution_test(2) | 12 (dilution series 1X to 1:32, duplicates) | 280 / 220 / 220 / 340 | Repeat dilution test | `MVCO_Attune_Runs_Mira` |
+| 2025-03-27 | (database backup) | 1 | 280 / 220 / 220 / 340 | AR87A mobilization: Dun run to check flow after the setup | `data_base_backup_Nov2025/Userdata/admin/…/Dun.fcs` |
+| 2026-05-14 | size check | 2 (Dun; *I. galbana* + Dun + FCB beads) | 280 / 220 / 220 / 340 | Culture and bead size checks | `size_check_May2026_beads_culture`, `size_calibration_July2026/Attune/Gated_FCS/14May_TIso_Dun_beads` |
+| 2026-05-15 | size check | 7 (Dun 1x, 0.5x and 0.1x, each twice; Dun + FCB and F8819 beads) | 280 / 220 / 220 / 340 | Concentration series and bead comparison | `size_check_May2026_beads_culture` |
+| 2026-05-19 | cultures_may19 | 2 (underway settings; discrete settings) | 280 / 220 / 220 / 340 | Same culture at underway vs discrete-sample settings | `size_check_May2026_beads_culture/cultures_may19` |
+| 2026-07-23 | size_calibration_July2026 | 3 (Dun, Dun(1); Dun(2) at BL3 250) | 280 / 220 / 220 / 340 (250) | July 2026 culture size calibration (with Coulter counter and Mastersizer) | `size_calibration_July2026/Attune` |
+| 2026-09-21 | culture_check_21Sept2026 | 2 (Dun(1), Dun(3)) with an FCB bead check | 280 / 220 / 220 / 340 | Culture and bead check after the calibration | `size_calibration_July2026/Attune/ATX/culture_check_21Sept2026.atx` |
+
+**Total: about 219 Dun runs on 20 days**, 115 of them in the Feb 2019 continuous run.
+
+**Log mentions without runs:**
+- 25 Sep 2019: planned Syn and Dun coincidence runs, not done because the beads were dirty. They were done on 21 Oct.
+- 28 Apr 2021: Dun was considered for a counting test, but *Isochrysis* was used instead (Dun is off scale in scatter).
