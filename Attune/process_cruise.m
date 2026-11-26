@@ -80,7 +80,8 @@ function p = process_cruise(cruise, opt)
 %              (class_meta.pro_lower_bound)
 %   syn_type   per event, uint8: 1/2/3/4 Syn type A/B/C/D in order of BL2-GL2 (PUB:PEB
 %              lowest / low / mid / high; 3-type files before 26 Nov 2026:
-%              read with syn_type_current),
+%              read with syn_type_current), from a per-file mixture (class_meta.syn_mix;
+%              windows in files with few Syn), 5 type ambiguous (posterior < 0.8),
 %              9 Syn-bearing but spectrum not usable, 0 not Syn-bearing (classes 2, 5, 8 only)
 %   bact_type  SYBR (hbac) preserved runs only: per event, uint8, 1 LNA, 2 HNA bacteria,
 %              0 not bacteria (class 9 only; method and cut in class_meta.hbac.hna)
@@ -390,6 +391,7 @@ parfor (k = 1:n, M)
             'trigger_edges', field_or(info, 'trigger_edges', field_or(info, 'edges', struct()))); % hbac: info.edges
         o.class_meta.dropout_frac_syn = field_or(info, 'dropout_frac_syn', NaN); % laser-dropout QC: (merged pairs + flag 7) / (Syn + flag 7); high: Syn chl and FSC read low
         o.class_meta.pro_lower_bound = field_or(info, 'pro_lower_bound', false); % class 7 in a file without Pro settings: Pro above the chl trigger only
+        o.class_meta.syn_mix = field_or(info, 'syn_mix', struct()); % Syn typing: method (mixture/windows), kept types, positions, soft counts (classes 2/5/8 x types A-D, all events)
         if pres
             o.time_gate = time_gate(fcsdat, fcshdr, tgf);
             o.notes(6) = "time_gate: events in the last " + 100*tgf + "% of acquisition time; " + ...
@@ -518,7 +520,7 @@ codes.class = "class: 0 = unassigned, 1 = Euk (no PE), 2 = Syn, 3 = dim crypto (
     "10 = low-chl Euk-like cells (no PE, 0.25-1 log larger than Syn, chl:size below 0.8; identity uncertain); " + ...
     "in files run without Pro settings, 7 = Pro above the chl trigger only (a lower bound); cell volume in cubic microns";
 codes.syn_type = "syn_type (classes 2, 5, 8): 1 = type A (lowest PUB:PEB), 2 = type B (low PUB:PEB), " + ...
-    "3 = type C (mid), 4 = type D (high PUB:PEB), " + ...
+    "3 = type C (mid), 4 = type D (high PUB:PEB), 5 = type ambiguous (per-file mixture, posterior < 0.8; class_meta.syn_mix), " + ...
     "9 = spectrum not usable, 0 = not Syn-bearing";
 codes.bact_type = "bact_type (SYBR runs, class 9 only): 1 = LNA, 2 = HNA (low / high nucleic acid; cut on BL1 - slope*(SSC+2), " + ...
     "class_meta.hbac.hna: method 'fixed' = no SYBR valley, split nominal), 0 = not bacteria";

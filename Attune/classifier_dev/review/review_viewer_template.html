@@ -141,6 +141,7 @@ const METRICS_PH = [
   { key: 'catch', label: 'catch-all Euk share of Euk', f: q => q.catchall_euk_share, floor: .04, abs: v => v > .25 },
   { key: 'catchsyn', label: 'catch-all Syn share of Syn', f: q => q.catchall_syn_share, floor: .04 },
   { key: 'untyped', label: 'untyped Syn share', f: q => q.syn_untyped_share, floor: .04, abs: v => v > .25 },
+  { key: 'ambig', label: 'ambiguous-type Syn share', f: q => q.syn_ambiguous_share === undefined ? NaN : q.syn_ambiguous_share, floor: .05 }, // per-file mixture, posterior < 0.8
   // cluster positions of the final classes (median, bead-relative log): a cluster that
   // jumps away from its neighbours' position has likely taken a different population
   // (blank on pages built before these were saved, or with too few events)
@@ -394,7 +395,14 @@ function drawFrame() {
         // type-A boundary) or 'vbox' (BL2-GL2 vs PE:chl: edges as x = e); pages built
         // before v.type: last view, 'diag'
         const tv = v.type !== undefined ? v.type : (c === nv - 1 ? 'diag' : '');
-        const te = [].concat(f.syn_type_edges || []).filter(Number.isFinite);
+        const mixed = f.syn_mix_method === 'mixture'; // per-file mixture: no fixed edges; draw the kept types' positions
+        const te = mixed ? [] : [].concat(f.syn_type_edges || []).filter(Number.isFinite);
+        if (mixed && (tv === 'diag' || tv === 'vbox')) [].concat(f.syn_mix_mu || []).forEach((m, t) => {
+          if (!Number.isFinite(m) || !R.syn_type_cols[t]) return;
+          const ct = rgb(R.syn_type_cols[t]), tt = `<title>type ${'ABCD'[t]} position in this file's mixture: BL2-GL2 = ${fmt(m)}</title>`;
+          if (tv === 'diag') L += `<line x1="${sx(lx[0])}" y1="${sy(lx[0] + m)}" x2="${sx(lx[1])}" y2="${sy(lx[1] + m)}" stroke="${ct}" stroke-width="1.2">${tt}</line>`;
+          else L += `<line x1="${sx(m)}" y1="${sy(ly[0])}" x2="${sx(m)}" y2="${sy(ly[1])}" stroke="${ct}" stroke-width="1.2">${tt}</line>`;
+        });
         if (tv === 'diag') {
           for (const e of te) L += `<line x1="${sx(lx[0])}" y1="${sy(lx[0] + e)}" x2="${sx(lx[1])}" y2="${sy(lx[1] + e)}" stroke="#000" stroke-dasharray="4 3" stroke-width=".8"/>`;
           // 4 types: type A = BL2-GL2 below e1 for b >= a, below e1 - s*(a - b) for dimmer
@@ -446,10 +454,10 @@ function legend() {
     return;
   }
   let h = sw(R.col0, 'unassigned') + R.codes.map((k, i) => sw(R.cols[i], R.names[i] + (R.rare.includes(k) ? ' (points)' : ''))).join('');
-  h += '<span style="color:#333">Syn type panel (Syn, Euk with Syn, Syn on particle):</span>' + ['A', 'B', 'C', 'D'].map((t, i) => R.syn_type_cols[i] ? sw(R.syn_type_cols[i], 'type ' + t) : '').join('') + sw(R.syn_untyped_col, 'untyped') + sw([.6, .6, .6], 'other');
+  h += '<span style="color:#333">Syn type panel (Syn, Euk with Syn, Syn on particle):</span>' + ['A', 'B', 'C', 'D'].map((t, i) => R.syn_type_cols[i] ? sw(R.syn_type_cols[i], 'type ' + t) : '').join('') + sw(R.syn_untyped_col, 'untyped or ambiguous') + sw([.6, .6, .6], 'other');
   if (R.show_flags) h += R.flag_names.map((t, i) => sw(R.flag_cols[i], 'flag: ' + t)).join(''); // frames built with flag colours only
   if (F.some(f => f.nrow === 3)) h += sw(R.diff_cols[0], 'v2 adds') + sw(R.diff_cols[1], 'v2 drops') + sw(R.diff_cols[2], 'relabelled');
-  h += '<span>lines: <b>- -</b> trigger edge, <span style="color:' + rgb(colOf(1)) + '">··· Euk chl gap, — Euk chl-size line, -·- Euk min size</span>, <span style="color:' + rgb(colOf(5)) + '">- - Euk with Syn cut (below: unassigned, flag 1)</span>, <span style="color:' + rgb(colOf(2)) + '">··· Syn PE floor</span>, <span style="color:' + rgb(colOf(7)) + '">- - Pro wide-pulse cut (pulse-shape panel)</span>, - - Syn type edges' + (R.views.some(v => v.type === 'vbox') ? ', <span style="color:' + rgb(R.syn_type_cols[0]) + '">— type A boundary (GL2 vs BL2: edge moves left for dim Syn)</span>' : '') + '</span>';
+  h += '<span>lines: <b>- -</b> trigger edge, <span style="color:' + rgb(colOf(1)) + '">··· Euk chl gap, — Euk chl-size line, -·- Euk min size</span>, <span style="color:' + rgb(colOf(5)) + '">- - Euk with Syn cut (below: unassigned, flag 1)</span>, <span style="color:' + rgb(colOf(2)) + '">··· Syn PE floor</span>, <span style="color:' + rgb(colOf(7)) + '">- - Pro wide-pulse cut (pulse-shape panel)</span>, Syn types: — positions of the types kept by the mixture of each file (coloured), or, in files with few Syn, - - fixed edges' + (R.views.some(v => v.type === 'vbox') ? ' and <span style="color:' + rgb(R.syn_type_cols[0]) + '">— type A boundary (GL2 vs BL2: edge moves left for dim Syn)</span>' : '') + '</span>';
   $('legend').innerHTML = h;
 }
 
@@ -477,6 +485,7 @@ function side() {
   const rows = [['agreement with old', f.agreement, 3], ['catch-all total', f.n_catchall], ['catch-all Euk (share of Euk)', `${fmt(f.n_catchall_euk)} (${fmt(f.catchall_euk_share)})`], ['catch-all Syn (share of Syn)', `${fmt(f.n_catchall_syn)} (${fmt(f.catchall_syn_share)})`], ['Euk chl gap', f.euk_chl_gap], ['Syn PE gap', f.syn_PE_gap], ['Syn PE floor', f.syn_PE_floor],
     ['Syn ref size / chl', `${fmt(f.syn_ref_size)} / ${fmt(f.syn_ref_BL3)}`], ['Syn ref PE:chl / GL2:GL3', `${fmt(f.syn_ref_PEchl)} / ${fmt(f.syn_ref_GL2GL3)}`],
     ['Syn types A / B / C / D', `${fmt(f.syn_type1)} / ${fmt(f.syn_type2)} / ${fmt(f.syn_type3)} / ${fmt(f.syn_type4)}`], ['untyped Syn (share)', `${fmt(f.syn_untyped)} (${fmt(f.syn_untyped_share)})`],
+    ['Syn typing', f.syn_mix_method ? `${f.syn_mix_method}, types ${f.syn_mix_keep}` + (f.syn_mix_method === 'mixture' ? `; ambiguous ${fmt(f.syn_ambiguous)} (${fmt(f.syn_ambiguous_share)})` : '') : '–'],
     ['flags: ' + R.flag_names.join(' / '), R.flag_names.map((_, i) => fmt(f['flag' + (i + 1)])).join(' / ')], ['crypto-type events, split', `${fmt(f.crypto_n)}, ${f.crypto_split_accepted ? 'two groups' : 'PE floor'}`],
     ['mixture components', f.ncomp], ['trigger-edge pile', f.edge_pile_frac, 3]];
   for (const [k, v, d] of rows) if (!(k.startsWith('agreement') && f.old_n1 === undefined)) h += `<tr><td>${k}</td><td>${fmt(v, d || 2)}</td></tr>`;

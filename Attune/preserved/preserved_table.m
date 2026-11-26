@@ -65,7 +65,7 @@ for i = 1:numel(keys)
     r.n_CHL_runs = nCHL; r.n_PE_runs = nPE; r.n_pro_runs = nPRO; r.n_hbac_runs = nHB;
     % Syn
     j = iPE; if isempty(j), j = iCHL; end
-    r = add_group(r, 'syn', S, j, {'syn' 'syn_typeA' 'syn_typeB' 'syn_typeC' 'syn_typeD' 'syn_type_unusable' 'syn_on_particle'}, {'syn'});
+    r = add_group(r, 'syn', S, j, {'syn' 'syn_typeA' 'syn_typeB' 'syn_typeC' 'syn_typeD' 'syn_type_ambiguous' 'syn_type_unusable' 'syn_on_particle'}, {'syn'});
     % Euks
     j = iCHL; if isempty(j), j = iPE; end
     r = add_group(r, 'euk', S, j, {'euk' 'euk_leq2um' 'euk_leq3um' 'euk_leq5um' 'euk_leq10um' 'euk_leq20um' 'crypto_dim' 'crypto_bright' 'euk_with_syn'}, ...
@@ -115,7 +115,7 @@ esd = (v * 3 / 4 / pi).^(1/3) * 2;
 C = real(biovol2carbon(v, 0));
 grp = struct();
 grp.syn = cl == 2; grp.euk = cl == 1;
-grp.syn_typeA = cl == 2 & st == 1; grp.syn_typeB = cl == 2 & st == 2; grp.syn_typeC = cl == 2 & st == 3; grp.syn_typeD = cl == 2 & st == 4; grp.syn_type_unusable = cl == 2 & st == 9;
+grp.syn_typeA = cl == 2 & st == 1; grp.syn_typeB = cl == 2 & st == 2; grp.syn_typeC = cl == 2 & st == 3; grp.syn_typeD = cl == 2 & st == 4; grp.syn_type_ambiguous = cl == 2 & st == 5; grp.syn_type_unusable = cl == 2 & st == 9;
 grp.syn_on_particle = cl == 8;
 for e = [2 3 5 10 20]
     grp.(sprintf('euk_leq%dum', e)) = cl == 1 & esd <= e;

@@ -224,3 +224,28 @@ cfg.sig.syn_type_names = {'A (lowest PUB:PEB)' 'B (low PUB:PEB)' 'C (mid)' 'D (h
 cfg.sig.syn_typeA_min_above_floor = 2; %type A: first edge where min(BL2, GL2) is at least this far above its floor (log10) ...
 cfg.sig.syn_typeA_dim_slope = 0.4;     %... edge this much further left per log10 below that
 cfg.sig.syn_type_min_above_floor = 1; %BL2 and GL2 at least this far above their floors
+% Per-file mixture typing (Nov 2026; syn_type_mixture, prototype output/syn_type_d/
+% mix_proto4.m). The windows above count the noisy tails of dim Syn as neighbouring
+% types (summer files: 5-7% "type A", all B spread) and call any shoulder a type. The
+% mixture fits types A-D along BL2-GL2 per file, with the noise width set by
+% brightness (mean of BL2 and GL2 above floor; band widths fitted jointly over 1,858
+% files), and keeps only the types the file needs. Summer type A share 0.1-0.6% (was
+% 5-7%), AE2426 2.7% (unchanged), type A kept in AE2426 194/301 files and AR92 inshore.
+% Events whose most probable type has posterior below pmin get code 5 (ambiguous):
+% 3-6% of Syn in bright-Syn cruises, 22-34% in dim summer cruises. Files with fewer
+% than min_n typed Syn (class 2) use the windows and sloped edge above
+cfg.sig.syn_mix.on = true;
+cfg.sig.syn_mix.min_n = 500;          %typed class-2 Syn needed for the mixture (else windows)
+cfg.sig.syn_mix.mu0 = [-0.48 -0.23 0.00 0.45]; %type positions A-D ...
+cfg.sig.syn_mix.win = [0.12 0.10 0.10 0.12];   %... each may move this far per file
+cfg.sig.syn_mix.sgrid = 0.03:0.01:0.08;        %intrinsic sd of each type per file (wider ones swallowed neighbours)
+cfg.sig.syn_mix.band_edges = [1 1.25 1.5 1.75 2 2.25 2.5 2.75 3]; %brightness bands (mean of BL2, GL2 above floor) ...
+cfg.sig.syn_mix.band_sd = [0.377 0.21 0.21 0.175 0.13 0.10 0.085 0.07 0.065]; %... total sd of a type in each (last: >= 3), joint fit
+cfg.sig.syn_mix.s0ref = 0.06;         %typical intrinsic sd inside band_sd (noise = band_sd^2 - s0ref^2)
+cfg.sig.syn_mix.alpha = 200;          %band weights pulled toward the file's weights by this many pseudo-events
+cfg.sig.syn_mix.pen = 30;             %drop a type while that costs less than pen*log(n) in log-likelihood
+cfg.sig.syn_mix.wmin = 0.01;          %... and always below this share ...
+cfg.sig.syn_mix.shoulder_max = 0.10;  %... or below this share with its position pinned at the limit next to a kept type
+cfg.sig.syn_mix.bg_mu = 0.1; cfg.sig.syn_mix.bg_sd = 0.5; cfg.sig.syn_mix.bg_max = 0.05; %broad outlier component, at most bg_max per band
+cfg.sig.syn_mix.pmin = 0.8;           %type assigned where its posterior is at least this; else code 5 (ambiguous)
+cfg.sig.syn_mix.xbins = -1:0.02:1.2;  %ratio bins of the fit

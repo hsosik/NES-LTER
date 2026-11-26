@@ -875,6 +875,35 @@ Investigation in `output/syn_type_d` (scans of 1,000 underway files each from AR
   - About 10% of summer type A (dim and close to the first edge) is still counted as B.
   - In preserved runs the edges assume one shift, 0.06, for all cruises (observed +0.04 to +0.10 per cruise).
 
+### Syn types from a per-file mixture (26 Nov 2026)
+
+The fixed windows (with the sloped type-A edge) are now only the fallback for files with fewer than 500 typed class-2 Syn. In other files `syn_type_mixture` decides which types the file has and types each event from a fit to that file. Prototype and figures: `output/syn_type_d` (`mix_proto4.m`, `mix_examples4.png`, `mix_summary.m`).
+
+- **Why.**
+  - The windows count the noisy tails of dim Syn as neighbouring types. In summer files 5–7% of Syn fall below −0.40 and were "type A", and B's spread fills the C window.
+  - A shoulder or tail can't be told from a real type by a fixed edge. Mode detection on bright events missed minority types, and summer files have few bright Syn.
+- **Not an offset.** Subtracting channel offsets (−60 to +120 raw counts) before the log never narrowed the dim spread in 10 files. Beads (2026 settings evaluation, BL2 330 vs 380 V) put a BL2 offset at about +35 counts, which is +0.05 at most in dim Syn, and in the wrong direction. The spread is measurement noise (`output/syn_type_d/offset_test.m`, `bead_offset.m`, `spill_test.m`).
+- **The model** (`cfg.sig.syn_mix`), fitted to class-2 events binned by BL2 − GL2 (0.02) and brightness band (0.25; brightness = mean of BL2 and GL2 above their floors, which is independent of the ratio's noise):
+  - types A–D are Gaussians along the ratio, at −0.48 / −0.23 / 0 / +0.45, each free to move ±0.10–0.12 per file; one position per file, so bright events place it;
+  - total width = intrinsic sd (0.03–0.08 per type and file) plus band noise. The band noise is shared by all files and was fitted jointly over 1,858 files (total sd 0.21 at brightness 1.25–1.75, 0.13 at 2–2.25, 0.085 at 2.5–2.75, 0.065 above 3);
+  - weights per band, pulled toward the file's overall weights (200 pseudo-events), because dim Syn can be another population than bright Syn;
+  - a broad component, capped at 5% per band, for outliers;
+  - backward elimination: drop types while that costs less than 30 · log n in log-likelihood. Types under 1%, and types under 10% pinned at their limit next to a kept type (a shoulder), go first.
+- **Codes.** Each event takes the most probable kept type if its posterior is at least 0.8; otherwise it gets the new code **5, type ambiguous**. Classes 5 and 8 take posteriors from the class-2 fit.
+  - `info.syn_mix` / `class_meta.syn_mix` hold the method, kept types, positions, widths, elimination path, and soft counts (summed posteriors, classes 2/5/8 × A–D, all events).
+  - `generate_attune_table` adds `*_type_ambiguous_count` and `Syn_typeA..D_soft` (class 2, NaN where the windows were used); `preserved_table` and `merge_discrete_tables` add `syn_type_ambiguous`.
+- **What changed (pen 30; scan subset, 10 cruises).**
+  - Type A kept: AE2426 194 of 301 files (share 2.7%, as with the windows), AR77 85/301, AR92 117/245 (the inshore summer type A), EN706 49, EN720 22; summer EN655 6, EN668 3, EN685 1, EN687 5. The summer type-A share fell from 5–7% to 0.1–0.6%.
+  - Ambiguous: 3–6% of Syn in cruises with bright Syn, 22–34% in dim summer cruises, 1–2% in preserved runs.
+  - The AR92 example 15Aug2025(2) S1 keeps B, C and D: the hump at 0 (8%, sd 0.08) costs 45 · log n to drop.
+  - Classes are unchanged, and the fit adds no measurable time.
+- **Preserved runs:** `discrete_config` shifts the positions by +0.06, like the edges; the band noise is the live one.
+- **Review.** In mixture files the type panels draw the kept types' positions in their colours instead of fixed edges; ambiguous events are drawn with the untyped ones. The side panel shows the method and kept types, and there is an "ambiguous-type Syn share" metric.
+- **Caveats.**
+  - Gaussian shapes: a broad dim bulk between types (EN687) is shared out among B, C and D fairly arbitrarily, though the soft counts stay consistent.
+  - Whether a type is kept depends on the penalty for files near the threshold.
+  - Class files written before this change have no code 5 and no `syn_mix`, and keep their window types until classified again with `process_cruise`.
+
 ### Trigger pile vs cells; Pro in runs without Pro settings; class 10 (26 Nov 2026)
 
 Found while following an AR77 low-chl Euk branch (shared notes: `ar77_dim_euk.md`) and the AE2426 alternating Euk/Pro runs.

@@ -50,8 +50,9 @@ NewCount = NaN(length(filelist), numel(newclass));
 NewBiovol = NewCount; NewCarbon = NewCount;
 SynPart_count = NaN(length(filelist), 1); %class 8: Syn on particle, count only (not Syn size or carbon)
 syntype_classes = {2 'Syn'; 5 'Euk_with_Syn'; 8 'Syn_on_particle'};
-syntype_codes = {1 'typeA'; 2 'typeB'; 3 'typeC'; 4 'typeD'; 9 'type_unusable'}; %4 types since 26 Nov 2026 (syn_type_current)
+syntype_codes = {1 'typeA'; 2 'typeB'; 3 'typeC'; 4 'typeD'; 5 'type_ambiguous'; 9 'type_unusable'}; %4 types since 26 Nov 2026 (syn_type_current); 5: per-file mixture, posterior < 0.8
 SynTypeCount = NaN(length(filelist), size(syntype_classes, 1)*size(syntype_codes, 1));
+SynTypeSoft = NaN(length(filelist), 4); %class 2 Syn, types A-D: summed mixture posteriors (class_meta.syn_mix.soft; ambiguous events shared out), NaN without the mixture
 flag_codes = {1 'Flag_lowchl_Syn_pigment'; 2 'Flag_below_Euk_chl_gap'; 3 'Flag_chl_edge_noise'; 4 'Flag_Pro_like'; ...
     5 'Flag_Euk_chl_size_cut'; 6 'Flag_split_Syn_merged_green_part'; 7 'Flag_split_Syn_unpaired_green_part'; ...
     8 'Flag_split_Syn_unpaired_blue_part'; 9 'Flag_split_other_green_part'};
@@ -155,6 +156,9 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
             end
         end
     end
+    if isfield(ev, 'class_meta') && isfield(ev.class_meta, 'syn_mix') && isfield(ev.class_meta.syn_mix, 'method') && strcmp(ev.class_meta.syn_mix.method, 'mixture')
+        SynTypeSoft(count, :) = ev.class_meta.syn_mix.soft(1, :);
+    end
     if isfield(ev, 'flag') && numel(ev.flag) == numel(rename_class)
         for ii = 1:size(flag_codes, 1)
             FlagCount(count,ii) = sum(ev.flag==flag_codes{ii,1});
@@ -222,6 +226,7 @@ for ii = 1:size(syntype_classes, 1)
     end
 end
 AttuneTable = [AttuneTable array2table(SynTypeCount, 'VariableNames', stnames)];
+AttuneTable = [AttuneTable array2table(SynTypeSoft, 'VariableNames', {'Syn_typeA_soft' 'Syn_typeB_soft' 'Syn_typeC_soft' 'Syn_typeD_soft'})];
 AttuneTable = [AttuneTable array2table(FlagCount, 'VariableNames', strcat(flag_codes(:,2)', '_count'))];
 
 AttuneTable.Num_particles = Num_particles; 
@@ -246,7 +251,7 @@ else
     table_metadata = {notes(2); classpath; string(datetime())};
     if numel(notes) >= 5 %assign_class_v2 class files: class, syn_type and flag code descriptions
         table_metadata = [table_metadata; {notes(1); notes(4); notes(5); ...
-            'Crypto_dim/Crypto_bright = classes 3/4 (together = Euk_w_PE); Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Euk_like_low_chl = class 10 (low-chl Euk-like cells, identity uncertain; not in the Euk columns); Syn type counts by class; flags are class 0 events'; ...
+            'Crypto_dim/Crypto_bright = classes 3/4 (together = Euk_w_PE); Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Euk_like_low_chl = class 10 (low-chl Euk-like cells, identity uncertain; not in the Euk columns); Syn type counts by class (type_ambiguous: the per-file mixture gives no type a posterior of 0.8); Syn_typeX_soft = class 2 Syn by summed mixture posteriors, ambiguous events shared out (NaN where the file had too few Syn and fixed windows were used); flags are class 0 events'; ...
             'Pro_count/biovolume/carbon NaN in files run without Pro settings; Pro_lower_bound_count = class 7 (Pro above the chl trigger) plus Pro-like events (flag 4) there, NaN in Pro-setting files; Pro_near_trigger_fraction = share of Pro within 0.1 log of the SSC or chl trigger edge (Pro-setting files)'; ...
             'Review_exclude = 1: file marked exclude in the class review (review_decisions.csv); rows kept here, left out of the EDI tables'}];
     end

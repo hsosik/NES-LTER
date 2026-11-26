@@ -1094,8 +1094,9 @@ info.syn_ref = struct('PEchl', syn_PEchl, 'GL2GL3', syn_GL2GL3, 'BL3', syn_BL3, 
 % Syn spectral subtype (Nov 2026): fixed windows on the bead-normalized excitation
 % ratio BL2-GL2 (PUB:PEB proxy), the same in every file and cruise. Kept as a
 % separate label so class 2 (and its counts downstream) is unchanged:
-% 1/2/3/4 = types A/B/C/D in order of BL2-GL2, 9 = Syn-bearing event whose spectrum
-% is not usable, 0 = other. In dim Syn the ratio is noisy and spreads type B below the
+% 1/2/3/4 = types A/B/C/D in order of BL2-GL2, 5 = type ambiguous (mixture, below),
+% 9 = Syn-bearing event whose spectrum is not usable, 0 = other. The windows are the
+% fallback for files with few Syn. In dim Syn the ratio is noisy and spreads type B below the
 % first edge (summer: up to half of the dimmest Syn), so for Syn whose BL2 or GL2 is
 % less than syn_typeA_min_above_floor above its floor the type-A edge moves left by
 % syn_typeA_dim_slope per log10 of shortfall
@@ -1115,6 +1116,24 @@ st(typed) = 1 + sum(ex(typed) >= sig.syn_type_edges(:)', 2);
 shortfall = max(0, sig.syn_typeA_min_above_floor - min(F.BL2 - finfo.floor.BL2, F.GL2 - finfo.floor.GL2));
 dimA = typed & st == 1 & ex >= sig.syn_type_edges(1) - sig.syn_typeA_dim_slope * shortfall;
 st(dimA) = 2;
+% per-file mixture (syn_type_mixture, Nov 2026) replaces the windows where there are
+% enough typed class-2 Syn: types the file does not need are not used, and events
+% whose type is not clear (posterior < syn_mix.pmin) get 5 (ambiguous). Fitted to
+% class 2; Euk with Syn (5) and Syn on particle (8) take posteriors from that fit.
+% info.syn_mix: method, kept types, positions, widths, elimination path, and soft
+% counts (summed posteriors) per class 2/5/8 x type A-D
+info.syn_mix = struct('method', 'windows', 'n_fit', sum(typed & class == 2), 'keep', true(1, 4), 'mu', nan(1, 4), 's', nan(1, 4), ...
+    'path', {cell(0, 2)}, 'soft', nan(3, 4), 'n_ambiguous', 0);
+if isfield(sig, 'syn_mix') && sig.syn_mix.on && sum(typed & class == 2) >= sig.syn_mix.min_n
+    bmx = (F.BL2 - finfo.floor.BL2 + F.GL2 - finfo.floor.GL2) / 2;
+    it = find(typed);
+    [stm, Mx] = syn_type_mixture(ex(it), bmx(it), class(it) == 2, sig.syn_mix);
+    st(it) = stm;
+    soft = zeros(3, 4); scl = [2 5 8];
+    for c = 1:3, soft(c, :) = sum(Mx.post(class(it) == scl(c), :), 1); end
+    info.syn_mix = struct('method', 'mixture', 'n_fit', Mx.n_fit, 'keep', Mx.keep, 'mu', Mx.mu, 's', Mx.s, ...
+        'path', {Mx.path}, 'soft', soft, 'n_ambiguous', sum(stm == 5));
+end
 info.syn_type = st;
 % flag for unassigned events left out for a specific reason, so they can be
 % counted later without entering the phytoplankton classes (class stays 0):

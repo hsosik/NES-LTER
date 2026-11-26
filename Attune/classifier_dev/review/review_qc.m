@@ -21,6 +21,13 @@ synb = ismember(cls, [2 5 8]);
 for t = 1:4, q.(sprintf('syn_type%d', t)) = sum(synb & st == t); end
 q.syn_untyped = sum(synb & st == 9);
 q.syn_untyped_share = q.syn_untyped / max(1, sum(synb));
+q.syn_ambiguous = sum(synb & st == 5); % per-file mixture: no type with posterior >= syn_mix.pmin
+q.syn_ambiguous_share = q.syn_ambiguous / max(1, sum(synb));
+q.syn_mix_method = ''; q.syn_mix_keep = ''; q.syn_mix_mu = nan(1, 4);
+if isfield(info, 'syn_mix')
+    q.syn_mix_method = info.syn_mix.method; tn = 'ABCD'; q.syn_mix_keep = tn(info.syn_mix.keep);
+    if strcmp(info.syn_mix.method, 'mixture'), q.syn_mix_mu = info.syn_mix.mu; end % NaN for dropped types
+end
 q.n_catchall = fieldor(info, 'n_catchall', NaN);
 % catch-all additions by class (classes 1 2 3 4 5 7 8). Shares are of the class's
 % final count; the total is mostly Syn in Syn-rich files, so it is not divided by

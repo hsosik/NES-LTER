@@ -169,4 +169,5 @@ cfg.sig.syn_size_default = -1.29;  %live -1.24
 % (-0.40), B/C -0.01..-0.07 (-0.10), C/D ~0.25 (0.19). The type-A brightness rule is
 % kept (preserved Syn are ~0.3 brighter, so almost none fall short of it)
 cfg.sig.syn_type_edges = cfg.sig.syn_type_edges + 0.06; %[-0.34 -0.04 0.25]
+cfg.sig.syn_mix.mu0 = cfg.sig.syn_mix.mu0 + 0.06; %mixture type positions shifted the same way (band noise as live; preserved Syn are brighter)
 end
