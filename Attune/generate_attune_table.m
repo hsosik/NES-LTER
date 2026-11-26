@@ -50,7 +50,7 @@ NewCount = NaN(length(filelist), numel(newclass));
 NewBiovol = NewCount; NewCarbon = NewCount;
 SynPart_count = NaN(length(filelist), 1); %class 8: Syn on particle, count only (not Syn size or carbon)
 syntype_classes = {2 'Syn'; 5 'Euk_with_Syn'; 8 'Syn_on_particle'};
-syntype_codes = {1 'typeA'; 2 'typeB'; 3 'typeC'; 9 'type_unusable'};
+syntype_codes = {1 'typeA'; 2 'typeB'; 3 'typeC'; 4 'typeD'; 9 'type_unusable'}; %4 types since 26 Nov 2026 (syn_type_current)
 SynTypeCount = NaN(length(filelist), size(syntype_classes, 1)*size(syntype_codes, 1));
 flag_codes = {1 'Flag_lowchl_Syn_pigment'; 2 'Flag_below_Euk_chl_gap'; 3 'Flag_chl_edge_noise'; 4 'Flag_Pro_like'; ...
     5 'Flag_Euk_chl_size_cut'; 6 'Flag_split_Syn_merged_green_part'; 7 'Flag_split_Syn_unpaired_green_part'; ...
@@ -146,6 +146,7 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
         ProMeasured(count) = double(ev.class_meta.pro_measured);
     end
     if isfield(ev, 'syn_type') && numel(ev.syn_type) == numel(rename_class)
+        if isfield(ev, 'class_meta'), ev.syn_type = syn_type_current(ev.syn_type, ev.class_meta); end
         col = 0;
         for ii = 1:size(syntype_classes, 1)
             for jj = 1:size(syntype_codes, 1)

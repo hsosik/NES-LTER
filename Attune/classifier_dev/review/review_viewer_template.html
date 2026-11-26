@@ -389,9 +389,38 @@ function drawFrame() {
           if (Number.isFinite(ge)) L += `<line x1="${sx(lx[0])}" y1="${sy(ge - (b1 + b2 * lx[0]))}" x2="${sx(lx[1])}" y2="${sy(ge - (b1 + b2 * lx[1]))}" stroke="${eg}" stroke-dasharray="2 2" stroke-width="1"/>`;
           vl(f.euk_min_size, eg, '6 2 1 2');
         }
-        if (c === nv - 1 && f.syn_type_edges) for (const e of f.syn_type_edges) if (Number.isFinite(e)) {
-          L += `<line x1="${sx(lx[0])}" y1="${sy(lx[0] + e)}" x2="${sx(lx[1])}" y2="${sy(lx[1] + e)}" stroke="#000" stroke-dasharray="4 3" stroke-width=".8"/>`;
+        // Syn type views: v.type 'diag' (GL2 vs BL2: edges as y = x + e, plus the type-A
+        // type-A boundary) or 'vbox' (BL2-GL2 vs PE:chl: edges as x = e); pages built
+        // before v.type: last view, 'diag'
+        const tv = v.type !== undefined ? v.type : (c === nv - 1 ? 'diag' : '');
+        const te = [].concat(f.syn_type_edges || []).filter(Number.isFinite);
+        if (tv === 'diag') {
+          for (const e of te) L += `<line x1="${sx(lx[0])}" y1="${sy(lx[0] + e)}" x2="${sx(lx[1])}" y2="${sy(lx[1] + e)}" stroke="#000" stroke-dasharray="4 3" stroke-width=".8"/>`;
+          // 4 types: type A = BL2-GL2 below e1 for b >= a, below e1 - s*(a - b) for dimmer
+          // events (b = min(BL2, GL2) above floor); no slope given (pages before the slope):
+          // dimmer events never A. Drawn as the boundary BL2 = f(GL2), found by bisection
+          const a = f.syn_typeA_min_above_floor, e1 = te[0], s = f.syn_typeA_dim_slope;
+          if (te.length >= 3 && [a, e1, f.floor_GL2, f.floor_BL2].every(Number.isFinite)) {
+            const ca = rgb(R.syn_type_cols[0]), fG = f.floor_GL2, fB = f.floor_BL2;
+            const lim = b => b >= a ? e1 : (Number.isFinite(s) ? e1 - s * (a - b) : -Infinity);
+            const g = (x, y) => (y - x) - lim(Math.min(y - fB, x - fG)); // < 0: type A
+            const tt = `<title>type A: BL2-GL2 below ${fmt(e1)} where BL2 and GL2 are at least ${fmt(a)} above their floors` +
+              (Number.isFinite(s) ? `; below ${fmt(e1)} - ${fmt(s)} x (${fmt(a)} - brightness) for dimmer events` : '; dimmer events are type B') + '</title>';
+            const pts = [];
+            for (let i = 0; i <= 120; i++) {
+              const x = lx[0] + (lx[1] - lx[0]) * i / 120;
+              let lo = Math.max(ly[0], fB + 1), hi = x + e1; // typed events are at least 1 above floor
+              if (hi <= lo || g(x, lo) >= 0) { pts.push(null); continue; }
+              if (g(x, hi) < 0) { pts.push([x, hi]); continue; }
+              for (let k = 0; k < 40; k++) { const m = (lo + hi) / 2; if (g(x, m) < 0) lo = m; else hi = m; }
+              pts.push([x, lo]);
+            }
+            let d = '', pen = false;
+            for (const p of pts) { if (!p) { pen = false; continue; } d += (pen ? 'L' : 'M') + sx(p[0]).toFixed(1) + ' ' + sy(p[1]).toFixed(1); pen = true; }
+            if (d) L += `<path d="${d}" fill="none" stroke="${ca}" stroke-width="1.4">${tt}</path>`;
+          }
         }
+        if (tv === 'vbox') for (const e of te) vl(e, '#000', '4 3');
       }
       // per-file class boundaries given as data (SYBR runs: review_qc_hbac q.lines; v = panel number)
       for (const l of [].concat(f.lines || [])) if (l.v === c + 1) {
@@ -416,10 +445,10 @@ function legend() {
     return;
   }
   let h = sw(R.col0, 'unassigned') + R.codes.map((k, i) => sw(R.cols[i], R.names[i] + (R.rare.includes(k) ? ' (points)' : ''))).join('');
-  h += '<span style="color:#333">Syn type panel (Syn, Euk with Syn, Syn on particle):</span>' + ['A', 'B', 'C'].map((t, i) => sw(R.syn_type_cols[i], 'type ' + t)).join('') + sw(R.syn_untyped_col, 'untyped') + sw([.6, .6, .6], 'other');
+  h += '<span style="color:#333">Syn type panel (Syn, Euk with Syn, Syn on particle):</span>' + ['A', 'B', 'C', 'D'].map((t, i) => R.syn_type_cols[i] ? sw(R.syn_type_cols[i], 'type ' + t) : '').join('') + sw(R.syn_untyped_col, 'untyped') + sw([.6, .6, .6], 'other');
   if (R.show_flags) h += R.flag_names.map((t, i) => sw(R.flag_cols[i], 'flag: ' + t)).join(''); // frames built with flag colours only
   if (F.some(f => f.nrow === 3)) h += sw(R.diff_cols[0], 'v2 adds') + sw(R.diff_cols[1], 'v2 drops') + sw(R.diff_cols[2], 'relabelled');
-  h += '<span>lines: <b>- -</b> trigger edge, <span style="color:' + rgb(colOf(1)) + '">··· Euk chl gap, — Euk chl-size line, -·- Euk min size</span>, <span style="color:' + rgb(colOf(5)) + '">- - Euk with Syn cut (below: unassigned, flag 1)</span>, <span style="color:' + rgb(colOf(2)) + '">··· Syn PE floor</span>, <span style="color:' + rgb(colOf(7)) + '">- - Pro wide-pulse cut (pulse-shape panel)</span>, Syn type edges</span>';
+  h += '<span>lines: <b>- -</b> trigger edge, <span style="color:' + rgb(colOf(1)) + '">··· Euk chl gap, — Euk chl-size line, -·- Euk min size</span>, <span style="color:' + rgb(colOf(5)) + '">- - Euk with Syn cut (below: unassigned, flag 1)</span>, <span style="color:' + rgb(colOf(2)) + '">··· Syn PE floor</span>, <span style="color:' + rgb(colOf(7)) + '">- - Pro wide-pulse cut (pulse-shape panel)</span>, - - Syn type edges' + (R.views.some(v => v.type === 'vbox') ? ', <span style="color:' + rgb(R.syn_type_cols[0]) + '">— type A boundary (GL2 vs BL2: edge moves left for dim Syn)</span>' : '') + '</span>';
   $('legend').innerHTML = h;
 }
 
@@ -446,7 +475,7 @@ function side() {
   }
   const rows = [['agreement with old', f.agreement, 3], ['catch-all total', f.n_catchall], ['catch-all Euk (share of Euk)', `${fmt(f.n_catchall_euk)} (${fmt(f.catchall_euk_share)})`], ['catch-all Syn (share of Syn)', `${fmt(f.n_catchall_syn)} (${fmt(f.catchall_syn_share)})`], ['Euk chl gap', f.euk_chl_gap], ['Syn PE gap', f.syn_PE_gap], ['Syn PE floor', f.syn_PE_floor],
     ['Syn ref size / chl', `${fmt(f.syn_ref_size)} / ${fmt(f.syn_ref_BL3)}`], ['Syn ref PE:chl / GL2:GL3', `${fmt(f.syn_ref_PEchl)} / ${fmt(f.syn_ref_GL2GL3)}`],
-    ['Syn types A / B / C', `${fmt(f.syn_type1)} / ${fmt(f.syn_type2)} / ${fmt(f.syn_type3)}`], ['untyped Syn (share)', `${fmt(f.syn_untyped)} (${fmt(f.syn_untyped_share)})`],
+    ['Syn types A / B / C / D', `${fmt(f.syn_type1)} / ${fmt(f.syn_type2)} / ${fmt(f.syn_type3)} / ${fmt(f.syn_type4)}`], ['untyped Syn (share)', `${fmt(f.syn_untyped)} (${fmt(f.syn_untyped_share)})`],
     ['flags: ' + R.flag_names.join(' / '), R.flag_names.map((_, i) => fmt(f['flag' + (i + 1)])).join(' / ')], ['crypto-type events, split', `${fmt(f.crypto_n)}, ${f.crypto_split_accepted ? 'two groups' : 'PE floor'}`],
     ['mixture components', f.ncomp], ['trigger-edge pile', f.edge_pile_frac, 3]];
   for (const [k, v, d] of rows) if (!(k.startsWith('agreement') && f.old_n1 === undefined)) h += `<tr><td>${k}</td><td>${fmt(v, d || 2)}</td></tr>`;

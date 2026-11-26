@@ -97,7 +97,8 @@ wins.
   - Size vs chl, and chl vs PE.
   - Chl:size vs GL2:GL3, which shows the Pro colour.
   - Chl pulse shape, which shows the Pro wide-pulse cut and trigger-floor debris.
-  - The Syn type view, PE (GL2) vs PE (BL2), with Syn coloured by type A/B/C.
+  - The Syn type view, PE (GL2) vs PE (BL2), with Syn coloured by type A/B/C/D (in order of BL2 − GL2; A = lowest PUB:PEB). It shows brightness, which explains untyped events; the type edges are the dashed diagonals.
+  - The Syn type A/B view, BL2 − GL2 (the excitation ratio the types are cut on) vs PE:chl, with the same colours. The type edges are the dashed vertical lines. The ratio of dim Syn is noisy, so for Syn whose BL2 or GL2 is less than `syn_typeA_min_above_floor` (2) above its floor, the type-A edge moves left by `syn_typeA_dim_slope` (0.4) per log10 of shortfall; dim events between that edge and the first edge stay type B. The type-A boundary is drawn in the type-A colour in the GL2 vs BL2 view. Pages built before 26 Nov 2026 have 10 panels and no type A/B view.
   - Unassigned events are grey. Flagged unassigned events are coloured by flag.
   - Lines mark the trigger edges and the rules this file used.
 - **Side panel.** It shows:
@@ -183,7 +184,7 @@ the class has too few events (50 for Syn and Euk, 20 for each crypto class).
 | flag: Euk below chl:size cut | 0.3 | Euk-sized events left out by the file's Euk chl:size cut (flag 5) | The per-file cut moved; check the Euk population in the size vs chl panel |
 | catch-all Euk share of Euk | 0.04; always > 0.25 | Share of Euks added by the catch-all, which gives cell-like leftover events the class of their nearest assigned neighbours | The main rules missed part of the Euk population |
 | catch-all Syn share of Syn | 0.04 | The same for Syn | Syn spread beyond the reference rules |
-| untyped Syn share | 0.04; always > 0.25 | Syn-bearing events whose PE spectrum can't be typed A/B/C | Dim or noisy PE, often near the trigger |
+| untyped Syn share | 0.04; always > 0.25 | Syn-bearing events whose PE spectrum can't be typed | Dim or noisy PE, often near the trigger |
 | Syn cluster size, chl, PE, size spread (IQR) | 0.03, 0.08, 0.08, 0.015 | Position and size spread of the final Syn class | Syn class taking a different population (e.g. small Euks or PE particles) |
 | Euk cluster size, chl | 0.06, 0.07 | Position of the final Euk class | Euk class shifted, e.g. a bloom of one size, or debris taken in |
 | dim / bright crypto cluster size, chl, PE | 0.1, 0.12, 0.12 | Position of each crypto class | Crypto class shifted or split differently |

@@ -16,14 +16,23 @@ R.views = {'size' 'BL3' 'size (log10 SSC rel. 1 um bead)' 'chl (BL3)'; ...
     'size' 'dEuk' 'size' 'chl minus Euk chl-size line'; ...
     'chlSSC' 'GL2GL3' 'chl:size (BL3 - size)' 'GL2:GL3'; ...      % Pro colour: Pro low in both, small Euks high (large Pro vs Euk)
     'BL3' 'BL3_AH' 'chl (BL3)' 'chl pulse shape log10(A/H)'; ...  % Pro wide-pulse cut; trigger-floor debris
-    'GL2' 'BL2' 'PE (GL2)' 'PE (BL2)  Syn types'};                % Syn type view: keep last (review_frame, viewer)
+    'GL2' 'BL2' 'PE (GL2)' 'PE (BL2)  Syn types'; ...              % Syn type view: brightness (explains untyped)
+    'BL2GL2' 'PEchl' 'BL2-GL2 (excitation ratio)' 'PE:chl  Syn types A/B'}; % Syn type view: type edges along the ratio
+% Syn type views: Syn-bearing events coloured by type (review_frame) and the type rules drawn
+% over them (viewer): 'diag' type edges as diagonals y = x + e (GL2 vs BL2) plus the type-A
+% boundary (first edge for BL2 and GL2 at least syn_typeA_min_above_floor above their floors,
+% moving left by syn_typeA_dim_slope per log10 for dimmer Syn),
+% 'vbox' as vertical lines x = e (BL2-GL2 vs PE:chl)
+R.type_views = repmat({''}, size(R.views, 1), 1);
+R.type_views{end - 1} = 'diag'; R.type_views{end} = 'vbox';
 % fixed axis limits per channel; events outside are drawn on the panel edge
 R.lim = struct('size', [-2.6 2.8], 'BL3', [-1.3 3.2], 'GL2', [-3.5 1.7], 'GL3', [-2.5 2.8], ...
     'PEchl', [-4.4 1.8], 'BL2', [-2.5 2.3], 'FSCW', [1.0 2.8], 'dEuk', [-3 2], ...
-    'chlSSC', [-1 3], 'GL2GL3', [-2.5 1.5], 'BL3_AH', [-0.8 0.8]);
+    'chlSSC', [-1 3], 'GL2GL3', [-2.5 1.5], 'BL3_AH', [-0.8 0.8], 'BL2GL2', [-1.0 1.1]);
 % per-view limits that override R.lim: the Syn type view is zoomed on the Syn region
 R.view_lim = cell(size(R.views, 1), 1);
-R.view_lim{end} = [-1.2 1.8; -0.7 2.3]; % [x; y], equal spans so type edges (y = x + e) run at 45 degrees
+R.view_lim{end - 1} = [-2.2 1.8; -1.7 2.3]; % GL2 vs BL2: [x; y], equal spans so type edges (y = x + e) run at 45 degrees; low enough to show dim Syn and the type-A brightness limit (floor + 2, about GL2 -1.5, BL2 -1.0)
+R.view_lim{end} = [-1.0 1.1; -1.3 1.5];      % BL2-GL2 vs PE:chl: Syn region (preserved B core near PE:chl +0.2)
 R.px = 240;       % panel width and height in pixels
 R.gap = 4;        % white pixels between panels
 R.compare_rows = false; % true: add old-class and disagreement rows when old classes are given
@@ -38,9 +47,10 @@ R.rare = [3 4 5 8];
 R.col0 = [.45 .45 .45];                          % unassigned
 R.rare_rad = 1;          % rare-class points: (2*rad+1)^2 pixel squares
 R.rare_outline = false;  % dark outline round rare-class points
-% Syn type view (last): Syn, Euk with Syn and Syn on particle coloured by type A/B/C
-% (PUB:PEB low/mid/high), untyped dark grey, everything else light grey
-R.syn_type_cols = [.9 .45 0; .8 0 .3; .15 .35 .85];
+% Syn type views (R.type_views): Syn, Euk with Syn and Syn on particle coloured by type A/B/C/D
+% (in order of BL2-GL2; A = lowest PUB:PEB), untyped dark grey,
+% everything else light grey. B/C/D keep the colours of the former A/B/C
+R.syn_type_cols = [0 .6 .3; .9 .45 0; .8 0 .3; .15 .35 .85];
 R.syn_untyped_col = [.2 .2 .2];
 % show_flags: draw unassigned events in their flag colours below (true) or all in
 % plain grey (false, default: fewer colours to read; the flag counts stay in the QC

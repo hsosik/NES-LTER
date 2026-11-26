@@ -185,11 +185,28 @@ cfg.sig.catchall_max_ref = 30000;   %subsample of assigned events used as neighb
 
 
 % Syn spectral subtypes (Nov 2026, syn_spectral_types.m): the bead-normalized
-% excitation ratio BL2-GL2 (PE excited at 488 vs 532 nm, a PUB:PEB proxy) has three
-% modes that recur across 20 cruises, 2020-2026: -0.23 (A, every file), 0.00 (B) and
-% +0.45 (C, summer/fall only); troughs at -0.10 and +0.19. Labelled per event in
-% info.syn_type for Syn (2), Euk with Syn (5) and Syn on particle (8):
-% 1 = A, 2 = B, 3 = C, 9 = spectrum not usable (BL2 or GL2 saturated or near floor), 0 = other classes
-cfg.sig.syn_type_edges = [-0.10 0.19];
-cfg.sig.syn_type_names = {'A (low PUB:PEB)' 'B (mid)' 'C (high PUB:PEB)'};
+% excitation ratio BL2-GL2 (PE excited at 488 vs 532 nm, a PUB:PEB proxy) has
+% modes that recur across 20 cruises, 2020-2026: -0.23 (every file), 0.00 and
+% +0.45 (summer/fall only); troughs at -0.10 and +0.19. Labelled per event in
+% info.syn_type for Syn (2), Euk with Syn (5) and Syn on particle (8).
+% Nov 2026 (output/syn_type_d): a fourth mode at -0.48 below the old A, with PE:chl
+% ~0.3 above it and the same emission ratios, on the fresher northern shelf
+% (AE2426: 4.5% of Syn in 41% of files; AR77; also EN657, EN712, EN715, EN727, AR95).
+% Types are now lettered in order of BL2-GL2 (old A/B/C became B/C/D):
+% 1 = A (-0.48), 2 = B (-0.23), 3 = C (0.00), 4 = D (+0.45),
+% 9 = spectrum not usable (BL2 or GL2 saturated or near floor), 0 = other classes.
+% Type-A edge by brightness b = min(BL2, GL2) above floor. In dim Syn the ratio is
+% noisy: summer Syn (mostly 1.5-2.25 above floor) spread type B below -0.40 (39-64%
+% of events at b 1-1.25, ~0 above 2.5), 2-7% of all Syn, while real type A keeps a
+% flat share when bright. So the first edge holds for b >= syn_typeA_min_above_floor
+% and moves left by syn_typeA_dim_slope per log10 below it (-0.50 at b 1.75, -0.60
+% at 1.5). Files grouped by bright type A (10 cruises, ~2,000 files): type A kept
+% 0.90, false A 0.64% of Syn; a fixed limit (dim events never A) kept 0.77 at 0.28%
+% (summer type A is dim: EN706, EN720, AR92 inshore). A PE:chl check was tried first
+% and dropped: type A PE:chl is +0.3 above B in AE2426/AR77 but only 0-0.07 above it
+% in summer type A (AR92, EN687) and in preserved samples
+cfg.sig.syn_type_edges = [-0.40 -0.10 0.19];
+cfg.sig.syn_type_names = {'A (lowest PUB:PEB)' 'B (low PUB:PEB)' 'C (mid)' 'D (high PUB:PEB)'};
+cfg.sig.syn_typeA_min_above_floor = 2; %type A: first edge where min(BL2, GL2) is at least this far above its floor (log10) ...
+cfg.sig.syn_typeA_dim_slope = 0.4;     %... edge this much further left per log10 below that
 cfg.sig.syn_type_min_above_floor = 1; %BL2 and GL2 at least this far above their floors

@@ -29,7 +29,7 @@ if ismember("table", steps)
     T = load(fullfile(outdir, 'AttuneTable.mat'));
     A = T.AttuneTable;
     disp(rows2vars(A(:, {'Syn_count' 'Crypto_dim_count' 'Crypto_bright_count' 'Euk_with_Syn_count' 'Syn_on_particle_count' ...
-        'Syn_typeA_count' 'Syn_typeB_count' 'Syn_typeC_count' 'Flag_lowchl_Syn_pigment_count' 'Flag_below_Euk_chl_gap_count' 'Flag_Pro_tail_count'})))
+        'Syn_typeA_count' 'Syn_typeB_count' 'Syn_typeC_count' 'Syn_typeD_count' 'Flag_lowchl_Syn_pigment_count' 'Flag_below_Euk_chl_gap_count' 'Flag_Pro_tail_count'})))
     disp(T.table_metadata)
 end
 d = dir(fullfile(outdir, 'class', '*.mat'));

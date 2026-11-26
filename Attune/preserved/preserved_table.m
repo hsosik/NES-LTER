@@ -39,7 +39,7 @@ for k = 1:numel(d)
     m = c.class_meta;
     g = true(size(c.class)); if isfield(c, 'time_gate'), g = c.time_gate(:); end
     cl = c.class(:); cl = cl(g);
-    st = zeros(size(cl), 'uint8'); if isfield(c, 'syn_type') && numel(c.syn_type) == numel(g), st = c.syn_type(:); st = st(g); end
+    st = zeros(size(cl), 'uint8'); if isfield(c, 'syn_type') && numel(c.syn_type) == numel(g), st = syn_type_current(c.syn_type(:), c.class_meta); st = st(g); end
     bt = []; if isfield(c, 'bact_type') && numel(c.bact_type) == numel(g), bt = c.bact_type(:); bt = bt(g); end
     hm = ""; if isfield(m, 'hbac') && isfield(m.hbac, 'hna') && isfield(m.hbac.hna, 'method'), hm = string(m.hbac.hna.method); end
     v = NaN(size(cl)); if isfield(c, 'volume_cubic_microns') && numel(c.volume_cubic_microns) == numel(g), v = c.volume_cubic_microns(:); v = v(g); end
@@ -65,7 +65,7 @@ for i = 1:numel(keys)
     r.n_CHL_runs = nCHL; r.n_PE_runs = nPE; r.n_pro_runs = nPRO; r.n_hbac_runs = nHB;
     % Syn
     j = iPE; if isempty(j), j = iCHL; end
-    r = add_group(r, 'syn', S, j, {'syn' 'syn_typeA' 'syn_typeB' 'syn_typeC' 'syn_type_unusable' 'syn_on_particle'}, {'syn'});
+    r = add_group(r, 'syn', S, j, {'syn' 'syn_typeA' 'syn_typeB' 'syn_typeC' 'syn_typeD' 'syn_type_unusable' 'syn_on_particle'}, {'syn'});
     % Euks
     j = iCHL; if isempty(j), j = iPE; end
     r = add_group(r, 'euk', S, j, {'euk' 'euk_leq2um' 'euk_leq3um' 'euk_leq5um' 'euk_leq10um' 'euk_leq20um' 'crypto_dim' 'crypto_bright' 'euk_with_syn'}, ...
@@ -115,7 +115,7 @@ esd = (v * 3 / 4 / pi).^(1/3) * 2;
 C = real(biovol2carbon(v, 0));
 grp = struct();
 grp.syn = cl == 2; grp.euk = cl == 1;
-grp.syn_typeA = cl == 2 & st == 1; grp.syn_typeB = cl == 2 & st == 2; grp.syn_typeC = cl == 2 & st == 3; grp.syn_type_unusable = cl == 2 & st == 9;
+grp.syn_typeA = cl == 2 & st == 1; grp.syn_typeB = cl == 2 & st == 2; grp.syn_typeC = cl == 2 & st == 3; grp.syn_typeD = cl == 2 & st == 4; grp.syn_type_unusable = cl == 2 & st == 9;
 grp.syn_on_particle = cl == 8;
 for e = [2 3 5 10 20]
     grp.(sprintf('euk_leq%dum', e)) = cl == 1 & esd <= e;

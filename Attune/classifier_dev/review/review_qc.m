@@ -17,7 +17,7 @@ fl = zeros(size(cls)); if isfield(info, 'flag'), fl = double(info.flag(:)); end
 for t = 1:5, q.(sprintf('flag%d', t)) = sum(fl == t); end % see review_config flag_names
 st = zeros(size(cls)); if isfield(info, 'syn_type'), st = double(info.syn_type(:)); end
 synb = ismember(cls, [2 5 8]);
-for t = 1:3, q.(sprintf('syn_type%d', t)) = sum(synb & st == t); end
+for t = 1:4, q.(sprintf('syn_type%d', t)) = sum(synb & st == t); end
 q.syn_untyped = sum(synb & st == 9);
 q.syn_untyped_share = q.syn_untyped / max(1, sum(synb));
 q.n_catchall = fieldor(info, 'n_catchall', NaN);
@@ -76,7 +76,14 @@ q.euksyn_cut = -fieldor(rl, 'euksyn_max_chl_below_euk', NaN);
 q.euk_min_size = fieldor(rl, 'euk_min_size', NaN);
 q.trig = fieldor(info, 'trigger_edges', struct());
 q.pro_AH_max = fieldor(info, 'pro_AH_max', NaN); % Pro wide-pulse cut (chl pulse-shape panel)
-if isfield(info, 'syn_type_edges'), q.syn_type_edges = info.syn_type_edges(:)'; else, q.syn_type_edges = [NaN NaN]; end
+if isfield(info, 'syn_type_edges'), q.syn_type_edges = info.syn_type_edges(:)'; else, q.syn_type_edges = [NaN NaN NaN]; end
+% type A also needs min(BL2, GL2) at least this far above its floor (drawn in the
+% GL2 vs BL2 view as the corner GL2 >= floor + a, BL2 >= floor + a below the first edge)
+q.syn_typeA_min_above_floor = fieldor(info, 'syn_typeA_min_above_floor', NaN);
+q.syn_typeA_dim_slope = fieldor(info, 'syn_typeA_dim_slope', NaN); % dimmer events: A below e1 - slope*(limit - b)
+q.floor_BL2 = NaN; q.floor_GL2 = NaN;
+if isfield(info, 'floor') && isfield(info.floor, 'BL2'), q.floor_BL2 = info.floor.BL2; end
+if isfield(info, 'floor') && isfield(info.floor, 'GL2'), q.floor_GL2 = info.floor.GL2; end
 end
 
 function q = add_cluster(q, info, m, nm, nmin, spread)

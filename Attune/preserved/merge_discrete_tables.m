@@ -41,7 +41,7 @@ function [M, E] = merge_discrete_tables(cruises, outpath, opt)
 %               "euk_with_syn"    euk_with_syn_* (class 5; ESD <= 20 um)
 %               "redeuk_all"      redeuk_cells_per_ml etc.: class 1, all sizes
 %               "syn_on_particle" syn_on_particle_cells_per_ml (class 8)
-%               "syn_types"       syn_typeA/B/C/unusable_cells_per_ml
+%               "syn_types"       syn_typeA/B/C/D/unusable_cells_per_ml
 %               "sybr"            pro_sybr_cells_per_ml and the other hetprok choice
 %                                 (hetprok_excl_pro_ or hetprok_incl_pro_cells_per_ml)
 %               "hna"             hetprok_lna_cells_per_ml, hetprok_hna_cells_per_ml (class 9
@@ -218,7 +218,7 @@ for g = 1:size(grp, 1)
 end
 if ismember("syn_on_particle", ex), E.syn_on_particle_cells_per_ml = col(M, 'syn_on_particle_cells_per_ml', n); end
 if ismember("syn_types", ex)
-    for t = ["A" "B" "C" "_unusable"]
+    for t = ["A" "B" "C" "D" "_unusable"]
         E.("syn_type" + t + "_cells_per_ml") = col(M, "syn_type" + t + "_cells_per_ml", n);
     end
 end

@@ -22,12 +22,13 @@ t = cellfun(@(q) q.time, Q);
 for i = 1:numel(Q)
     Q{i}.time = char(datetime(Q{i}.time, 'ConvertFrom', 'datenum', 'Format', 'yyyy-MM-dd''T''HH:mm:ss'));
 end
-V = rmfield(R, {'views' 'view_lim'});
+V = rmfield(R, intersect({'views' 'view_lim' 'type_views'}, fieldnames(R)));
 V.views = cell(size(R.views, 1), 1);
 for v = 1:size(R.views, 1)
     lx = R.lim.(R.views{v, 1}); ly = R.lim.(R.views{v, 2});
     if ~isempty(R.view_lim{v}), lx = R.view_lim{v}(1, :); ly = R.view_lim{v}(2, :); end
-    V.views{v} = struct('x', R.views{v, 1}, 'y', R.views{v, 2}, 'xlab', R.views{v, 3}, 'ylab', R.views{v, 4}, 'xlim', lx, 'ylim', ly);
+    tp = ''; if isfield(R, 'type_views'), tp = R.type_views{v}; end % Syn type view overlay: '', 'diag' or 'vbox'
+    V.views{v} = struct('x', R.views{v, 1}, 'y', R.views{v, 2}, 'xlab', R.views{v, 3}, 'ylab', R.views{v, 4}, 'xlim', lx, 'ylim', ly, 'type', tp);
 end
 D = struct('cruise', cruise, 'made', char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm')), 'R', V);
 D.build = build;

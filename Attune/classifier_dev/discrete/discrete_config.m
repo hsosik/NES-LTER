@@ -161,4 +161,10 @@ cfg.hbac.hna.default_cut = -1.26; %fixed cut (median valley)
 % Syn defaults (rare-Syn rescue, files without Syn): hand-gated preserved Syn
 cfg.sig.syn_PEchl_default = 0.1;   %live -0.2
 cfg.sig.syn_size_default = -1.29;  %live -1.24
+% Syn types: preservation shifts the excitation ratio BL2-GL2 up by ~0.06 (1,100
+% preserved CHL/PE runs, 13 cruises, vs live; output/syn_type_d): peaks B -0.13..-0.21
+% (live -0.23), C +0.05..+0.09 (0.00), type A ~-0.43 (-0.48); troughs A/B -0.31..-0.37
+% (-0.40), B/C -0.01..-0.07 (-0.10), C/D ~0.25 (0.19). The type-A brightness rule is
+% kept (preserved Syn are ~0.3 brighter, so almost none fall short of it)
+cfg.sig.syn_type_edges = cfg.sig.syn_type_edges + 0.06; %[-0.34 -0.04 0.25]
 end

@@ -1036,7 +1036,11 @@ info.syn_ref = struct('PEchl', syn_PEchl, 'GL2GL3', syn_GL2GL3, 'BL3', syn_BL3, 
 % Syn spectral subtype (Nov 2026): fixed windows on the bead-normalized excitation
 % ratio BL2-GL2 (PUB:PEB proxy), the same in every file and cruise. Kept as a
 % separate label so class 2 (and its counts downstream) is unchanged:
-% 1/2/3 = types A/B/C, 9 = Syn-bearing event whose spectrum is not usable, 0 = other
+% 1/2/3/4 = types A/B/C/D in order of BL2-GL2, 9 = Syn-bearing event whose spectrum
+% is not usable, 0 = other. In dim Syn the ratio is noisy and spreads type B below the
+% first edge (summer: up to half of the dimmest Syn), so for Syn whose BL2 or GL2 is
+% less than syn_typeA_min_above_floor above its floor the type-A edge moves left by
+% syn_typeA_dim_slope per log10 of shortfall
 st = zeros(n, 1, 'uint8');
 synlike = ismember(class, [2 5 8]);
 % the type uses BL2 and GL2 only, so only those must be on scale (GL3 near its floor,
@@ -1045,7 +1049,14 @@ usable = ~satch('BL2') & ~satch('GL2') & ...
     F.BL2 > finfo.floor.BL2 + sig.syn_type_min_above_floor & F.GL2 > finfo.floor.GL2 + sig.syn_type_min_above_floor;
 ex = F.BL2 - F.GL2;
 st(synlike) = 9;
-st(synlike & usable) = 1 + (ex(synlike & usable) >= sig.syn_type_edges(1)) + (ex(synlike & usable) >= sig.syn_type_edges(2));
+typed = synlike & usable;
+st(typed) = 1 + sum(ex(typed) >= sig.syn_type_edges(:)', 2);
+% type A edge by brightness b (the dimmer of BL2 and GL2 above its floor): the first
+% edge where b >= syn_typeA_min_above_floor, further left by syn_typeA_dim_slope per
+% log10 below that; events between that edge and the first edge stay B
+shortfall = max(0, sig.syn_typeA_min_above_floor - min(F.BL2 - finfo.floor.BL2, F.GL2 - finfo.floor.GL2));
+dimA = typed & st == 1 & ex >= sig.syn_type_edges(1) - sig.syn_typeA_dim_slope * shortfall;
+st(dimA) = 2;
 info.syn_type = st;
 % flag for unassigned events left out for a specific reason, so they can be
 % counted later without entering the phytoplankton classes (class stays 0):
@@ -1089,6 +1100,7 @@ info.flag_names = {'Syn-pigment particle, low chl (degraded Syn/Euk, grazer, det
     'unpaired green part of a split Syn (Syn-like PE under green, no SSC/chl pulse): separate Syn count' ...
     'unpaired blue part of a split Syn (no green-laser PE): not counted' 'unpaired green part, not Syn-like: not counted'};
 info.syn_type_names = sig.syn_type_names; info.syn_type_edges = sig.syn_type_edges;
+info.syn_typeA_min_above_floor = sig.syn_typeA_min_above_floor; info.syn_typeA_dim_slope = sig.syn_typeA_dim_slope;
 info.features = F;
 end
 

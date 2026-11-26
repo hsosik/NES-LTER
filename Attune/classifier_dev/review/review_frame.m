@@ -23,10 +23,13 @@ F.dEuk = F.BL3 - (eb(1) + eb(2) * F.size); % chl relative to the Euk chl-size li
 if ~ismember('chlSSC', F.Properties.VariableNames), F.chlSSC = F.BL3 - F.size; end
 if ~ismember('GL2GL3', F.Properties.VariableNames), F.GL2GL3 = F.GL2 - F.GL3; end
 if ~ismember('BL3_AH', F.Properties.VariableNames), F.BL3_AH = nan(height(F), 1); end
+F.BL2GL2 = F.BL2 - F.GL2; % Syn type excitation ratio (type views)
 st = zeros(size(cls)); if isfield(info, 'syn_type'), st = double(info.syn_type(:)); end
 fl = zeros(size(cls)); if isfield(info, 'flag'), fl = double(info.flag(:)); end
 
 nv = size(R.views, 1); W = R.px; g = R.gap;
+% Syn type views: listed in R.type_views (older configs: the last view only)
+if isfield(R, 'type_views'), tv = ~cellfun(@isempty, R.type_views(:))'; else, tv = (1:nv) == nv; end
 if isempty(old) || ~R.compare_rows, rows = {'v2'}; else, rows = {'old' 'v2' 'diff'}; end
 nrow = numel(rows);
 img = ones(nrow * W + (nrow - 1) * g, nv * W + (nv - 1) * g, 3);
@@ -42,13 +45,13 @@ for r = 1:nrow
         switch rows{r}
             case {'old' 'v2'}
                 if strcmp(rows{r}, 'old'), c = old; else, c = cls; end
-                if strcmp(rows{r}, 'v2') && v == nv
+                if strcmp(rows{r}, 'v2') && tv(v)
                     % Syn type view: all Syn-bearing events (Syn, Euk with Syn, Syn on
                     % particle) coloured by type, everything else light grey beneath
                     synb = ismember(c, [2 5 8]);
                     P = dens(P, ix, ok & ~synb, [.6 .6 .6], .45);
-                    P = dens(P, ix, ok & synb & ~ismember(st, 1:3), R.syn_untyped_col, .9, .5);
-                    [~, o] = sort(arrayfun(@(t) sum(synb & st == t), 1:3), 'descend');
+                    P = dens(P, ix, ok & synb & ~ismember(st, 1:size(R.syn_type_cols, 1)), R.syn_untyped_col, .9, .5);
+                    [~, o] = sort(arrayfun(@(t) sum(synb & st == t), 1:size(R.syn_type_cols, 1)), 'descend');
                     for t = o, P = dens(P, ix, ok & synb & st == t, R.syn_type_cols(t, :), 1, .6); end
                     y0 = (r - 1) * (W + g); x0 = (v - 1) * (W + g);
                     img(y0 + (1:W), x0 + (1:W), :) = P;

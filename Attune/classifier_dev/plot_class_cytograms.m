@@ -35,8 +35,8 @@ rare = ismember(codes, [3 4 5 8]);
 views = {'size' 'BL3' 'log10 side scatter rel. 1 um bead (SSC; GL1 when large)' 'chl (BL3)'; 'BL3' 'GL2' 'chl (BL3)' 'PE (GL2)'; 'GL3' 'GL2' 'GL3' 'PE (GL2)'; ...
     'size' 'PEchl' 'log10 side scatter rel. 1 um bead (SSC; GL1 when large)' 'PE:chl (GL2-BL3)'; 'BL3' 'BL2' 'chl (BL3)' 'BL2 (green fl., blue laser)'; 'GL3' 'BL2' 'GL3' 'BL2 (PE, blue laser)'; 'size' 'dEuk' 'log10 side scatter rel. 1 um bead (SSC; GL1 when large)' 'chl minus Euk chl-size line'; ...
     'GL2' 'BL2' 'PE (GL2, green laser)' 'PE (BL2, blue laser)'};
-% last view: Syn spectral subtypes (v2 row: Syn coloured by type A/B/C; dashed lines = type boundaries)
-stcols = [.5 .2 0; 1 .55 0; .95 .85 0]; vst = size(views, 1);
+% last view: Syn spectral subtypes (v2 row: Syn coloured by type A/B/C/D; dashed lines = type boundaries)
+stcols = [0 .45 .25; .5 .2 0; 1 .55 0; .95 .85 0]; vst = size(views, 1);
 edge = info.trigger_edges;
 
 % axis limits from all events, clipped to the populated range
@@ -75,12 +75,12 @@ for r = 1:2
         if r == 2 && v == vst && isfield(info, 'syn_type')
             % Syn by spectral subtype, drawn over the class colours
             st = info.syn_type;
-            for t = 1:3
+            for t = 1:4
                 i = c == 2 & st == t;
                 scatter(F.GL2(i), F.BL2(i), 3, stcols(t, :), 'filled', 'MarkerFaceAlpha', .5)
             end
-            nst = arrayfun(@(t) sum(c == 2 & st == t), [1 2 3 9]);
-            text(0.02, 0.98, sprintf('Syn type A %d\nB %d\nC %d\nuntyped %d', nst), 'Units', 'normalized', 'VerticalAlignment', 'top', 'FontSize', 7, 'BackgroundColor', [1 1 1 .7])
+            nst = arrayfun(@(t) sum(c == 2 & st == t), [1 2 3 4 9]);
+            text(0.02, 0.98, sprintf('Syn type A %d\nB %d\nC %d\nD %d\nuntyped %d', nst), 'Units', 'normalized', 'VerticalAlignment', 'top', 'FontSize', 7, 'BackgroundColor', [1 1 1 .7])
         end
         decorate(v)
         if v == 1
@@ -132,8 +132,8 @@ close(f)
     function decorate(v)
         axis(lim(v, :)); grid on; box on
         if v == vst && isfield(info, 'syn_type_edges')
-            xx = lim(v, 1:2); e2 = info.syn_type_edges;
-            plot([xx NaN xx], [xx + e2(1) NaN xx + e2(2)], 'k--', 'LineWidth', .8)
+            xx = lim(v, 1:2);
+            for e2 = info.syn_type_edges(:)', plot(xx, xx + e2, 'k--', 'LineWidth', .8), end
         end
         if strcmp(views{v, 2}, 'dEuk') && all(isfinite(eb))
             % Euk line, Euk-with-Syn cut, Euk chl gap (a BL3 level, sloped here), Euk minimum size

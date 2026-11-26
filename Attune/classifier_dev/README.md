@@ -433,6 +433,8 @@ The old dim crypto class is known to be a mixture, so agreement with it is not a
 
 ### Syn subtype label in v2 (Nov 2026)
 
+*Superseded 26 Nov 2026 by four types A/B/C/D: the A/B/C below are now B/C/D (see "Fourth Syn type" at the end).*
+
 - **Labels.** `assign_class_v2` returns `info.syn_type`, one label per event, for Syn (2), Euk with Syn (5) and Syn on particle (8):
   - 1 = type A, 2 = B, 3 = C
   - 9 = spectrum not usable (BL2, GL2 or GL3 saturated or within `syn_type_min_above_floor` = 1 of the floor)
@@ -808,3 +810,67 @@ Found in the held-out check of preserved winter CHL runs, where most hand-gated 
 - AT46 C17N02 is unchanged; it has the opposite problem (too many Euks).
 - **60-file check:** medians AR92 0.9852, AR95 0.9573 → 0.9575, EN727 0.9293, HRS2609 0.9779 → 0.9782; no file moves by more than 0.002.
 - **Underway survey (328 files):** 10 change. AR88 26Apr(3) Sample(30) Euk 535 → 3,613 (old 3,577) and EN627 1Feb2019a Sample(1) Euk 429 → 1,444 (both v2 and the old classes had the reference at +0.47 there). Seven files lose 20–120 of 1,700–9,300 Syn; EN688 EXPORTS C01N24 loses 472 of 1,374 Syn, but it is a preserved PE run filed with the underway data and only changes when run through v2 alone. Through `assign_class_discrete`, the right path for it, Syn stay at 781 with the same Syn reference.
+
+### Fourth Syn type; types relettered in order of BL2 − GL2 (26 Nov 2026)
+
+Investigation in `output/syn_type_d` (scans of 1,000 underway files each from AR77 and AE2426, plus the 20-cruise reference set).
+
+- **New mode.** A separate Syn mode sits at BL2 − GL2 ≈ −0.48, below the former type A (−0.23).
+  - Its trough with the former A is at −0.39 to −0.41, and its spread (SD ~0.05) matches the other types.
+  - Compared with the former A, it has PE:chl about 0.3 higher (absolute ~0.32), the same chl, the same emission ratios (GL2−GL3, GL4−GL2) and is +0.13 larger.
+  - It is not saturation, the trigger edge, doublets, BL2 compression or an HV or laser-delay effect: it sits in the same files as the other types, at constant HV.
+- **Where.** It is on the fresher northern shelf.
+  - AE2426: a separate mode in 407 of 1,000 files, a median 4.5% of Syn in those files (max 8%).
+  - AR77: 177 of 1,000 files, about 1.7%.
+  - Also in reference files from EN657, EN712, EN715, EN727 and AR95.
+- **Relettering.** Types are now lettered in order of BL2 − GL2: 1 = A (new, −0.48), 2 = B (former A, −0.23), 3 = C (former B, 0.00), 4 = D (former C, +0.45). 9 and 0 are unchanged. Edges: `syn_type_edges = [-0.40 -0.10 0.19]`.
+- **Brightness-dependent type-A edge.** Let b = min(BL2, GL2) above floor (log10).
+  - Where b ≥ `syn_typeA_min_above_floor` = 2, type A is BL2 − GL2 below the first edge (−0.40).
+  - For dimmer Syn the edge moves left by `syn_typeA_dim_slope` = 0.4 per log10 of shortfall: below −0.50 at b = 1.75, below −0.60 at b = 1.5.
+  - Events between that edge and the first edge stay B.
+  - Warm-water Syn (T > 21) have a broad low tail below −0.40, 2–7% of all Syn, with no separate mode. It is noise in the ratio of dim Syn. The share below −0.40 falls with brightness, min(BL2, GL2) above floor: 39–64% of events at 1–1.25, 1–4% at 2–2.25, about 0 at 2.5 and above.
+  - Summer Syn are mostly 1.5–2.25 above floor. Real type A keeps a flat share at any brightness above about 2 (AE2426 4–5%).
+  - Share of events below −0.40 called A, and false A as a share of all Syn in summer files without a mode:
+
+  | rule | AE2426 | AR77 | AR95 | AR92 inshore station | summer false A |
+  |---|---|---|---|---|---|
+  | none | 1 | 1 | 1 | 1 | 2.4–7% |
+  | PE:chl > 0.05 (tried first) | 0.99 | 0.93 | 0.92 | 0.41 | 0.5–1.0% |
+  | **min(BL2, GL2) ≥ floor + 2** | **1.00** | **0.99** | **1.00** | **0.74** | **0.2–1.1%** |
+  | min(BL2, GL2) ≥ floor + 2.25 | 1.00 | 0.95 | 0.99 | 0.59 | 0–0.7% |
+
+  - **Sloped edge vs a fixed limit.** The table above groups files by a separate type-A mode found with all events. That grouping misses type A where it is a minority or dim, so it overstated false A.
+    - Regrouped by the share of bright Syn (b ≥ 2.25, where the ratio is precise) below −0.40: type A where that share is over 2%, none where it is under 0.5%, the rest left out.
+    - Full-event histograms of ratio against brightness, 10 cruises (about 2,000 files):
+
+    | rule | type A kept | false A (share of all Syn, files without type A) |
+    |---|---|---|
+    | fixed b ≥ 2 | 0.77 | 0.28% |
+    | fixed b ≥ 1.75 | 0.87 | 0.84% |
+    | fixed b ≥ 1.5 | 0.96 | 1.75% |
+    | **sloped edge, 0.4** | **0.90** | **0.64%** |
+    | sloped edge, 0.2 | 0.96 | 1.43% |
+    | none | 1 | 2.9% |
+
+    - Summer type A is dim and more common than the mode test showed: EN706, EN720 and the AR92 station keep only 25%, 75% and 70% of it with the fixed limit. AE2426, AR77 and AR95 keep over 99% under every rule.
+    - The sloped edge (user's choice, 26 Nov) beats a fixed limit of 1.75 on both counts.
+  - Why not PE:chl: type A's PE:chl is 0.3 above B in AE2426 and AR77, but only 0.25 above it in AR95 and 0–0.07 above it in summer type A. Preserved samples show no excess at all.
+  - The rule applies to classes 2, 5 and 8 alike, since it concerns the Syn PE signal itself.
+- **Summer type A.** It occurs at an inshore low-salinity station (41.32 N, 70.58 W): EN687 C26, EN720 C24 and AR92 C26 hold 7–19% of Syn in preserved runs and 9–21% in the underway files at those casts. AR92 shows a separated mode at −0.49. The 150-file summer scans missed these patches.
+- **Preserved samples** (1,100 preserved CHL/PE runs from 13 cruises, classified as in process_cruise preserved mode): preservation shifts BL2 − GL2 up by about 0.06.
+
+  | | type A peak | A/B trough | B peak | B/C trough | C peak | C/D trough |
+  |---|---|---|---|---|---|---|
+  | live | −0.48 | −0.40 | −0.23 | −0.10 | 0.00 | 0.19 |
+  | preserved | ~−0.43 | −0.31 to −0.37 | −0.13 to −0.21 | −0.01 to −0.07 | +0.05 to +0.09 | ~0.25 |
+
+  - `discrete_config` sets the edges 0.06 higher: [−0.34 −0.04 0.25].
+  - Preserved Syn are about 0.3 brighter in PE, so the brightness rule keeps nearly all of them. Runs without a type-A mode put 0.1–0.8% of Syn below −0.34.
+  - `assign_class_v2` returns `info.syn_type_edges`, `info.syn_typeA_min_above_floor` and `info.syn_typeA_dim_slope`, so the review draws the rules a run was classified with.
+- **Old class files.** Files written with 3 types (`class_meta.cfg.sig.syn_type_edges` has 2 edges) are read through `syn_type_current`, which shifts their codes 1/2/3 to 2/3/4. They have no type A: its events are counted in their B.
+  - `generate_attune_table` and `preserved_table` use this, and add `typeD` columns.
+- **Other updates.** `score_agreement` (`new_synD`), `plot_class_cytograms`, the review frame, QC and viewer, and `merge_discrete_tables` now handle the fourth type. In the review, B/C/D keep the former A/B/C colours and A is green.
+  - The review has an 11th panel, BL2 − GL2 vs PE:chl, with the edges as vertical lines. The GL2 vs BL2 panel draws the type-A boundary, including its sloped part for dim Syn.
+- **Caveats.**
+  - About 10% of summer type A (dim and close to the first edge) is still counted as B.
+  - In preserved runs the edges assume one shift, 0.06, for all cruises (observed +0.04 to +0.10 per cruise).

@@ -75,7 +75,9 @@ function p = process_cruise(cruise, opt)
 % Class file variables written by classify (volume loads and re-saves the file, keeping them)
 %   class      per event, double: 0 unassigned, 1 Euk, 2 Syn, 3 dim crypto, 4 bright crypto,
 %              5 Euk with Syn, 7 Pro, 8 Syn on particle
-%   syn_type   per event, uint8: 1/2/3 Syn type A/B/C (PUB:PEB low/mid/high),
+%   syn_type   per event, uint8: 1/2/3/4 Syn type A/B/C/D in order of BL2-GL2 (PUB:PEB
+%              lowest / low / mid / high; 3-type files before 26 Nov 2026:
+%              read with syn_type_current),
 %              9 Syn-bearing but spectrum not usable, 0 not Syn-bearing (classes 2, 5, 8 only)
 %   bact_type  SYBR (hbac) preserved runs only: per event, uint8, 1 LNA, 2 HNA bacteria,
 %              0 not bacteria (class 9 only; method and cut in class_meta.hbac.hna)
@@ -509,7 +511,8 @@ function codes = class_codes()
 codes.class = "class: 0 = unassigned, 1 = Euk (no PE), 2 = Syn, 3 = dim crypto (PE euk, red-shifted PE), " + ...
     "4 = bright crypto (PE euk), 5 = Euk with Syn (Syn-like PE, possible grazer), 7 = Pro, " + ...
     "8 = Syn on particle (count with Syn abundance, not Syn size or carbon); cell volume in cubic microns";
-codes.syn_type = "syn_type (classes 2, 5, 8): 1 = type A (low PUB:PEB), 2 = type B (mid), 3 = type C (high PUB:PEB), " + ...
+codes.syn_type = "syn_type (classes 2, 5, 8): 1 = type A (lowest PUB:PEB), 2 = type B (low PUB:PEB), " + ...
+    "3 = type C (mid), 4 = type D (high PUB:PEB), " + ...
     "9 = spectrum not usable, 0 = not Syn-bearing";
 codes.bact_type = "bact_type (SYBR runs, class 9 only): 1 = LNA, 2 = HNA (low / high nucleic acid; cut on BL1 - slope*(SSC+2), " + ...
     "class_meta.hbac.hna: method 'fixed' = no SYBR valley, split nominal), 0 = not bacteria";
