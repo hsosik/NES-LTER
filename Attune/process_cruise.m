@@ -353,7 +353,12 @@ use_par = opts.parallel;
 if isempty(use_par), use_par = license('test', 'Distrib_Computing_Toolbox') && n > 4; end
 if use_par && isempty(gcp('nocreate')), parpool; end
 M = 0; if use_par, M = Inf; end
+% progress in the command window: a line every 20 finished files
+classify_progress(n);
+dq = [];
+if use_par, dq = parallel.pool.DataQueue; afterEach(dq, @classify_progress); end
 parfor (k = 1:n, M)
+    t0 = tic;
     try
         [fcsdat, fcshdr] = fca_readfcs(fcsfile{k});
         if pres
@@ -423,6 +428,8 @@ parfor (k = 1:n, M)
         err(k) = string(ME.identifier) + ": " + string(ME.message);
         warning('process_cruise:classify', '%s: %s', Fi.fcslist{k}, ME.message)
     end
+    msg = {names{k}, toc(t0), err(k) ~= ""};
+    if isempty(dq), classify_progress(msg); else, send(dq, msg); end
 end
 L = [table(string(Fi.fcslist), t, pro, nev, ncomp, 'VariableNames', {'file' 'time' 'pro_measured' 'n_events' 'ncomp'}) ...
     array2table(counts, 'VariableNames', {'n0' 'n1_euk' 'n2_syn' 'n3_crypto_dim' 'n4_crypto_bright' 'n5_euk_syn' 'n7_pro' 'n8_syn_particle' 'n9_bact' 'n_flagged' 'n_syn_unpaired_green'}) ...
@@ -449,6 +456,20 @@ if do_review
     end
     review_step(revdir, Q, R, p, version)
     if ~isempty(Rh), review_step(revdir_h, Qh, Rh, p, version), end
+end
+end
+
+
+function classify_progress(x)
+% classify_progress(n) resets the counter for n files; classify_progress({name, seconds, failed})
+% counts a finished file and prints a line every 20 files and at the last:
+% "classify: k of n files (f failed, hh:mm:ss elapsed)"
+persistent k n nf t0
+if isnumeric(x), k = 0; n = x; nf = 0; t0 = tic; return, end
+k = k + 1; nf = nf + x{3};
+if mod(k, 20) == 0 || k == n
+    fprintf('classify: %d of %d files (%d failed, %s elapsed)\n', k, n, nf, ...
+        char(duration(0, 0, toc(t0), 'Format', 'hh:mm:ss')))
 end
 end
 
