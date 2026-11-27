@@ -33,7 +33,11 @@ function p = process_cruise(cruise, opt)
 %             false): one cytogram frame per file, per-file QC and index.html, a viewer
 %             that steps through the cruise, flags unusual files and saves review
 %             decisions to bead_calibrated\review_decisions.csv (classifier_dev\review)
-%   volume    batch_mergedSSC2volume: adds volume_cubic_microns etc. to the class files
+%   volume    adds volume_cubic_microns etc. to the class files (volume_file). Run with
+%             classify, volumes are computed as each file is classified (each FCS file
+%             read once; files classify skips keep their volumes) and mergeTable.mat
+%             gets those files' rows. Alone: batch_mergedSSC2volume (underway) or
+%             preserved_volume, over every class file
 %   table     generate_attune_table -> bead_calibrated\AttuneTable.mat (every file; Review_exclude =
 %             1 for files marked exclude in the class review, left out of the EDI tables.
 %             After a review: apply_review_excludes(cruise) updates the tables built already)
@@ -208,12 +212,18 @@ elseif do("beads")
 end
 
 %% classify
+vol_done = false;
 if do("classify")
-    classify_step(p, c, opts)
+    % with the volume step requested too, volumes are computed as each file is
+    % classified (one FCS read, one class-file save) and the volume step is skipped
+    classify_step(p, c, opts, do("volume"))
+    vol_done = do("volume");
 end
 
 %% volume
-if do("volume") && pres
+if vol_done
+    % done in classify
+elseif do("volume") && pres
     use_par = opts.parallel; if isempty(use_par), use_par = license('test', 'Distrib_Computing_Toolbox'); end
     preserved_volume(p, use_par); % bead reference from class_meta (same-day lab beads)
 elseif do("volume")
@@ -281,13 +291,15 @@ end
 end
 
 
-function classify_step(p, c, opts)
+function classify_step(p, c, opts, do_volume)
+if nargin < 4, do_volume = false; end
 load([p.outpath 'FCSfileinfo.mat'], 'FCSfileinfo')
 Fi = FCSfileinfo;
 Fi = Fi(~contains(Fi.fcslist, p.filetype2exclude), :);
 pres = isfield(p, 'sample') && p.sample == "preserved";
 if pres, Fi = Fi(~strcmp(Fi.runtype, 'other'), :); end
 Fi = sortrows(Fi, 'matdate_start');
+first_time = datetime(min(Fi.matdate_start), 'ConvertFrom', 'datenum'); % volume: bead runs from the cruise's first sample day on
 if iscell(opts.files) || isstring(opts.files)
     Fi = Fi(ismember(Fi.fcslist, cellstr(opts.files)), :);
 elseif ~isempty(opts.files) && opts.files < height(Fi)
@@ -360,6 +372,9 @@ use_par = opts.parallel;
 if isempty(use_par), use_par = license('test', 'Distrib_Computing_Toolbox') && n > 4; end
 if use_par && isempty(gcp('nocreate')), parpool; end
 M = 0; if use_par, M = Inf; end
+% volumes in the same pass (volume step requested too)
+V = []; vrow = cell(n, 1); verr = strings(n, 1);
+if do_volume, V = volume_setup(p, first_time); end
 % progress in the command window: a line every 20 finished files
 classify_progress(n);
 dq = [];
@@ -417,6 +432,14 @@ parfor (k = 1:n, M)
                 o.notes(7) = codes.bact_type;
             end
         end
+        if do_volume
+            try
+                [o, vrow{k}] = volume_file(o, fcsdat, fcshdr, V, datetime(t(k), 'ConvertFrom', 'datenum'));
+            catch ME
+                verr(k) = string(ME.message);
+                warning('process_cruise:volume', '%s: volume not calculated: %s', names{k}, ME.message)
+            end
+        end
         save_classfile(classfile{k}, o)
         if do_review
             try
@@ -459,6 +482,11 @@ if exist(lf, 'file')
 end
 save(lf, 'L')
 fprintf('classify: %d files classified, %d failed; log in %sclass_log.mat\n', sum(err == ""), sum(err ~= ""), p.outpath)
+if do_volume
+    ok = err == "";
+    volume_merge_table(p, V, names(ok), datetime(t(ok), 'ConvertFrom', 'datenum'), vrow(ok), true);
+    fprintf('volume: computed with classify for %d files, %d without a volume\n', sum(ok & verr == ""), sum(ok & verr ~= ""))
+end
 if do_review
     if ~isempty(Rh) || exist(fullfile(revdir_h, 'review_qc.mat'), 'file')
         R.link = struct('href', 'hbac/index.html', 'text', 'SYBR bacteria runs');
