@@ -22,7 +22,11 @@ function preserved_volume(p, parallel)
 if nargin < 2 || isempty(parallel), parallel = license('test', 'Distrib_Computing_Toolbox'); end
 d = dir(fullfile(p.classpath, '*.mat'));
 V = volume_setup(p);
-n = numel(d); skipped = strings(n, 1);
+n = numel(d); skipped = strings(n, 1); rows = cell(n, 1);
+names = regexprep({d.name}', '\.mat$', '.fcs');
+load(fullfile(p.outpath, 'FCSfileinfo.mat'), 'FCSfileinfo')
+[in, ia] = ismember(names, FCSfileinfo.fcslist);
+filetime = NaT(n, 1); filetime(in) = datetime(FCSfileinfo.matdate_start(ia(in)), 'ConvertFrom', 'datenum');
 if parallel && isempty(gcp('nocreate')), parpool; end
 M = 0; if parallel, M = Inf; end
 fpath = p.fpath;
@@ -34,12 +38,13 @@ parfor (k = 1:n, M)
     end
     try
         [fcsdat, fcshdr] = fca_readfcs(fullfile(fpath, regexprep(d(k).name, '\.mat$', '.fcs')));
-        c = volume_file(c, fcsdat, fcshdr, V, []);
+        [c, rows{k}] = volume_file(c, fcsdat, fcshdr, V, []);
     catch ME
         skipped(k) = string(ME.message); continue
     end
     save_struct(fn, c)
 end
+volume_merge_table(p, V, names, filetime, rows, false); % which files have volumes (cruise_status)
 fprintf('volume: %d preserved class files calibrated, %d skipped\n', sum(skipped == ""), sum(skipped ~= ""))
 if any(skipped ~= "")
     q = find(skipped ~= "");

@@ -104,7 +104,11 @@ function p = process_cruise(cruise, opt)
 %              pro_near_trigger_frac (Pro-setting files: share of Pro within 0.1 log of
 %              the SSC or chl trigger edge)
 %
-% Each run appends its settings to bead_calibrated\process_cruise_log.mat.
+% Each run appends its settings to bead_calibrated\process_cruise_log.mat, and each step
+% adds a record to bead_calibrated\process_state.mat when it finishes (or fails):
+% step, start / finish time, ok, code version, options and counts (cruise_status reads it).
+% Class files carry class_meta.classifier_tag (classifier_version), class_log the tag,
+% code version and time per file.
 %
 % Nov 2026, processing wrapper redesign (replaces process_wrapper_2024b);
 % 19 Nov 2026: Name=Value options and step labels replace step numbers and an opts struct
@@ -179,9 +183,14 @@ end
 if ~isempty(s.notes), fprintf('  note: %s\n', s.notes); end
 if ~exist(p.classpath, 'dir'), mkdir(p.classpath); end
 write_log(p)
+% step record (process_state.mat, read by cruise_status): one entry per step run,
+% written when the step finishes, or with ok = false when it stops with an error
+cur = ""; t0 = NaT;
+try
 
 %% files
 if do("files")
+    cur = "files"; t0 = datetime('now');
     fi = [p.outpath 'FCSfileinfo.mat'];
     if exist(fi, 'file') && ~opts.force
         FCSfileinfo = FCS_DateTimeList(p.fpath, fi); % reads only new files; fills voltages for old rows
@@ -191,9 +200,11 @@ if do("files")
     if pres, FCSfileinfo = preserved_fileinfo(FCSfileinfo); end % cast, niskin, runtype...
     save(fi, 'FCSfileinfo')
     fprintf('files: %d FCS files listed\n', height(FCSfileinfo))
+    record_step(p, cur, t0, true, struct('n_files', height(FCSfileinfo)));
 end
 
 %% beads
+if do("beads"), cur = "beads"; t0 = datetime('now'); end
 if do("beads") && pres
     made = preserved_bead_step(p, opts.force); % lab bead runs; exclusions from this cruise's bead review
     if made && opts.review
@@ -213,6 +224,7 @@ elseif do("beads")
         end
     end
 end
+if do("beads"), record_step(p, cur, t0, true, struct('made', made)); end
 % steps that use the bead references: warn unless the bead review is marked
 % complete for the bead table now in place (bead_review_status, page button)
 if do("classify") || do("volume")
@@ -229,45 +241,68 @@ vol_done = false;
 if do("classify")
     % with the volume step requested too, volumes are computed as each file is
     % classified (one FCS read, one class-file save) and the volume step is skipped
-    classify_step(p, c, opts, do("volume"))
+    cur = "classify"; t0 = datetime('now');
+    ci = classify_step(p, c, opts, do("volume"));
+    record_step(p, cur, t0, true, ci);
     vol_done = do("volume");
+    if vol_done
+        record_step(p, "volume", t0, true, struct('n_files', ci.n_volume, 'n_failed', ci.n_volume_failed, ...
+            'with_classify', true));
+    end
 end
 
 %% volume
 if vol_done
     % done in classify
 elseif do("volume") && pres
+    cur = "volume"; t0 = datetime('now');
     use_par = opts.parallel; if isempty(use_par), use_par = license('test', 'Distrib_Computing_Toolbox'); end
     preserved_volume(p, use_par); % bead reference from class_meta (same-day lab beads)
+    record_step(p, cur, t0, true, struct('with_classify', false));
 elseif do("volume")
+    cur = "volume"; t0 = datetime('now');
     batch_mergedSSC2volume(p)
+    record_step(p, cur, t0, true, struct('with_classify', false));
 end
 
 %% table
+if do("table"), cur = "table"; t0 = datetime('now'); end
 if do("table") && pres
     preserved_table(p); % per-Niskin DiscreteTable.mat
 elseif do("table")
     generate_attune_table(p.classpath, [p.outpath 'FCSfileinfo.mat'])
 end
+if do("table"), record_step(p, cur, t0, true, struct()); end
 
 %% metadata (underway match; bottle match for preserved samples)
+if do("metadata"), cur = "metadata"; t0 = datetime('now'); end
 if do("metadata") && pres
     preserved_metadata(p, s);
 elseif do("metadata")
     match_Attune_underway_LTER([p.outpath 'AttuneTable.mat'], p.uw_fullname);
 end
+if do("metadata"), record_step(p, cur, t0, true, struct()); end
 
 %% movie
 if do("movie")
+    cur = "movie"; t0 = datetime('now');
     close all
     figure('WindowState', 'maximized')
     attune_lter_moviemaker(p.fpath, p.classpath, p.OD2setting, p.framemaker, p.moviechannels, p.stepsize)
+    record_step(p, cur, t0, true, struct());
 end
 
 %% volume distributions
 if do("voldists")
+    cur = "voldists"; t0 = datetime('now');
     get_cruise_voldists_fromEDItable2(p.basepath)
     Plot_Voldists_function(p.basepath, p.outpath)
+    record_step(p, cur, t0, true, struct());
+end
+
+catch ME
+    if cur ~= "", record_step(p, cur, t0, false, struct('message', string(ME.message), 'identifier', string(ME.identifier))); end
+    rethrow(ME)
 end
 end
 
@@ -304,8 +339,11 @@ end
 end
 
 
-function classify_step(p, c, opts, do_volume)
+function ci = classify_step(p, c, opts, do_volume)
+% ci: summary for the step record (process_state.mat)
 if nargin < 4, do_volume = false; end
+ci = struct('n_files', 0, 'n_failed', 0, 'n_volume', 0, 'n_volume_failed', 0, 'version', "", 'classifier_tag', "", ...
+    'files_option', {opts.files}, 'newonly', opts.newonly);
 load([p.outpath 'FCSfileinfo.mat'], 'FCSfileinfo')
 Fi = FCSfileinfo;
 Fi = Fi(~contains(Fi.fcslist, p.filetype2exclude), :);
@@ -331,6 +369,7 @@ end
 n = height(Fi);
 fprintf('classify: %d files\n', n)
 if n == 0, return, end
+ctag = strings(n, 1); % classifier_version tag per file
 
 [bs, bmeta] = load_beadstat(p.outpath); % skips runs marked exclude in the bead review
 bexcl = bmeta.excluded;
@@ -418,6 +457,7 @@ parfor (k = 1:n, M)
             'pro_measured', pro(k), 'pro_near_trigger_frac', pro_near_trigger(cls, info, pro(k)), ...
             'ncomp', field_or(info, 'ncomp', NaN), 'comp', field_or(info, 'comp', table), ...
             'trigger_edges', field_or(info, 'trigger_edges', field_or(info, 'edges', struct()))); % hbac: info.edges
+        o.class_meta.classifier_tag = classifier_version(classifier); ctag(k) = o.class_meta.classifier_tag; % cruise_status: stale when the tag changes
         o.class_meta.dropout_frac_syn = field_or(info, 'dropout_frac_syn', NaN); % laser-dropout QC: (merged pairs + flag 7) / (Syn + flag 7); high: Syn chl and FSC read low
         o.class_meta.pro_lower_bound = field_or(info, 'pro_lower_bound', false); % class 7 in a file without Pro settings: Pro above the chl trigger only
         o.class_meta.syn_mix = field_or(info, 'syn_mix', struct()); % Syn typing: method (mixture/windows), kept types, positions, soft counts (classes 2/5/8 x types A-D, all events)
@@ -480,6 +520,8 @@ L = [table(string(Fi.fcslist), t, pro, nev, ncomp, 'VariableNames', {'file' 'tim
     array2table(counts, 'VariableNames', {'n0' 'n1_euk' 'n2_syn' 'n3_crypto_dim' 'n4_crypto_bright' 'n5_euk_syn' 'n6_peeuk_cluster' 'n7_pro' 'n8_syn_particle' 'n9_bact' 'n10_lowchl_euklike' 'n_flagged' 'n_syn_unpaired_green'}) ...
     table(err, 'VariableNames', {'error'})];
 if pres, L.runtype = string(rt); end
+L.version = repmat(string(version), n, 1); L.classifier_tag = ctag; L.classified = repmat(datetime('now'), n, 1);
+L.classified(err ~= "") = NaT;
 % a run on some files (Files, NewOnly) keeps the log rows of the other files
 lf = [p.outpath 'class_log.mat'];
 if exist(lf, 'file')
@@ -495,10 +537,13 @@ if exist(lf, 'file')
 end
 save(lf, 'L')
 fprintf('classify: %d files classified, %d failed; log in %sclass_log.mat\n', sum(err == ""), sum(err ~= ""), p.outpath)
+ci.n_files = sum(err == ""); ci.n_failed = sum(err ~= ""); ci.version = string(version);
+ci.classifier_tag = strjoin(unique(ctag(ctag ~= "")), ", ");
 if do_volume
     ok = err == "";
     volume_merge_table(p, V, names(ok), datetime(t(ok), 'ConvertFrom', 'datenum'), vrow(ok), true);
     fprintf('volume: computed with classify for %d files, %d without a volume\n', sum(ok & verr == ""), sum(ok & verr ~= ""))
+    ci.n_volume = sum(ok & verr == ""); ci.n_volume_failed = sum(ok & verr ~= "");
 end
 if do_review
     if ~isempty(Rh) || exist(fullfile(revdir_h, 'review_qc.mat'), 'file')
@@ -551,7 +596,7 @@ end
 
 function m = missing_like(x)
 % a missing value of x's type (for log columns an older class_log lacks)
-if isstring(x), m = string(missing); elseif isnumeric(x), m = NaN; else, m = {''}; end
+if isstring(x), m = string(missing); elseif isnumeric(x), m = NaN; elseif isdatetime(x), m = NaT; else, m = {''}; end
 end
 
 
@@ -611,6 +656,30 @@ end
 
 function save_classfile(fn, o)
 save(fn, '-struct', 'o')
+end
+
+
+function record_step(p, step, t0, ok, info)
+% one entry in <outpath>\process_state.mat (variable steps, struct array), read by
+% cruise_status: step, sample, started, finished, ok, code version, options, info
+fn = [p.outpath 'process_state.mat'];
+[~, h] = system(['git -C "' fileparts(mfilename('fullpath')) '" rev-parse --short HEAD']);
+r = struct('step', string(step), 'sample', string(p.sample), 'started', t0, 'finished', datetime('now'), ...
+    'ok', ok, 'code_version', string(strtrim(h)), 'options', p.opts, 'info', info);
+steps = r;
+try
+    if exist(fn, 'file')
+        o = load(fn, 'steps');
+        if isfield(o, 'steps'), steps = [o.steps(:); r]; end
+    end
+catch ME
+    warning('process_cruise:process_state', 'earlier process_state.mat not read: %s', ME.message)
+end
+try
+    save(fn, 'steps')
+catch ME
+    warning('process_cruise:process_state', 'step record not saved: %s', ME.message)
+end
 end
 
 

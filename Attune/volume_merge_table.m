@@ -1,13 +1,12 @@
 function mergeT = volume_merge_table(p, V, files, filetime, rows, keep_others)
 % function mergeT = volume_merge_table(p, V, files, filetime, rows, keep_others)
-% Writes mergeTable.mat in p.outpath (underway volume modes only): one row per
-% file with the fields volume_file returned (scatter voltages, SSC/GL1 overlap
-% statistics or the decompression flag count). Files whose volume failed (empty
-% row) get NaN. keep_others true (classify on some files): rows of other files
-% already in mergeTable.mat are kept.
+% Writes mergeTable.mat in p.outpath: one row per file with the fields
+% volume_file returned (scatter voltages, SSC/GL1 overlap statistics or the
+% decompression flag count; preserved samples: voltages only, so cruise_status can
+% see which files have volumes). Files whose volume failed (empty row) get NaN.
+% keep_others true (classify on some files): rows of other files already in
+% mergeTable.mat are kept.
 
-mergeT = table;
-if strcmp(V.mode, 'preserved'), return, end
 files = cellstr(files(:)); filetime = filetime(:);
 ok = ~cellfun(@(r) isempty(r) || isempty(fieldnames(r)), rows);
 if any(ok)
@@ -32,7 +31,7 @@ if keep_others && exist(fn, 'file')
         warning('volume_merge_table:merge', 'earlier mergeTable not merged: %s', ME.message)
     end
 end
-if strcmp(V.mode, 'merge')
+if ismember(V.mode, {'merge' 'preserved'})
     GL1_merge_bead = V.GL1_merge_bead;
     save(fn, "mergeT", "GL1_merge_bead")
 else

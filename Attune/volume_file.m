@@ -2,7 +2,7 @@ function [c, row] = volume_file(c, fcsdat, fcshdr, V, filetime)
 % function [c, row] = volume_file(c, fcsdat, fcshdr, V, filetime)
 % Cell volumes for one FCS file, added to its class-file struct c
 % (volume_cubic_microns, vol_notes and the scatter values used). row: the file's
-% fields for mergeTable (underway modes; empty struct for preserved samples).
+% fields for mergeTable (preserved samples: the scatter voltages only).
 %
 % fcsdat, fcshdr  from fca_readfcs
 % V               volume_setup
@@ -21,6 +21,7 @@ switch V.mode
         [c, row] = volume_488_2019(c, fcsdat, fcshdr, V, filetime);
     case 'preserved'
         c = preserved_file(c, fcsdat, fcshdr, V);
+        row.SSC_hv = c.file_hv.SSC; row.GL1_hv = c.file_hv.GL1;
     otherwise
         error('volume_file:mode', 'unknown volume mode "%s"', V.mode)
 end
