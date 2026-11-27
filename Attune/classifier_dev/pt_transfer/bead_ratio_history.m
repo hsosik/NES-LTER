@@ -48,11 +48,11 @@ T = sortrows(T, 'time');
 save(fullfile(outdir, 'bead_ratio_history.mat'), 'T')
 
 % service events (Thermo reports; shared notes attune_optics_changes.md)
-ev = {datetime(2018,7,15) 'blocker bar'; datetime(2019,8,6) 'blocker bar x2 + blue align';
+ev = {datetime(2018,7,3) 'blocker bar'; datetime(2019,1,24) 'blocker bar + Contrad soak'; datetime(2019,8,6) 'blocker bar x2 + blue align';
     datetime(2019,10,23) 'PM'; datetime(2021,2,22) 'blocker bar'; datetime(2022,5,13) 'PM';
     datetime(2022,9,22) 'blue laser replaced'; datetime(2022,11,29) 'blue realign';
-    datetime(2024,6,21) 'blue realign'; datetime(2024,7,15) 'PZT + flow cell (log)';
-    datetime(2025,2,14) 'PZT power (log)'; datetime(2026,2,12) 'PM'};
+    datetime(2024,6,21) 'blue realign'; datetime(2024,7,8) 'flow cell + blocker bar';
+    datetime(2025,2,14) 'flow cell + PZT power'; datetime(2026,2,12) 'PM'};
 
 f = figure('Position', [50 50 1300 900], 'Color', 'w', 'Visible', 'off');
 pan = {"r1_05_SSC_H" "SSC 1/0.5 \mum" "QC_1_05"; "r1_05_FSC_H" "FSC 1/0.5 \mum" "QC_1_05";

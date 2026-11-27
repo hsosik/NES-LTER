@@ -105,8 +105,10 @@ For large cells the 2019 (488 nm) line is steeper than the 2026 merged line (lar
 
 **Caveat, scatter geometry changed between the calibrations.** Thermo service reports (see
 `attune_optics_changes.md` in the shared notes) record blocker-bar (FSC obscuration) adjustments in
-Jan 2018, Jul 2018, 6 Aug 2019 (twice, with a blue-laser realignment), and 22 Feb 2021 (between
-EN661 and EN668). They also record a blue laser replacement on 22 Sep 2022 (realigned 29 Nov 2022),
+Jan 2018, 3 Jul 2018 (between AR29 and EN617, after a failed performance test), 24 Jan 2019
+(one week before EN627, service call for "reduced scattering signal", with a Contrad flow-cell soak),
+6 Aug 2019 (twice, with a blue-laser realignment), 22 Feb 2021 (between EN661 and EN668), and 2–8 Jul 2024 (with a flow-cell replacement, between EN715 and EN720).
+They also record a blue laser replacement on 22 Sep 2022 (realigned 29 Nov 2022),
 another blue realignment on 21 Jun 2024, and PM alignment checks on 23 Oct 2019, 13 May 2022 and
 12 Feb 2026. Bead normalization removes gain changes, but not a change in the collection cone,
 which shifts large cells relative to the 1 µm bead. Part of the 2019-vs-2026 gap could be geometry
@@ -122,8 +124,8 @@ GL1 220), so any steps in that period come from the optics (or a bead lot change
 - **FSC moves with the service events.** The 6/1 ratio:
   - goes up about 0.10 after the Feb 2021 blocker-bar adjustment (EN661 1.14 → EN668 1.23)
   - drops about 0.18 across the Sep–Nov 2022 blue-laser replacement (AR70B 1.29 → EN695 1.10)
-  - goes up about 0.16 across the Jun 2024 realignment and Jul 2024 flow-cell replacement
-    (EN715 1.06 → EN720 1.22)
+  - goes up about 0.16 across the Jun 2024 realignment and the Jul 2024 flow-cell replacement
+    with blocker-bar adjustment (EN715 1.06 → EN720 1.22)
 
   So FSC normalized to beads is not comparable across these periods for large particles.
 - **SSC (488 nm):** the 1/0.5 ratio stays within ±0.02 (0.82–0.86). The 6/1 ratio drops about
@@ -151,6 +153,10 @@ GL1 220), so any steps in that period come from the optics (or a bead lot change
   2026 large-cell channel (GL1, 1.29) is about 0.06 above the pre-Aug 2019 OD2-on-SSC value
   (1.23). If cells behave like beads, the configuration explains about 0.06 of the 0.3–0.4 gap,
   which leaves most of it to pigment absorption.
+- **PT transfer across blocker-bar adjustments:** the transfer offsets were validated on AR34B,
+  RB1904, TN368 and EN644, with residual RSD 0.005–0.012. Those cruises fall on both sides of the
+  6 Aug 2019 adjustment, so the offsets appear robust to it. That supports using them for EN617
+  and AR31A, which come after the 3 Jul 2018 adjustment.
 
 Cells in the merge window (≈ 5–30 µm³) are too small for this to matter (model +0.03–0.07; field
 +0.03), so the SSC/GL1 merge is consistent. Composition matters most for large cells, and differs
@@ -230,7 +236,8 @@ calibration. They land where the 2026 cultures do, after a filter-layout change 
   distributions (Pptp02, 2019) are uncertain by ~0.05–0.2 log in volume.
 - **Bead references:** ≤ 0.02 log within a configuration. EN608 and AR28B used BL3 and green-chl
   695/40 filters; their fluorescence (not scatter) references rest on an assumption.
-- **Not correctable:** EN627 scatter (optics degraded in Feb 2019).
+- **Not correctable:** EN627 scatter. The optics were degraded in Feb 2019; a 24 Jan 2019 service
+  call for low or unstable SSC included a blocker-bar adjustment and a Contrad flow-cell soak.
 
 ## 7. What changed in the code
 
