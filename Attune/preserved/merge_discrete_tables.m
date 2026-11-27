@@ -39,6 +39,8 @@ function [M, E] = merge_discrete_tables(cruises, outpath, opt)
 %                                 pro_lower_bound_filename
 %               "crypto"          crypto_dim_* and crypto_bright_* (classes 3, 4; ESD <= 20 um)
 %               "euk_with_syn"    euk_with_syn_* (class 5; ESD <= 20 um)
+%               "pe_euk_cluster"  pe_euk_cluster_* (class 6: one compact population with its own
+%                                 Syn-type PE, identity uncertain; ESD <= 20 um)
 %               "redeuk_all"      redeuk_cells_per_ml etc.: class 1, all sizes
 %               "syn_on_particle" syn_on_particle_cells_per_ml (class 8)
 %               "syn_types"       syn_typeA/B/C/D/ambiguous/unusable_cells_per_ml
@@ -67,14 +69,14 @@ arguments
     outpath (1,1) string = ""
     opt.Root (1,1) string = string([char([92 92]) 'sosiknas1\Lab_data\Attune\cruise_data\'])
     opt.Hetprok (1,1) string {mustBeMember(opt.Hetprok, ["incl_pro" "heterotrophs"])} = "incl_pro"
-    opt.Extra string = ["pro" "crypto" "euk_with_syn" "redeuk_all" "syn_on_particle" "syn_types" ...
+    opt.Extra string = ["pro" "crypto" "euk_with_syn" "pe_euk_cluster" "redeuk_all" "syn_on_particle" "syn_types" ...
         "sybr" "hna" "storage_days" "runs" "sample" "processing"]
     opt.Legacy string = strings(0)
     opt.SampleLogQC (1,1) string = ""
     opt.CsvName (1,1) string = "attune-transect-discrete-samples.csv"
     opt.AllowNAS (1,1) logical = false
 end
-known = ["pro" "crypto" "euk_with_syn" "redeuk_all" "syn_on_particle" "syn_types" "sybr" "hna" ...
+known = ["pro" "crypto" "euk_with_syn" "pe_euk_cluster" "redeuk_all" "syn_on_particle" "syn_types" "sybr" "hna" ...
     "storage_days" "runs" "sample" "processing"];
 bad = setdiff(opt.Extra, known);
 if ~isempty(bad), error('merge_discrete_tables:extra', 'unknown Extra "%s"; known: %s', bad(1), strjoin(known, ', ')), end
@@ -206,7 +208,7 @@ if ismember("pro", ex)
     E.pro_lower_bound_cells_per_ml = col(M, 'pro_lower_bound_cells_per_ml', n);
     E.pro_lower_bound_filename = col(M, 'pro_lower_bound_filename', n, strings(n, 1));
 end
-grp = {"crypto", ["crypto_dim" "crypto_bright"]; "euk_with_syn", "euk_with_syn"; "redeuk_all", "euk"};
+grp = {"crypto", ["crypto_dim" "crypto_bright"]; "euk_with_syn", "euk_with_syn"; "pe_euk_cluster", "pe_euk_cluster"; "redeuk_all", "euk"};
 for g = 1:size(grp, 1)
     if ~ismember(grp{g, 1}, ex), continue, end
     for nm = grp{g, 2}

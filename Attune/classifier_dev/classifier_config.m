@@ -58,12 +58,13 @@ cfg.sig.peeuk_spill_method = 'valley'; %'mad': floor = trend + peeuk_spill_sd ro
 cfg.sig.peeuk_spill_peak_rel = 0.3; %'valley': upper mode peak at least this fraction of the dominant (spillover) peak ...
 cfg.sig.peeuk_spill_min_sep = 0.6;  %... at least this far above it (log10 PE:chl; two Euk modes without PE: 0.4-0.6) ...
 cfg.sig.peeuk_spill_max_valley = 0.6; %... with the valley density at most this fraction of the lower peak (PE modes 0.36-0.49; Euk modes 0.68-0.87)
-% Euk-with-Syn (5) events forming one compact population with their own PE (prototype, off):
-% PE:chl and GL2:GL3 robust SDs of the class-5 events (usable spectra) at most max_sd_*,
-% and among those within win_sd of the centre (at least min_n) GL2 rising with BL3
-% (robust slope within slope, correlation at least min_r): they take class
-cfg.sig.peeuk_cluster = struct('on', false, 'class', 6, 'min_n', 50, 'max_sd_PEchl', 0.18, 'max_sd_GL2GL3', 0.06, ...
-    'win_sd', 3, 'slope', [0.7 1.3], 'min_r', 0.7);
+% class 6, PE euk cluster: Euk-with-Syn (5) events forming one compact population with
+% their own PE. PE:chl and GL2:GL3 robust SDs of the class-5 events (usable spectra) at
+% most max_sd_*; among those within win_sd of the centre (at least min_n) GL2 rising
+% with BL3 (robust slope within slope, correlation at least min_r) and median GL2:GL3
+% at least min_dGL2GL3_syn above the file's Syn: they take class (6)
+cfg.sig.peeuk_cluster = struct('on', true, 'class', 6, 'min_n', 50, 'max_sd_PEchl', 0.18, 'max_sd_GL2GL3', 0.06, ...
+    'win_sd', 3, 'slope', [0.7 1.3], 'min_r', 0.7, 'min_dGL2GL3_syn', 0.15);
 cfg.sig.peeuk_sat_spectrum = true; %true: saturated events with a usable BL2:GL3 go by spectrum: GL2-saturated ones are crypto only with a crypto-type spectrum, and BL3-saturated ones (PE:chl overstated) with a Syn/spillover-like spectrum are not PE euks
 cfg.sig.sat_frac = 0.98;            %raw value >= this fraction of the file's channel maximum counts as saturated
 % crypto split into dim, red-shifted (3) and bright (4): accept a per-file 2-group fit on

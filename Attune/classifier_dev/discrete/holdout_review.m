@@ -108,7 +108,7 @@ for i = 1:height(sel)
     else
         h = hand; h(h == 4) = 7; h(ismember(h, [5 6])) = 34; h(h == 3) = 0;
         if contains(fn, 'EN727') && contains(fn, ["_C19N13" "_C19N02" "_C09N01" "_C06N06"]), h(h == 7) = 0; end
-        a = double(auto); a(ismember(a, [3 4 5])) = 34;
+        a = double(auto); a(ismember(a, [3 4 5 6])) = 34;
         views = V.phyto;
     end
     late = true(size(h)); if any(h ~= 0), late = dat(:, 1) >= min(dat(h ~= 0, 1)); end

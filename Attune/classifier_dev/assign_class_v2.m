@@ -829,27 +829,33 @@ if any(pe3)
         info.trace.euksyn_lowchl = euksyn_lowchl;
         info.trace.from_euksyn = class == 8; %Euk with Syn moved to Syn on particle (trace only)
     end
-    % Euk-with-Syn events that are one compact population with their own PE (prototype,
-    % Nov 2026): AT46 C17N02, 270 class-5 events with a PE spectrum outside nearly all
-    % the file's Syn (GL2:GL3 0.62 vs Syn 0.29, 99th pct 0.59), PE rising with chl
-    % (slope 0.94, r 0.88) and PE:chl robust SD 0.13; ingested Syn (Poisson numbers of
-    % the file's Syn) would give PE:chl SD 0.23-0.41 and a Syn spectrum. Class-5 events
-    % with usable spectra: if their PE:chl and GL2:GL3 are tight (robust SD) and the
-    % events near the centre show PE proportional to chl, those events take cl.class
+    % class 6, PE euk cluster (Nov 2026): Euk-with-Syn events that are one compact
+    % population with their own PE. AT46 C17N02: 270 class-5 events with a PE spectrum
+    % outside nearly all the file's Syn (GL2:GL3 0.62 vs Syn 0.29, 99th pct 0.59), PE
+    % rising with chl (slope 0.94, r 0.88) and PE:chl robust SD 0.13; ingested Syn
+    % (Poisson numbers of the file's Syn) would give PE:chl SD 0.23-0.41 and a Syn
+    % spectrum. The same spectrum (GL2:GL3 0.55-0.61, BL2-GL2 -0.34 to -0.42) recurs
+    % in EN727 C20N02, AR43 C02N24, MVCO MV417N04 and MV432N04 (preserved); class 5
+    % in live files is diffuse (PE:chl SD 0.4-1.6, PE unrelated to chl). Class-5
+    % events with usable spectra: if their PE:chl and GL2:GL3 are tight (robust SD),
+    % the events near the centre show PE proportional to chl, and their GL2:GL3 sits
+    % clearly above the file's Syn, those events take cl.class
     info.peeuk_cluster = struct('n', 0, 'accepted', false);
     cl = sig.peeuk_cluster;
     c5 = class == 5 & okB & ~satG2 & isfinite(dB);
-    if cl.on && sum(c5) >= cl.min_n
+    if cl.on && sum(c5) >= cl.min_n && sum(sy) >= 50
         cP = median(F.PEchl(c5)); sP = 1.4826 * mad(F.PEchl(c5), 1);
         cG = median(F.GL2GL3(c5)); sG = 1.4826 * mad(F.GL2GL3(c5), 1);
         mem = c5 & abs(F.PEchl - cP) < cl.win_sd * sP & abs(F.GL2GL3 - cG) < cl.win_sd * sG;
-        st = struct('n', sum(mem), 'accepted', false, 'sd_PEchl', sP, 'sd_GL2GL3', sG, 'PEchl', cP, 'GL2GL3', cG, 'slope', NaN, 'r', NaN);
+        pc = struct('n', sum(mem), 'accepted', false, 'sd_PEchl', sP, 'sd_GL2GL3', sG, 'PEchl', cP, 'GL2GL3', cG, ...
+            'dGL2GL3_syn', cG - median(F.GL2GL3(sy)), 'slope', NaN, 'r', NaN);
         if sum(mem) >= cl.min_n
-            bp = robustfit(F.BL3(mem), F.GL2(mem)); st.slope = bp(2); st.r = corr(F.BL3(mem), F.GL2(mem));
-            st.accepted = sP <= cl.max_sd_PEchl && sG <= cl.max_sd_GL2GL3 && st.slope >= cl.slope(1) && st.slope <= cl.slope(2) && st.r >= cl.min_r;
-            if st.accepted, class(mem) = cl.class; end
+            bp = robustfit(F.BL3(mem), F.GL2(mem)); pc.slope = bp(2); pc.r = corr(F.BL3(mem), F.GL2(mem));
+            pc.accepted = sP <= cl.max_sd_PEchl && sG <= cl.max_sd_GL2GL3 && pc.slope >= cl.slope(1) && pc.slope <= cl.slope(2) && ...
+                pc.r >= cl.min_r && pc.dGL2GL3_syn >= cl.min_dGL2GL3_syn;
+            if pc.accepted, class(mem) = cl.class; end
         end
-        info.peeuk_cluster = st;
+        info.peeuk_cluster = pc;
     end
 end
 
@@ -908,7 +914,7 @@ else
 end
 if ~isfield(info.trace, 'euksyn_lowchl'), info.trace.euksyn_lowchl = false(n, 1); end
 left = class == 0 & (cell_pe | cell_chl) & ~euk_below_gap & ~pile_ev & ~(info.trace.euksyn_lowchl & sig.euksyn_low_chl_class == 0);
-refset = ismember(class, [1 2 3 4 5 7 8]);
+refset = ismember(class, [1 2 3 4 5 6 7 8]);
 info.n_catchall = 0;
 if any(left) && sum(refset) >= 50
     Z = [F.size F.BL3 F.GL2 F.BL2 F.GL3];

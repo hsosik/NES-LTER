@@ -68,7 +68,7 @@ for ci = 1:numel(cruisedirs)
                     "_C12N12" "_C14N02" "_C15N02" "_C16N02" "_C17N14" "_C21N08" "_C21N12" "_C22N05" "_C22N09" "_C22N13" "_C25N04"])
                 continue
             end
-            a = double(auto); a(ismember(a, [3 4 5])) = 34;
+            a = double(auto); a(ismember(a, [3 4 5 6])) = 34;
             % hand gates include the time gate (first 20% of the run dropped):
             % compare only events after the first hand-gated event
             if any(h ~= 0)

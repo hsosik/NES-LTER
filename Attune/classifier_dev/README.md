@@ -431,11 +431,13 @@ The old dim crypto class is known to be a mixture, so agreement with it is not a
 
 **Set means, both changes (held-out, mean agreement):** tuning 0.8884 → 0.8889, 2a 0.8911 → 0.8920, 2a′ 0.9228 → 0.9230, 2b 0.9059 → 0.9059.
 
-**Open: an own-PE population in class 5 (`peeuk_cluster`, prototype, off, class 6).** In AT46 C17N02, 270 class-5 events form one tight cluster.
+**Class 6, PE euk cluster (`peeuk_cluster`, on).** A compact population of class-5 events with their own PE. In AT46 C17N02, 270 class-5 events form one tight cluster.
 - **Spectrum.** After removing Euk spillover, GL2:GL3 is 0.62 (Syn 0.29) and BL2−GL2 is −0.42.
 - **PE tracks chl.** PE rises with chl (slope 0.94), with PE:chl robust SD 0.13. Poisson ingestion of the file's Syn would give 0.23–0.41.
-- **Test.** The prototype test fires in 5 of 607 held-out runs (AT46 C17N02, EN727 C20N02, AR43 C02N24 PE, MVCO MV417N04, MV432N04 PE). All five share GL2:GL3 0.55–0.61 and BL2−GL2 −0.34 to −0.42. It never fires in live files, where class 5 has PE:chl SD 0.4–1.6 and PE independent of chl.
-- **Not settled.** Whether it becomes a class, and how it relates to the EN727 C20N02 group that `dimcrypto` moves to class 3 (dB ≈ 0 there).
+- **Rule.** Class-5 events with usable spectra become class 6 when their PE:chl and GL2:GL3 robust SDs are at most 0.18 and 0.06, the events near the centre have GL2 rising with BL3 (slope 0.7–1.3, r ≥ 0.7), and their median GL2:GL3 is at least 0.15 above the file's Syn. Tightness and slope alone are not specific: in many preserved runs class 5 is tight with PE tracking chl; the spectrum is what is shared.
+- **Where it fires.** 5 of 607 held-out runs: AT46 C17N02, EN727 C20N02, AR43 C02N24 PE, MVCO MV417N04, MV432N04 PE. All five share GL2:GL3 0.55–0.61 and BL2−GL2 −0.34 to −0.42. It never fires in live files (7 cruises × 40 files), where class 5 has PE:chl SD 0.4–1.6 and PE independent of chl. Not Crocosphaera-like: PE:chl ~13x below Syn, cells larger than Euks, 4.7 °C water (AT46).
+- **Downstream.** Counted as a PE euk: in `Euk_w_PE` and its own `PE_euk_cluster` columns (`generate_attune_table`), `pe_euk_cluster_*` (≤ 20 µm) in `preserved_table` and the `merge_discrete_tables` extra of the same name, `n6_peeuk_cluster` in the `process_cruise` class log, the review config/QC/viewer (brown), `plot_class_cytograms`, and as PE euk (34) in the held-out scoring and `score_agreement`'s merged agreement.
+- **Open.** How it relates to the EN727 C20N02 group that `dimcrypto` moves to class 3 (dB ≈ 0 there).
 
 ## Syn spectral types across cruises (`syn_spectral_types.m`, Nov 2026)
 

@@ -2,8 +2,8 @@ function A = score_agreement(cruisedir, nfiles, outdir)
 % function A = score_agreement(cruisedir, nfiles, outdir)
 % Event-level agreement between the existing class files and assign_class_v2
 % for files spread through a cruise. agreement = events with the same class /
-% events either method calls phytoplankton (3 dim and 4 bright cryptos and 5 Euk
-% with Syn kept apart; agreement_pe_merged counts 3/4/5 as one; v2 class 8 is a disagreement wherever
+% events either method calls phytoplankton (3 dim and 4 bright cryptos, 5 Euk
+% with Syn and 6 PE euk cluster kept apart; agreement_pe_merged counts 3/4/5/6 as one; v2 class 8 is a disagreement wherever
 % the old class differs).
 % Saves output/agreement_<cruise>.mat
 %
@@ -33,13 +33,13 @@ for k = pick
     [new, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, Fi.pro_measured(k));
     st = info.syn_type(new == 2);
     old = load_old_class(P, fn); old(~ismember(old, [0 1 2 3 4 7])) = 0;
-    o34 = old; o34(ismember(o34, [4 5])) = 3; n34 = new; n34(ismember(n34, [4 5])) = 3;
+    o34 = old; o34(ismember(o34, [4 5])) = 3; n34 = new; n34(ismember(n34, [4 5 6])) = 3;
     either = old ~= 0 | new ~= 0;
     A = [A; table(string(cruisedir), string(fn), Fi.matdate_start(k), Fi.pro_measured(k), sum(either), ...
         sum(old == new & old ~= 0) / sum(either), sum(old == 0 & new ~= 0), sum(old ~= 0 & new == 0), sum(old ~= 0 & new ~= 0 & old ~= new), ...
-        sum(old == 1), sum(new == 1), sum(old == 2), sum(new == 2), sum(old == 3), sum(new == 3), sum(old == 4), sum(new == 4), sum(new == 5), sum(new == 8), sum(o34 == n34 & o34 ~= 0) / sum(either), sum(st == 1), sum(st == 2), sum(st == 3), sum(st == 4), sum(st == 5), sum(st == 9), info.euk_chl_gap - getedge(info), info.n_euk_below_gap, sum(info.flag == 1), sum(info.flag == 2), sum(info.flag == 3), ...
+        sum(old == 1), sum(new == 1), sum(old == 2), sum(new == 2), sum(old == 3), sum(new == 3), sum(old == 4), sum(new == 4), sum(new == 5), sum(new == 6), sum(new == 8), sum(o34 == n34 & o34 ~= 0) / sum(either), sum(st == 1), sum(st == 2), sum(st == 3), sum(st == 4), sum(st == 5), sum(st == 9), info.euk_chl_gap - getedge(info), info.n_euk_below_gap, sum(info.flag == 1), sum(info.flag == 2), sum(info.flag == 3), ...
         'VariableNames', {'cruise' 'file' 'time' 'pro_measured' 'n_phyto' 'agreement' 'n_added' 'n_dropped' 'n_relabelled' ...
-        'old_euk' 'new_euk' 'old_syn' 'new_syn' 'old_peeuk' 'new_peeuk' 'old_peeuk4' 'new_peeuk4' 'new_euksyn' 'new_synpart' 'agreement_pe_merged' 'new_synA' 'new_synB' 'new_synC' 'new_synD' 'new_syn_ambiguous' 'new_syn_untyped' 'euk_gap_above_edge' 'n_euk_below_gap' 'flag_synpig' 'flag_below_gap' 'flag_edge_pile'})]; %#ok<AGROW>
+        'old_euk' 'new_euk' 'old_syn' 'new_syn' 'old_peeuk' 'new_peeuk' 'old_peeuk4' 'new_peeuk4' 'new_euksyn' 'new_peeuk_cluster' 'new_synpart' 'agreement_pe_merged' 'new_synA' 'new_synB' 'new_synC' 'new_synD' 'new_syn_ambiguous' 'new_syn_untyped' 'euk_gap_above_edge' 'n_euk_below_gap' 'flag_synpig' 'flag_below_gap' 'flag_edge_pile'})]; %#ok<AGROW>
     fprintf('%s agreement %.3f (added %d, dropped %d, relabelled %d)\n', fn, A.agreement(end), A.n_added(end), A.n_dropped(end), A.n_relabelled(end));
 end
 if ~isfolder(outdir), mkdir(outdir), end

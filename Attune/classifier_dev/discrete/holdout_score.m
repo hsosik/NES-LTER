@@ -82,7 +82,7 @@ for i = 1:height(L)
         % -1.7) are the population hand-gated Euk in the same sample's pro run; real Pro
         % (BL3 ~ -1.2 to -1.4) are below the CHL trigger (user OK 23 Nov 2026)
         if contains(fn, ["EN687_Aug2022_preserved(1)_phyto_CHL_SSC_C16N19" "EN687_Aug2022_preserved(1)_phyto_CHL_SSC_C15N05"]), h(h == 7) = 0; end
-        a = double(auto); a(ismember(a, [3 4 5])) = 34;
+        a = double(auto); a(ismember(a, [3 4 5 6])) = 34;
         % EN687 pro_C05N08 and pro_C10N10 (tuning): the hand Pro gate is a band along the
         % trigger floor (BL3 -1.1 to -0.5) running from size -2 to +0.5, well past Syn size;
         % C05N08's compact Pro clump at size ~-1.8 is a small part of it; C10N10's ~3200-event

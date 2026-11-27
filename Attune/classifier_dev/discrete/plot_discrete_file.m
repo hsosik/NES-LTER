@@ -24,7 +24,7 @@ ref = discrete_bead_reference(lab, datenum([fcshdr.date ' ' fcshdr.starttime]), 
 rt = 'CHL'; if contains(fn, 'pro', 'IgnoreCase', true), rt = 'pro'; elseif contains(fn, 'phyto_PE'), rt = 'PE'; end
 [auto, info] = assign_class_discrete(fcsdat, fcshdr, ref, cfg, rt);
 h = double(G.class{i}(:)); h(h == 4) = 7; h(ismember(h, [5 6])) = 34; h(h == 3) = 0;
-a = double(auto); a(ismember(a, [3 4 5])) = 34;
+a = double(auto); a(ismember(a, [3 4 5 6])) = 34;
 late = true(size(h)); if any(h), late = fcsdat(:, 1) >= min(fcsdat(h ~= 0, 1)); end
 F = info.features(late, :); h = h(late); a = a(late);
 cs = [0 1 2 7 34 8]; cols = [.75 .75 .75; 0 .6 0; 1 0 0; .4 .4 .4; 1 0 1; 1 .6 0];
