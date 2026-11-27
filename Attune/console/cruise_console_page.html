@@ -81,6 +81,32 @@ dl.kv dt { color: var(--mut); }
 dl.kv dd { margin: 0; word-break: break-word; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 16px; border-top: 1px solid var(--line); background: var(--panel); font-size: 12px; }
 .empty { padding: 40px; text-align: center; color: var(--mut); }
+.badge.run { color: var(--partial); border-color: var(--partial); margin-left: 4px; }
+.badge.q { color: var(--mut); margin-left: 4px; }
+.grid td.ck, .grid th.ck { width: 22px; padding-right: 0; }
+.runform { border-top: 1px solid var(--line); margin-top: 14px; }
+.runform .stepset { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 4px 0 8px; }
+.runform .opts { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-bottom: 8px; }
+.runform input[type=number] { width: 70px; font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }
+.runform .go { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button.primary { background: var(--partial); color: #fff; border-color: var(--partial); }
+button.primary:hover { filter: brightness(1.08); background: var(--partial); }
+#jobs { border-top: 1px solid var(--line); background: var(--panel); max-height: 34vh; overflow: auto; display: none; }
+#jobs.on { display: block; }
+#jobs .jh { display: flex; gap: 10px; align-items: center; padding: 6px 16px; position: sticky; top: 0; background: var(--panel); border-bottom: 1px solid var(--line); }
+#jobs .jh b { font-size: 13px; }
+#jobs table { border-collapse: collapse; width: 100%; }
+#jobs td { padding: 3px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; font-size: 12px; }
+#jobs td.msg { white-space: normal; color: var(--mut); max-width: 520px; overflow-wrap: anywhere; }
+#jobs tr.jr { cursor: pointer; }
+#jobs tr.jr:hover td { background: var(--hover); }
+#jobs tr.jr.sel td { background: var(--sel); }
+#jobs pre { margin: 0; padding: 8px 16px; font: 11.5px/1.35 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--mut); background: var(--bg); }
+.j-queued { color: var(--missing); background: var(--missing-bg); }
+.j-starting, .j-running { color: var(--partial); background: var(--partial-bg); }
+.j-done { color: var(--done); background: var(--done-bg); }
+.j-failed, .j-died { color: var(--failed); background: var(--failed-bg); }
+.j-cancelled { color: var(--stale); background: var(--stale-bg); }
 @media (max-width: 820px) {
   main { flex-direction: column; }
   aside { flex: 0 0 auto; max-width: none; border-left: 0; border-top: 1px solid var(--line); }
@@ -114,8 +140,9 @@ dl.kv dd { margin: 0; word-break: break-word; }
 </header>
 <main>
   <div id="gridwrap"><table class="grid" id="grid"></table></div>
-  <aside id="detail"><div class="empty">Select a cruise</div></aside>
+  <aside id="detail"><div id="dinfo"><div class="empty">Select a cruise</div></div><div id="drun"></div></aside>
 </main>
+<section id="jobs"></section>
 <div class="legend" id="legend"></div>
 
 <script src="status.js" onerror="void 0"></script>
@@ -126,6 +153,13 @@ const HEAD = { files: 'files', beads: 'beads', bead_review: 'bead review', class
 const LABEL = { done: 'done', partial: 'partial', stale: 'stale', todo: 'to review', failed: 'failed', missing: '–', unknown: '?', na: '' };
 const MEAN = { done: 'output current', partial: 'some files not done', stale: 'an input changed after it', todo: 'a review needs a person', failed: 'last run failed', missing: 'not there', unknown: 'made before step records', na: 'no FCS files of this sample type' };
 let D = null, comp = null, sel = null, rows = [];
+const CORE = ['files', 'beads', 'classify', 'volume', 'table', 'metadata'];
+const EXTRA = ['movie', 'voldists']; // underway only
+const checked = new Set(); // rows ticked for a run (MATLAB mode)
+const form = { steps: new Set(), NewOnly: false, Force: false, Review: true, Parallel: '', Files: '' };
+let runFor = null, selJob = null;
+const ACTIVE = ['queued', 'starting', 'running'];
+const jobsFor = c => (D.jobs || []).filter(j => j.cruise === c.cruise && j.sample === c.sample && ACTIVE.includes(j.state));
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const key = c => c.cruise + '|' + c.sample;
@@ -138,6 +172,8 @@ function load(d) {
   D = typeof d === 'string' ? JSON.parse(d) : d;
   if (!D || !Array.isArray(D.cruises)) { D = { cruises: [] }; }
   D.cruises.forEach(c => { if (!Array.isArray(c.steps)) c.steps = c.steps ? [c.steps] : []; if (!Array.isArray(c.archive)) c.archive = c.archive ? [c.archive] : []; });
+  const arr = x => Array.isArray(x) ? x : (x ? [x] : []);
+  D.jobs = arr(D.jobs); D.jobs.forEach(j => { j.steps = arr(j.steps); j.tail = arr(j.tail); });
   $('made').textContent = D.made ? 'status checked ' + fmtd(D.made) : '';
   $('mode').textContent = MAT() ? 'MATLAB' : 'read-only';
   $('mode').title = MAT() ? 'refresh and open go to MATLAB' : 'open in MATLAB with cruise_console to refresh status';
@@ -161,10 +197,13 @@ function visible() {
 
 function draw() {
   rows = visible();
-  let h = '<thead><tr><th>cruise</th><th>sample</th>' + STEPS.map(s => `<th>${HEAD[s]}</th>`).join('') + '<th title="sample files classified / sample files">classified</th><th>archive</th></tr></thead><tbody>';
+  const ck = MAT();
+  let h = '<thead><tr>' + (ck ? `<th class="ck"><input type="checkbox" id="ckall" title="tick all rows shown" ${rows.length && rows.every(c => checked.has(key(c))) ? 'checked' : ''}></th>` : '') + '<th>cruise</th><th>sample</th>' + STEPS.map(s => `<th>${HEAD[s]}</th>`).join('') + '<th title="sample files classified / sample files">classified</th><th>archive</th></tr></thead><tbody>';
   for (const c of rows) {
     const k = key(c);
-    h += `<tr class="row${c.sample === 'preserved' ? ' pres' : ''}${k === sel ? ' sel' : ''}" data-k="${esc(k)}"><td class="cr">${esc(c.cruise)}</td><td class="mut">${esc(c.sample)}</td>`;
+    const jb = jobsFor(c), running = jb.some(j => j.state !== 'queued');
+    const badge = jb.length ? `<span class="badge ${running ? 'run' : 'q'}" title="${esc(jb.map(j => j.state + ': ' + j.steps.join(' ')).join('\n'))}">${running ? 'running' : 'queued'}</span>` : '';
+    h += `<tr class="row${c.sample === 'preserved' ? ' pres' : ''}${k === sel ? ' sel' : ''}" data-k="${esc(k)}">` + (ck ? `<td class="ck"><input type="checkbox" data-ck="${esc(k)}" ${checked.has(k) ? 'checked' : ''}></td>` : '') + `<td class="cr">${esc(c.cruise)}${badge}</td><td class="mut">${esc(c.sample)}</td>`;
     for (const s of STEPS) {
       const x = c.steps.find(y => y.step === s) || { state: 'missing', reason: '' };
       h += `<td><span class="chip s-${x.state}" title="${esc(HEAD[s] + ': ' + (x.reason || MEAN[x.state] || ''))}">${LABEL[x.state] ?? x.state}</span></td>`;
@@ -178,6 +217,7 @@ function draw() {
   $('legend').innerHTML = Object.keys(LABEL).filter(s => s !== 'na').map(s => `<span class="chip s-${s}" title="${esc(MEAN[s])}">${LABEL[s]}</span> <span class="mut">${MEAN[s]}</span>`).join(' &nbsp;') +
     ` <span style="margin-left:auto" class="mut">${rows.length} rows shown · ${n} of ${D.cruises.length} need work</span>`;
   detail();
+  jobsPanel();
 }
 
 function link(path, text) {
@@ -189,7 +229,12 @@ function link(path, text) {
 
 function detail() {
   const c = D.cruises.find(x => key(x) === sel);
-  if (!c) { $('detail').innerHTML = '<div class="empty">Select a cruise</div>'; return; }
+  runform(c);
+  if (!c) {
+    $('dinfo').innerHTML = D.cruises.length ? '<div class="empty">Select a cruise</div>' :
+      '<div class="empty">No status loaded. In a browser this page needs status.js next to it (cruise_status_all writes it); in MATLAB use cruise_console.</div>';
+    return;
+  }
   const n = c.counts || {};
   let h = `<h2>${esc(c.cruise)} <span class="mut">${esc(c.sample)}</span></h2><div class="mut">checked ${fmtd(c.checked)}</div>`;
   if (MAT()) h += `<div style="margin-top:8px"><button data-refresh="1" ${refreshing() ? 'disabled' : ''}>Refresh this cruise</button></div>`;
@@ -218,13 +263,96 @@ function detail() {
   h += `<dt>archive</dt><dd>${c.archive.length ? esc(c.archive.join(', ')) : 'none'}</dd></dl>`;
   const br = c.bead_review || {};
   if (br.message) h += `<h3>Bead review</h3><div class="sub">${esc(br.message)}</div>`;
-  $('detail').innerHTML = h;
+  $('dinfo').innerHTML = h;
+}
+
+// ---- runs (MATLAB mode)
+function targets() {
+  const t = D.cruises.filter(c => checked.has(key(c)));
+  if (t.length) return t;
+  const c = D.cruises.find(x => key(x) === sel);
+  return c ? [c] : [];
+}
+function needsWork(c) {
+  // the first core step that is not done, and every core step after it
+  const bad = ['missing', 'partial', 'stale', 'failed', 'unknown'];
+  const i = CORE.findIndex(s => bad.includes(state(c, s)));
+  return i < 0 ? [] : CORE.slice(i);
+}
+function runform(c) {
+  if (!MAT()) { $('drun').innerHTML = ''; runFor = null; return; }
+  const t = targets();
+  const k = t.map(key).join(',') + '|' + (D.busy || '');
+  if (k === runFor) return; // keep the form (and typing) between updates
+  runFor = k;
+  if (!t.length) { $('drun').innerHTML = ''; return; }
+  const pres = t.every(x => x.sample === 'preserved');
+  const steps = pres ? CORE : CORE.concat(EXTRA);
+  const who = t.length === 1 ? `${esc(t[0].cruise)} ${esc(t[0].sample)}` : `${t.length} ticked rows`;
+  let h = `<div class="runform"><h3>Run process_cruise on ${who}</h3><div class="stepset">`;
+  for (const s of steps) h += `<label><input type="checkbox" data-step="${s}" ${form.steps.has(s) ? 'checked' : ''}> ${s}</label>`;
+  h += `</div><div class="go" style="margin-bottom:8px"><button id="fillWork" title="tick the first step that is not done and every core step after it">steps that need work</button><button id="clearSteps">none</button></div>`;
+  h += `<div class="opts"><label title="classify only files without a class file"><input type="checkbox" data-opt="NewOnly" ${form.NewOnly ? 'checked' : ''}> new files only</label>` +
+    `<label title="rebuild FCSfileinfo / replace a bead table not made from FCB beads; asks to confirm"><input type="checkbox" data-opt="Force" ${form.Force ? 'checked' : ''}> force</label>` +
+    `<label title="build the bead and classification reviews"><input type="checkbox" data-opt="Review" ${form.Review ? 'checked' : ''}> reviews</label>` +
+    `<label>parallel <select data-opt="Parallel"><option value="" ${form.Parallel === '' ? 'selected' : ''}>auto</option><option value="true" ${form.Parallel === 'true' ? 'selected' : ''}>on</option><option value="false" ${form.Parallel === 'false' ? 'selected' : ''}>off</option></select></label>` +
+    `<label title="classify only n files spread through the cruise (blank: all)">files <input type="number" min="1" data-opt="Files" value="${esc(form.Files)}" placeholder="all"></label></div>`;
+  h += `<div class="go"><button id="dryRun">Show command</button><button id="runNow" class="primary">Run</button><span class="mut">runs one at a time, each in its own MATLAB</span></div></div>`;
+  $('drun').innerHTML = h;
+}
+function runEvent(dry) {
+  const t = targets();
+  if (!t.length || !form.steps.size) { D.busy = form.steps.size ? 'select a cruise' : 'tick at least one step'; $('busy').textContent = D.busy; return; }
+  const order = CORE.concat(EXTRA);
+  const opts = { NewOnly: form.NewOnly, Force: form.Force, Review: form.Review };
+  if (form.Parallel !== '') opts.Parallel = form.Parallel === 'true';
+  if (String(form.Files).trim() !== '') opts.Files = Number(form.Files);
+  comp.sendEventToMATLAB('run', { targets: t.map(c => ({ cruise: c.cruise, sample: c.sample })), steps: order.filter(s => form.steps.has(s)), options: opts, dryrun: !!dry });
+}
+function jobsPanel() {
+  const J = D.jobs || [];
+  const el = $('jobs');
+  if (!MAT() || !J.length) { el.className = ''; el.innerHTML = ''; return; }
+  el.className = 'on';
+  const act = J.filter(j => ACTIVE.includes(j.state)).length;
+  let h = `<div class="jh"><b>Runs</b><span class="mut">${act} queued or running · last 7 days</span></div><table>`;
+  for (const j of J) {
+    const cancel = ACTIVE.includes(j.state) ? `<button data-cancel="${esc(j.id)}">cancel</button>` : '';
+    const log = j.state !== 'queued' ? `<button data-open="${esc(j.log)}">log</button>` : '';
+    h += `<tr class="jr${j.id === selJob ? ' sel' : ''}" data-job="${esc(j.id)}"><td>${fmtd(j.created)}</td><td><b>${esc(j.cruise)}</b> <span class="mut">${esc(j.sample)}</span></td><td>${esc(j.steps.join(' '))}</td>` +
+      `<td><span class="chip j-${esc(j.state)}">${esc(j.state)}</span></td><td>${esc(j.progress || '')}</td><td class="msg">${esc(j.message || '')}</td><td>${cancel} ${log}</td></tr>`;
+    if (j.id === selJob && j.tail.length) h += `<tr><td colspan="7" style="padding:0"><pre>${esc(j.tail.join('\n'))}</pre></td></tr>`;
+  }
+  el.innerHTML = h + '</table>';
 }
 
 // events
 $('grid').addEventListener('click', e => {
+  if (e.target.id === 'ckall') { rows.forEach(c => e.target.checked ? checked.add(key(c)) : checked.delete(key(c))); draw(); return; }
+  if (e.target.dataset && e.target.dataset.ck) { e.target.checked ? checked.add(e.target.dataset.ck) : checked.delete(e.target.dataset.ck); draw(); return; }
   const tr = e.target.closest('tr.row'); if (!tr) return;
   sel = tr.dataset.k; draw();
+});
+$('drun').addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.step) t.checked ? form.steps.add(t.dataset.step) : form.steps.delete(t.dataset.step);
+  if (t.dataset.opt) form[t.dataset.opt] = t.type === 'checkbox' ? t.checked : t.value;
+});
+$('drun').addEventListener('input', e => { if (e.target.dataset.opt === 'Files') form.Files = e.target.value; });
+$('drun').addEventListener('click', e => {
+  const id = e.target.id;
+  if (id === 'fillWork') { form.steps = new Set(targets().flatMap(needsWork)); runFor = null; detail(); }
+  if (id === 'clearSteps') { form.steps.clear(); runFor = null; detail(); }
+  if (id === 'dryRun') runEvent(true);
+  if (id === 'runNow') runEvent(false);
+});
+$('jobs').addEventListener('click', e => {
+  const o = e.target.closest('[data-open]');
+  if (o && MAT()) { comp.sendEventToMATLAB('open', o.dataset.open); return; }
+  const c = e.target.closest('[data-cancel]');
+  if (c && MAT()) { comp.sendEventToMATLAB('cancel', c.dataset.cancel); return; }
+  const tr = e.target.closest('tr.jr');
+  if (tr) { selJob = selJob === tr.dataset.job ? null : tr.dataset.job; jobsPanel(); }
 });
 $('detail').addEventListener('click', e => {
   const o = e.target.closest('[data-open]');
@@ -249,13 +377,16 @@ document.addEventListener('keydown', e => {
 // MATLAB (uihtml) calls setup; a browser uses window.STATUS from status.js
 function setup(htmlComponent) {
   comp = htmlComponent;
-  htmlComponent.addEventListener('DataChanged', () => load(htmlComponent.Data));
-  if (htmlComponent.Data) load(htmlComponent.Data);
+  // errors in the page go to MATLAB (cruise_console shows them) instead of failing silently
+  window.addEventListener('error', e => { try { comp.sendEventToMATLAB('jserror', String(e.message) + ' (line ' + e.lineno + ')'); } catch (_) {} });
+  const safeLoad = () => { try { load(htmlComponent.Data); } catch (e) { comp.sendEventToMATLAB('jserror', String(e && e.stack || e)); } };
+  htmlComponent.addEventListener('DataChanged', safeLoad);
+  if (htmlComponent.Data) safeLoad();
 }
 window.addEventListener('DOMContentLoaded', () => {
   if (!comp) {
     if (window.STATUS) load(window.STATUS);
-    else { D = { cruises: [] }; $('detail').innerHTML = '<div class="empty">No status.js next to this page. Run cruise_status_all in MATLAB, or open the console with cruise_console.</div>'; draw(); }
+    else { D = { cruises: [] }; draw(); }
   }
 });
 </script>

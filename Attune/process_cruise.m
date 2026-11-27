@@ -104,6 +104,9 @@ function p = process_cruise(cruise, opt)
 %              pro_near_trigger_frac (Pro-setting files: share of Pro within 0.1 log of
 %              the SSC or chl trigger edge)
 %
+% A run holds bead_calibrated\process_cruise.lock (run_lock) while it goes: a second
+% run on the same output folder stops with process_cruise:locked. A lock left by a
+% process that is gone is taken over with a warning.
 % Each run appends its settings to bead_calibrated\process_cruise_log.mat, and each step
 % adds a record to bead_calibrated\process_state.mat when it finishes (or fails):
 % step, start / finish time, ok, code version, options and counts (cruise_status reads it).
@@ -182,6 +185,10 @@ else
 end
 if ~isempty(s.notes), fprintf('  note: %s\n', s.notes); end
 if ~exist(p.classpath, 'dir'), mkdir(p.classpath); end
+% one run at a time per output folder (run_lock: process_cruise.lock, released when
+% this function returns or stops with an error)
+lock_tok = run_lock('acquire', p.outpath, struct('steps', steps, 'sample', p.sample, 'job', getenv('CRUISE_CONSOLE_JOB')));
+lock_cleanup = onCleanup(@() run_lock('release', p.outpath, lock_tok)); %#ok<NASGU>
 write_log(p)
 % step record (process_state.mat, read by cruise_status): one entry per step run,
 % written when the step finishes, or with ok = false when it stops with an error
