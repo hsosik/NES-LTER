@@ -12,6 +12,7 @@ The written documentation for the Attune processing and the v2 classifier redesi
 
 - [classifier_dev/README.md](classifier_dev/README.md): the v2 classifier (`assign_class_v2`). Scripts, class rules and a record of every rule change and its effects.
 - [classifier_dev/reports/class6/index.html](classifier_dev/reports/class6/index.html): report on class 6, a preservation shift in large Euks. Figures from the code as of Nov 2026; the rule itself is kept in the classifier README.
+- [classifier_dev/SYN_TYPING.md](classifier_dev/SYN_TYPING.md): how Syn spectral types A–D are assigned: the BL2 − GL2 axis, noise in dim Syn, the per-file mixture (kept types, code 5 = ambiguous, soft counts), the window fallback, discrete samples and where results go. Figures from the classifier as of commit 9333d61 (Nov 2026).
 
 ## Reviewing classifications
 
