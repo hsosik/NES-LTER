@@ -674,17 +674,35 @@ spec_ok = satG2 | F.PEchl < syn_PEchl - sig.peeuk_spec_PEchl_below_syn;
 big = F.size > syn_size + sig.peeuk_size_above_syn;
 eub = class == 1 & big & F.BL3 > chl_min;
 pe_big = has_pe & F.GL2 > sig.peeuk_min_GL2;
-info.peeuk_spill = [];
+info.peeuk_spill = []; info.trace.peeuk_fit = eub;
 if sum(eub) >= sig.peeuk_spill_min_n
     bs = robustfit(F.BL3(eub), F.PEchl(eub));
     rs = F.PEchl(eub) - (bs(1) + bs(2) * F.BL3(eub));
     spill_sd = 1.4826 * mad(rs, 1);
-    pe_big = F.GL2 > pe_min & F.PEchl > bs(1) + bs(2) * F.BL3 + sig.peeuk_spill_sd * spill_sd;
-    info.peeuk_spill = [bs' spill_sd];
+    % the large-Euk set can hold PE euks (and particles) beside the Euks (AT46 C17N02:
+    % 290 hand PE euks and 434 particles beside 736 Euks, SD 0.47 vs 0.20 for the
+    % Euks; floor above every crypto). Where the residuals show a separate upper mode
+    % above the dominant (spillover) one, the floor goes no higher than the valley
+    % between them ('valley'). Two Euk modes without PE (EN655, EN668 summer) are
+    % closer (0.4-0.6) with a shallow valley and leave the floor as it is
+    spill_off = sig.peeuk_spill_sd * spill_sd; spill_cut = Inf;
+    if strcmp(sig.peeuk_spill_method, 'valley')
+        spill_cut = spill_valley(rs, sig);
+        spill_off = min(spill_off, spill_cut);
+    end
+    pe_big = F.GL2 > pe_min & F.PEchl > bs(1) + bs(2) * F.BL3 + spill_off;
+    info.peeuk_spill = [bs' spill_sd spill_cut];
 end
 pe_euk = pe_big & F.size > syn_size + sig.peeuk_size_above_syn & ...
     F.chlSSC > sig.detritus_max_chlSSC & ...
     (F.PEchl < syn_PEchl - sig.peeuk_PEchl_below_syn | (spec & spec_ok));
+if sig.peeuk_sat_spectrum
+    % chl saturated: chl is capped, so PE:chl is overstated, and the brightest Euks'
+    % chl spillover alone saturates GL2 (EN627 C45N05: BL3 at its ceiling, BL2/GL3 on
+    % scale with a spillover/Syn-like BL2:GL3). Spillover and Syn PE share that
+    % spectrum, so only a crypto-type spectrum shows PE there
+    pe_euk = pe_euk & ~(satch('BL3') & okB & ~(dB < dB_cut));
+end
 info.crypto_dB_cut = dB_cut;
 class(pe_euk) = 3;
 class(class == 3 & ~pe_euk) = 0; %component-level PE euk calls must pass the same test
@@ -705,6 +723,7 @@ info.trace.after_peeuk = class;
 pe3 = class == 3;
 info.crypto_split = struct('n', 0, 'accepted', false);
 if any(pe3)
+    satcr = satG2; %GL2-saturated events taken as crypto-type (see peeuk_sat_spectrum below)
     sy = class == 2 & okB & ~satG2;
     if sum(sy) >= 50
         dB = (F.BL2 - F.GL3) - median(F.BL2(sy) - F.GL3(sy));
@@ -730,7 +749,10 @@ if any(pe3)
         % Euk with Syn holds ~one Syn's worth) keep the median-relative spectrum cut:
         % unsaturated bright cryptos in summer files sit within the Syn spectral spread
         loose = (okB & dB < dB_cut) | (~okB & ~satG2 & gl3ok & dG < dG_cut);
-        crypto = (okB & dB < dB_low) | (~okB & ~satG2 & gl3ok & dG < dG_low) | satG2 | (loose & PEs > sig.crypto_min_PE_above_syn);
+        % GL2-saturated events are crypto-type unless (peeuk_sat_spectrum) BL2:GL3 is
+        % usable and not crypto-type (bright Euks whose chl spillover saturates GL2)
+        satcr = satG2; if sig.peeuk_sat_spectrum, satcr = satG2 & ~(okB & ~(dB < dB_cut)); end
+        crypto = (okB & dB < dB_low) | (~okB & ~satG2 & gl3ok & dG < dG_low) | satcr | (loose & PEs > sig.crypto_min_PE_above_syn);
     else
         crypto = F.GL2GL3 < sig.peeuk_max_GL2GL3 | satG2;
         dB = nan(n, 1); PEs = F.GL2 - syn_PEchl - syn_BL3;
@@ -795,7 +817,8 @@ if any(pe3)
     % PE euks at or near GL2 saturation are bright cryptos: no other class carries
     % that much PE (Syn on a particle and Euk with Syn hold ~one Syn's worth), and
     % saturation compresses their PE:chl and GL2:GL3 toward Syn-like values
-    class(pe3 & satG2) = 4;
+    % (with peeuk_sat_spectrum, only those without a usable non-crypto spectrum)
+    class(pe3 & satcr) = 4;
     % Euk-with-Syn events far below the Euks' chl-size line are not Euks carrying
     % a Syn but aggregates / detritus with a Syn and a little chl (two groups in
     % EN727 and AR92, ~1.2 and ~0.2 below the line): count them as Syn on a particle
@@ -805,6 +828,28 @@ if any(pe3)
         class(euksyn_lowchl) = sig.euksyn_low_chl_class; %8 = Syn on particle, or 0 = leave unassigned
         info.trace.euksyn_lowchl = euksyn_lowchl;
         info.trace.from_euksyn = class == 8; %Euk with Syn moved to Syn on particle (trace only)
+    end
+    % Euk-with-Syn events that are one compact population with their own PE (prototype,
+    % Nov 2026): AT46 C17N02, 270 class-5 events with a PE spectrum outside nearly all
+    % the file's Syn (GL2:GL3 0.62 vs Syn 0.29, 99th pct 0.59), PE rising with chl
+    % (slope 0.94, r 0.88) and PE:chl robust SD 0.13; ingested Syn (Poisson numbers of
+    % the file's Syn) would give PE:chl SD 0.23-0.41 and a Syn spectrum. Class-5 events
+    % with usable spectra: if their PE:chl and GL2:GL3 are tight (robust SD) and the
+    % events near the centre show PE proportional to chl, those events take cl.class
+    info.peeuk_cluster = struct('n', 0, 'accepted', false);
+    cl = sig.peeuk_cluster;
+    c5 = class == 5 & okB & ~satG2 & isfinite(dB);
+    if cl.on && sum(c5) >= cl.min_n
+        cP = median(F.PEchl(c5)); sP = 1.4826 * mad(F.PEchl(c5), 1);
+        cG = median(F.GL2GL3(c5)); sG = 1.4826 * mad(F.GL2GL3(c5), 1);
+        mem = c5 & abs(F.PEchl - cP) < cl.win_sd * sP & abs(F.GL2GL3 - cG) < cl.win_sd * sG;
+        st = struct('n', sum(mem), 'accepted', false, 'sd_PEchl', sP, 'sd_GL2GL3', sG, 'PEchl', cP, 'GL2GL3', cG, 'slope', NaN, 'r', NaN);
+        if sum(mem) >= cl.min_n
+            bp = robustfit(F.BL3(mem), F.GL2(mem)); st.slope = bp(2); st.r = corr(F.BL3(mem), F.GL2(mem));
+            st.accepted = sP <= cl.max_sd_PEchl && sG <= cl.max_sd_GL2GL3 && st.slope >= cl.slope(1) && st.slope <= cl.slope(2) && st.r >= cl.min_r;
+            if st.accepted, class(mem) = cl.class; end
+        end
+        info.peeuk_cluster = st;
     end
 end
 
@@ -1253,6 +1298,25 @@ w = [];
 if ~isempty(lo), w(end + 1) = c - g(lo); end
 if ~isempty(hi), w(end + 1) = g(hi) - c; end
 if isempty(w), sd = max(1.4826 * mad(x, 1), 0.05); else, sd = max(min(w) / 1.1774, 0.05); end
+end
+
+function cut = spill_valley(r, sig)
+% residual (PE:chl above the large Euks' trend) at the valley between the dominant
+% density mode (chl spillover) and a strong mode above it (peak at least
+% peeuk_spill_peak_rel of the dominant one, at least peeuk_spill_min_sep above it,
+% density at the valley at most peeuk_spill_max_valley of the lower of the two
+% peaks); Inf where there is no such mode
+cut = Inf;
+[f, g] = ksdensity(r, 'NumPoints', 400);
+[pk, loc] = findpeaks([0 f 0]); loc = loc - 1;
+[~, i0] = max(f);
+up = loc(g(loc) >= g(i0) + sig.peeuk_spill_min_sep & pk >= sig.peeuk_spill_peak_rel * f(i0));
+for k = up(:)'
+    [fv, iv] = min(f(i0:k));
+    if fv <= sig.peeuk_spill_max_valley * min(f(i0), f(k))
+        cut = g(i0 + iv - 1); return
+    end
+end
 end
 
 function ok = pile_near_edge(f, g, e, max_above)

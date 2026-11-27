@@ -415,6 +415,28 @@ The old dim crypto class is known to be a mixture, so agreement with it is not a
 - In summer files, the low-PE:chl euks with a Syn-type spectrum are now Euk with Syn, as decided.
 - The small agreement drops come from the old dim crypto class, which mixes groups v2 now separates.
 
+### PE euks: spill floor at the residual valley, saturated events by spectrum (Nov 2026)
+
+**Spill floor (`peeuk_spill_method = 'valley'`).** The large-Euk fit set can hold PE euks and particles. In AT46 C17N02 (preserved CHL) it held 736 hand Euks, 290 hand PE euks and 434 particles. The robust SD came out at 0.47 instead of the Euks' 0.20, so the floor sat above every crypto (12 auto vs 383 hand PE euks).
+- **Rule.** The floor is still trend + 3 robust SDs, but no higher than the density valley below a separate upper mode of the residuals. The upper mode's peak must be at least 0.3 of the dominant peak, at least 0.6 above it, and the valley at most 0.6× the lower peak (`peeuk_spill_peak_rel`, `peeuk_spill_min_sep`, `peeuk_spill_max_valley`).
+- **Not adopted.** Trim-and-refit fails at ~50% contamination (SD stays 0.40–0.47). Fitting on the lowest residual mode put the floor inside a second Euk mode with no PE in summer runs: EN655 C10N13 CHL went from 2 to 969 PE euks (hand 3). Two Euk modes sit 0.4–0.6 apart with a shallow valley (0.68–0.87 of the lower peak). PE modes sit 0.8–1.1 above with a deep one (0.36–0.49).
+- **Held-out (607 CHL/PE/pro runs).** The rule fires in 2 runs: AT46 C17N02 agreement 0.490 → 0.600 (PE euks 12 → 408, hand 383) and EN661 C12N03 0.703 → 0.757 (0 → 61, hand 60). No other run changes. Live (7 cruises × 40 files): no file changes.
+
+**Saturated events (`peeuk_sat_spectrum = true`).** Chl spillover and Syn PE share the same BL2:GL3 spectrum.
+- **GL2 saturated, BL2/GL3 on scale.** Such events are crypto only with a crypto-type spectrum.
+- **BL3 saturated.** Chl is capped, so PE:chl is overstated. An event with a usable non-crypto spectrum is not a PE euk.
+- **Example.** In EN627 C45N05 about 10 BL3-saturated bright Euks had been forced to bright crypto. About 20 more hand-gated "Euks" there carry crypto-type PE far above spillover and stay crypto.
+- **Held-out (on top of the valley floor).** 151 runs change: 138 up, 13 down (worst −0.0008). PE euks within 20% of hand: tuning CHL 0.41 → 0.44, 2a 0.50 → 0.53.
+- **Live.** Cruise means are flat or up (AR95 0.9338 → 0.9344, EN727 0.9281 → 0.9280).
+
+**Set means, both changes (held-out, mean agreement):** tuning 0.8884 → 0.8889, 2a 0.8911 → 0.8920, 2a′ 0.9228 → 0.9230, 2b 0.9059 → 0.9059.
+
+**Open: an own-PE population in class 5 (`peeuk_cluster`, prototype, off, class 6).** In AT46 C17N02, 270 class-5 events form one tight cluster.
+- **Spectrum.** After removing Euk spillover, GL2:GL3 is 0.62 (Syn 0.29) and BL2−GL2 is −0.42.
+- **PE tracks chl.** PE rises with chl (slope 0.94), with PE:chl robust SD 0.13. Poisson ingestion of the file's Syn would give 0.23–0.41.
+- **Test.** The prototype test fires in 5 of 607 held-out runs (AT46 C17N02, EN727 C20N02, AR43 C02N24 PE, MVCO MV417N04, MV432N04 PE). All five share GL2:GL3 0.55–0.61 and BL2−GL2 −0.34 to −0.42. It never fires in live files, where class 5 has PE:chl SD 0.4–1.6 and PE independent of chl.
+- **Not settled.** Whether it becomes a class, and how it relates to the EN727 C20N02 group that `dimcrypto` moves to class 3 (dB ≈ 0 there).
+
 ## Syn spectral types across cruises (`syn_spectral_types.m`, Nov 2026)
 
 - **Method.** 148 files from 20 cruises (all those with `beadstat_2026`, up to 8 standard files each) were classified with v2. Syn with usable BL2, GL2 and GL3 (not saturated, at least 1 log above floor) were described by bead-normalized ratios:
