@@ -1,5 +1,5 @@
-function txt = status_json(S, made, mode, busy, jobs)
-% function txt = status_json(S, made, mode, busy, jobs)
+function txt = status_json(S, made, mode, busy, jobs, drive)
+% function txt = status_json(S, made, mode, busy, jobs, drive)
 % Cruise status (cruise_status results) as JSON text for the cruise console page:
 % plain types only, datetimes as ISO strings, and per step the latest step record
 % (process_state.mat: finished, ok, message).
@@ -9,13 +9,16 @@ function txt = status_json(S, made, mode, busy, jobs)
 % busy  message shown at the top of the page (e.g. 'refreshing EN727 ...'); refresh
 %       buttons are disabled while it is set
 % jobs  cell array of console runs (console_job('list')), shown in the page's run list
+% drive letter the NAS share is mapped to (nas_drive); the page shows and opens
+%       paths on that drive. '' (browser copy): the page's own setting, default Z
 %
 % Nov 2026, cruise console
 
 if nargin < 3, mode = 'browser'; end
 if nargin < 4, busy = ''; end
 if nargin < 5, jobs = {}; end
-J = struct('made', dstr(made), 'mode', mode, 'busy', char(busy), 'cruises', [], 'jobs', {jobs});
+if nargin < 6, drive = ''; end
+J = struct('made', dstr(made), 'mode', mode, 'busy', char(busy), 'drive', char(drive), 'cruises', [], 'jobs', {jobs});
 C = cell(numel(S), 1);
 for i = 1:numel(S)
     s = S(i);

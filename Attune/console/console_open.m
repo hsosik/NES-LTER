@@ -11,6 +11,9 @@ msg = "";
 target = char(target);
 if ~(isfolder(target) || isfile(target))
     msg = "not found: " + string(target);
+    if ~isempty(regexp(target, '^[A-Za-z]:\\', 'once')) && ~isfolder(target(1:3))
+        msg = msg + " (no drive " + string(target(1:2)) + " on this computer: map \\sosiknas1\Lab_data to it, or set the NAS drive letter at the top of the console)";
+    end
     return
 end
 if ~(isfolder(target) || endsWith(lower(target), {'.html' '.htm' '.log'}))

@@ -135,6 +135,7 @@ button.primary:hover { filter: brightness(1.08); background: var(--partial); }
       <option value="todo">review to do</option>
     </select>
     <label><input id="hidena" type="checkbox" checked> hide rows without files</label>
+    <label title="drive letter this computer maps \\sosiknas1\Lab_data to; paths and open buttons use it (review pages save decisions only when opened from the mapped drive). Kept for later sessions.">NAS drive <input id="drive" type="text" size="2" maxlength="3" aria-label="NAS drive letter">:</label>
     <button id="refreshAll" class="mat" title="scan every cruise again (about 2 minutes)">Refresh all</button>
   </div>
 </header>
@@ -161,7 +162,12 @@ let runFor = null, selJob = null;
 const ACTIVE = ['queued', 'starting', 'running'];
 const jobsFor = c => (D.jobs || []).filter(j => j.cruise === c.cruise && j.sample === c.sample && ACTIVE.includes(j.state));
 const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+// NAS paths are shown (and opened) on the mapped drive: \\sosiknas1\Lab_data\... and
+// <letter>:\Attune\... become DRV:\... (DRV: MATLAB's nas_drive, or this browser's own setting)
+let DRV = 'Z';
+const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (_) { return null; } };
+const P = s => String(s ?? '').replace(/\\\\sosiknas1\\Lab_data\\/gi, DRV + ':\\').replace(/\b[A-Za-z]:\\(?=Attune\\)/g, DRV + ':\\');
+const esc = s => P(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const key = c => c.cruise + '|' + c.sample;
 const fmtd = s => s ? s.replace('T', ' ').slice(0, 16) : '';
 const state = (c, s) => (c.steps.find(x => x.step === s) || {}).state || 'missing';
@@ -177,7 +183,9 @@ function load(d) {
   $('made').textContent = D.made ? 'status checked ' + fmtd(D.made) : '';
   $('mode').textContent = MAT() ? 'MATLAB' : 'read-only';
   $('mode').title = MAT() ? 'refresh and open go to MATLAB' : 'open in MATLAB with cruise_console to refresh status';
-  $('busy').textContent = D.busy || '';
+  DRV = (MAT() && D.drive) || store('nas_drive') || 'Z';
+  if (document.activeElement !== $('drive')) $('drive').value = DRV;
+  $('busy').textContent = P(D.busy || '');
   document.querySelectorAll('.mat').forEach(b => { b.style.display = MAT() ? '' : 'none'; b.disabled = refreshing(); });
   draw();
 }
@@ -223,7 +231,7 @@ function draw() {
 function link(path, text) {
   if (!path) return '';
   if (MAT()) return `<button data-open="${esc(path)}">${esc(text)}</button>`;
-  const u = 'file:///' + String(path).replace(/\\/g, '/').replace(/^\/+/, '');
+  const u = 'file:///' + P(path).replace(/\\/g, '/').replace(/^\/+/, '');
   return `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(text)}</a>`;
 }
 
@@ -364,6 +372,13 @@ $('detail').addEventListener('click', e => {
 });
 $('refreshAll').addEventListener('click', () => { if (MAT()) comp.sendEventToMATLAB('refresh', { cruise: '', sample: '' }); });
 for (const id of ['q', 'sample', 'stfilter', 'hidena']) $(id).addEventListener('input', draw);
+$('drive').addEventListener('change', e => {
+  const v = e.target.value.trim().toUpperCase().replace(/[:\\\/]+$/, '');
+  if (!/^[A-Z]$/.test(v)) { e.target.value = DRV; $('busy').textContent = 'NAS drive: one letter A-Z'; return; }
+  e.target.value = v; e.target.blur();
+  if (MAT()) { comp.sendEventToMATLAB('drive', v); return; } // MATLAB stores it (nas_drive) and sends it back
+  store('nas_drive', v); DRV = v; $('busy').textContent = 'NAS drive set to ' + v + ': (this browser)'; draw();
+});
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || !rows.length) return;
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;

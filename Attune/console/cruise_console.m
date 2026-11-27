@@ -20,6 +20,9 @@ function fig = cruise_console(opt)
 %     held by a live run waits. Force, several cruises, or a cruise that already has
 %     a run queued ask to confirm.
 %   - run list: queued, running and recent runs, progress, log tail, cancel
+%   - NAS drive: the letter this computer maps \\sosiknas1\Lab_data to (default Z,
+%     kept for later sessions: nas_drive). Paths in the page and the open buttons
+%     use that drive: review pages save decisions only when opened from it.
 % Runs keep going when the console is closed; queued runs start when a console is
 % open (it checks every few seconds). Use one console at a time.
 % The same page, read-only, is written next to the cache for browsers
@@ -57,7 +60,7 @@ if opt.Refresh || ~isfile(cf)
 end
 o = load(cf, 'S', 'made');
 st = struct('S', o.S, 'made', o.made, 'root', opt.Root, 'cache', cf, 'jroot', jroot, 'maxruns', opt.MaxRuns, ...
-    'jobs', {console_job('list', jroot)}, 'msg', "", 'last', "", 'testout', opt.TestOutPath);
+    'jobs', {console_job('list', jroot)}, 'msg', "", 'last', "", 'testout', opt.TestOutPath, 'drive', nas_drive());
 
 fig = uifigure('Name', 'Attune cruise console', 'Position', [80 80 1500 900]);
 g = uigridlayout(fig, [1 1], 'Padding', [0 0 0 0]);
@@ -77,7 +80,7 @@ function push(h, msg)
 % send the page its data (only when something changed)
 st = h.UserData;
 if nargin > 1, st.msg = string(msg); end
-txt = string(status_json(st.S, st.made, 'matlab', st.msg, st.jobs));
+txt = string(status_json(st.S, st.made, 'matlab', st.msg, st.jobs, st.drive));
 if txt ~= st.last
     st.last = txt;
     h.UserData = st;
@@ -117,7 +120,7 @@ end
 
 function console_event(h, evt)
 % events from the page: 'refresh' {cruise, sample} ('' = all), 'open' path,
-% 'run' {targets, steps, options, dryrun}, 'cancel' job id
+% 'run' {targets, steps, options, dryrun}, 'cancel' job id, 'drive' NAS drive letter
 st = h.UserData;
 fig = ancestor(h, 'figure');
 switch evt.HTMLEventName
@@ -141,6 +144,14 @@ switch evt.HTMLEventName
     case 'run'
         push(h, run_event(h, fig, evt.HTMLEventData));
         poll(h); % start it now if nothing else is running
+    case 'drive'
+        try
+            st.drive = nas_drive('set', evt.HTMLEventData);
+            h.UserData = st;
+            push(h, "NAS drive set to " + st.drive + ": (kept for later sessions)");
+        catch ME
+            push(h, ME.message);
+        end
     case 'jserror'
         warning('cruise_console:page', 'console page error: %s', char(evt.HTMLEventData));
     case 'cancel'

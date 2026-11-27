@@ -34,17 +34,17 @@ end
 m = load(fn, 'meta');
 build = char(datetime(m.meta.processed, 'Format', 'yyyy-MM-dd HH:mm')); % as bead_review's D.build
 dec = fullfile(bp, 'bead_review_decisions.csv');
-page = fullfile(bp, 'bead_review', 'index.html');
+page = mapped(fullfile(bp, 'bead_review', 'index.html')); % the page saves decisions only when opened from a mapped drive
 if ~isfile(dec)
     S.state = 'not reviewed';
-    S.message = sprintf('bead review not done (no %s); open %s', 'bead_review_decisions.csv', page);
+    S.message = sprintf('bead review not done (no %s); open from NAS mapped drive, e.g., %s', 'bead_review_decisions.csv', page);
     return
 end
 T = review_decisions(dec, true);
 k = find(strcmp(T.file, '__review_complete__'), 1, 'last');
 if isempty(k)
     S.state = 'not marked complete';
-    S.message = sprintf('bead review not marked complete: open %s and use "mark review complete" when done', page);
+    S.message = sprintf('bead review not marked complete: open from NAS mapped drive, e.g., %s, and use "mark review complete" when done', page);
     return
 end
 S.reviewer = T.reviewer{k}; S.build = T.build{k};
@@ -71,6 +71,16 @@ end
 S.complete = true;
 S.state = 'complete';
 S.message = sprintf('bead review complete (%s, %s)', who, char(S.saved, 'yyyy-MM-dd HH:mm'));
+end
+
+function f = mapped(f)
+% \\sosiknas1\Lab_data\... -> <drive>:\... (nas_drive: this computer's mapping of
+% the NAS share, default Z)
+if exist('nas_drive', 'file')
+    f = nas_drive('path', f);
+elseif startsWith(f, '\\sosiknas1\Lab_data\', 'IgnoreCase', true)
+    f = ['Z:\' f(numel('\\sosiknas1\Lab_data\')+1:end)];
+end
 end
 
 function t = iso(s)
