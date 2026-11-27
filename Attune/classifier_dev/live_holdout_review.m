@@ -89,7 +89,7 @@ for i = 1:height(sel)
         fprintf('%s: %s\n', fn, err.message); continue
     end
     h = double(h(:)); h(~ismember(h, [0 1 2 3 4 7])) = 0; h(ismember(h, [3 4])) = 34;
-    a = double(a(:)); a(ismember(a, [3 4 5 6])) = 34;
+    a = double(a(:)); a(ismember(a, [3 4 5])) = 34; a(a == 6) = 1; %class 6 counts as Euk
     F = info.features;
     id = sprintf('r%03d', i); if refresh, id = char(sel.id(i)); end
     frame(F, h, views, lim, fullfile(fd, [id '_h.png']));

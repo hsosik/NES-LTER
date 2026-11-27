@@ -778,7 +778,18 @@ if any(pe3)
             dm = gc.mu(o(2), :) - gc.mu(o(1), :);
             sep = sqrt(dm / ((S1 + S2) / 2) * dm');
             nmin = min(gc.ComponentProportion) * size(Xc, 1);
-            compact = all(sqrt([S1(1, 1) S2(1, 1)]) <= sig.crypto_max_sd_PE) && all(sqrt([S1(2, 2) S2(2, 2)]) <= sig.crypto_max_sd_dB);
+            sdc = sqrt([S1(1, 1) S2(1, 1); S1(2, 2) S2(2, 2)]); %rows PE, dB; columns dim, bright
+            if sig.crypto_robust_compact
+                % robust SD of each group's hard-assigned members: a few stragglers
+                % inflate the Gaussian SD past the limit and veto a clean split
+                % (EN727 27Jan2025(4) Sample(41): dim-group dB SD 0.217, robust ~0.1)
+                pf = posterior(gc, Xc); [~, hard] = max(pf, [], 2);
+                for j = 1:2
+                    mj = hard == o(j);
+                    if sum(mj) >= 5, sdc(:, j) = 1.4826 * mad(Xc(mj, :), 1)'; end
+                end
+            end
+            compact = all(sdc(1, :) <= sig.crypto_max_sd_PE) && all(sdc(2, :) <= sig.crypto_max_sd_dB);
             redder = gc.mu(o(1), 2) < gc.mu(o(2), 2) - sig.crypto_min_dB_offset;
             ok = nmin >= sig.crypto_min_group_n && compact && sep >= sig.crypto_min_sep && redder;
             info.crypto_split = struct('n', sum(cr), 'accepted', ok, 'sep', sep, 'nmin', nmin, 'compact', compact, 'redder', redder, ...
@@ -840,6 +851,12 @@ if any(pe3)
     % events with usable spectra: if their PE:chl and GL2:GL3 are tight (robust SD),
     % the events near the centre show PE proportional to chl, and their GL2:GL3 sits
     % clearly above the file's Syn, those events take cl.class
+    % What they are (27 Nov 2026): Euks whose PE-channel fluorescence is raised by
+    % preservation, not a PE population. The live file nearest in time (AT46 C17N02,
+    % AR43 C02N24, EN727 C02N02 and C20N12, 1-75 min apart) has the same Euks (same
+    % size and chl) with GL2 1.5-2.3 log10 lower and GL2:GL3 -0.3 to -0.5, and no events
+    % where class 6 sits; all preserved Euks shift up (Syn ~0.3). Downstream (tables,
+    % scoring) count class 6 as Euk
     info.peeuk_cluster = struct('n', 0, 'accepted', false);
     cl = sig.peeuk_cluster;
     c5 = class == 5 & okB & ~satG2 & isfinite(dB);

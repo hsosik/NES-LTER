@@ -11,7 +11,8 @@ function [] = generate_attune_table(classpath, FCSfileinfopath)
 
 Attune = load([FCSfileinfopath]);
 
-PE_euk_celltypes = [3 4 6]; %v2: dim and bright crypto, PE euk cluster (class 6, Nov 2026)
+PE_euk_celltypes = [3 4]; %v2: dim and bright crypto
+Euk_celltypes = [1 6]; %class 6: Euks whose PE channels are raised by preservation (27 Nov 2026; preserved samples only)
 
 % identify bead run files and determine mean bead SSC-H for cruise
 % may need to adjust epsilon and/or minpts depending on cruise
@@ -45,7 +46,7 @@ Scatter_hv = NaN(length(filelist), 1);
 % count, biovolume, carbon of single classes; Syn-type and flag counts
 % (NaN for class files without syn_type / flag, i.e. older classifiers)
 newclass = [3 4 5 6 10];
-newclassnames = {'Crypto_dimX' 'Crypto_brightX' 'Euk_with_SynX' 'PE_euk_clusterX' 'Euk_like_low_chlX'}; %6: PE euk cluster (own PE, identity uncertain; in Euk_w_PE) %10: low-chl Euk-like cells, identity uncertain (not in the Euk columns)
+newclassnames = {'Crypto_dimX' 'Crypto_brightX' 'Euk_with_SynX' 'Euk_PE_shiftX' 'Euk_like_low_chlX'}; %6: Euks with PE channels raised by preservation (in the Euk columns) %10: low-chl Euk-like cells, identity uncertain (not in the Euk columns)
 NewCount = NaN(length(filelist), numel(newclass));
 NewBiovol = NewCount; NewCarbon = NewCount;
 SynPart_count = NaN(length(filelist), 1); %class 8: Syn on particle, count only (not Syn size or carbon)
@@ -99,7 +100,7 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
     
 
     %now Euks
-    celltype = 1; 
+    celltype = Euk_celltypes;
     diam = (volume*3/4/pi).^(1/3)*2; %equivalent spherical diam, micrometers
     % pre-Aug 2019 no-OD2 cruises: cells beyond the correctable SSC range
     % (vol_flag, batch_mergedSSC2volume) carry the largest correctable volume
@@ -109,7 +110,7 @@ for count = 1:length(filelist) %go through each of the files in the FCSfileinfo
         diam(vol_flag) = max(diam(vol_flag), 10.001);
     end
     for ii = 1:length(EukSizes)-1
-        ind = find(diam<=EukSizes(ii+1) & rename_class==celltype);
+        ind = find(diam<=EukSizes(ii+1) & ismember(rename_class, celltype));
         Count(count,ii+1) = size(ind,1);
         Biovol(count,ii+1) = nansum(volume(ind));
         Carbon(count,ii+1) = nansum(carbon(ind));
@@ -251,7 +252,7 @@ else
     table_metadata = {notes(2); classpath; string(datetime())};
     if numel(notes) >= 5 %assign_class_v2 class files: class, syn_type and flag code descriptions
         table_metadata = [table_metadata; {notes(1); notes(4); notes(5); ...
-            'Crypto_dim/Crypto_bright = classes 3/4; PE_euk_cluster = class 6 (one compact population with its own Syn-type PE, identity uncertain); Euk_w_PE = classes 3, 4 and 6; Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Euk_like_low_chl = class 10 (low-chl Euk-like cells, identity uncertain; not in the Euk columns); Syn type counts by class (type_ambiguous: the per-file mixture gives no type a posterior of 0.8); Syn_typeX_soft = class 2 Syn by summed mixture posteriors, ambiguous events shared out (NaN where the file had too few Syn and fixed windows were used); flags are class 0 events'; ...
+            'Crypto_dim/Crypto_bright = classes 3/4; Euk_PE_shift = class 6 (Euks whose PE channels are raised by preservation; included in the Euk columns); Euk_w_PE = classes 3 and 4; Euk_with_Syn = class 5; Syn_on_particle = class 8 (not in Syn_count); Euk_like_low_chl = class 10 (low-chl Euk-like cells, identity uncertain; not in the Euk columns); Syn type counts by class (type_ambiguous: the per-file mixture gives no type a posterior of 0.8); Syn_typeX_soft = class 2 Syn by summed mixture posteriors, ambiguous events shared out (NaN where the file had too few Syn and fixed windows were used); flags are class 0 events'; ...
             'Pro_count/biovolume/carbon NaN in files run without Pro settings; Pro_lower_bound_count = class 7 (Pro above the chl trigger) plus Pro-like events (flag 4) there, NaN in Pro-setting files; Pro_near_trigger_fraction = share of Pro within 0.1 log of the SSC or chl trigger edge (Pro-setting files)'; ...
             'Review_exclude = 1: file marked exclude in the class review (review_decisions.csv); rows kept here, left out of the EDI tables'}];
     end

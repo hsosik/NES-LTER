@@ -74,8 +74,8 @@ function p = process_cruise(cruise, opt)
 %
 % Class file variables written by classify (volume loads and re-saves the file, keeping them)
 %   class      per event, double: 0 unassigned, 1 Euk, 2 Syn, 3 dim crypto, 4 bright crypto,
-%              5 Euk with Syn, 6 PE euk cluster (one compact population with its own
-%              Syn-type PE; identity uncertain), 7 Pro, 8 Syn on particle, 10 low-chl
+%              5 Euk with Syn, 6 Euk with PE channels raised by preservation
+%              (counted as Euk), 7 Pro, 8 Syn on particle, 10 low-chl
 %              Euk-like cells (identity uncertain). In files run without Pro settings, class 7 is
 %              the part of the Pro cluster above the chl trigger: a lower bound
 %              (class_meta.pro_lower_bound)
@@ -517,7 +517,7 @@ end
 function codes = class_codes()
 codes.class = "class: 0 = unassigned, 1 = Euk (no PE), 2 = Syn, 3 = dim crypto (PE euk, red-shifted PE), " + ...
     "4 = bright crypto (PE euk), 5 = Euk with Syn (Syn-like PE, possible grazer), " + ...
-    "6 = PE euk cluster (one compact population with its own PE: Syn-type spectrum with GL2:GL3 above Syn, PE in proportion to chl; identity uncertain), 7 = Pro, " + ...
+    "6 = Euk with PE channels raised by preservation (a compact group with GL2:GL3 above Syn and PE in proportion to chl; matched live samples show ordinary Euks; counted as Euk), 7 = Pro, " + ...
     "8 = Syn on particle (count with Syn abundance, not Syn size or carbon), " + ...
     "10 = low-chl Euk-like cells (no PE, 0.25-1 log larger than Syn, chl:size below 0.8; identity uncertain); " + ...
     "in files run without Pro settings, 7 = Pro above the chl trigger only (a lower bound); cell volume in cubic microns";

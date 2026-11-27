@@ -3,7 +3,7 @@ function A = score_agreement(cruisedir, nfiles, outdir)
 % Event-level agreement between the existing class files and assign_class_v2
 % for files spread through a cruise. agreement = events with the same class /
 % events either method calls phytoplankton (3 dim and 4 bright cryptos, 5 Euk
-% with Syn and 6 PE euk cluster kept apart; agreement_pe_merged counts 3/4/5/6 as one; v2 class 8 is a disagreement wherever
+% with Syn kept apart, 6 (Euk with PE channels raised by preservation) apart from Euk; agreement_pe_merged counts 3/4/5 as one and 6 as Euk; v2 class 8 is a disagreement wherever
 % the old class differs).
 % Saves output/agreement_<cruise>.mat
 %
@@ -33,7 +33,7 @@ for k = pick
     [new, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, Fi.pro_measured(k));
     st = info.syn_type(new == 2);
     old = load_old_class(P, fn); old(~ismember(old, [0 1 2 3 4 7])) = 0;
-    o34 = old; o34(ismember(o34, [4 5])) = 3; n34 = new; n34(ismember(n34, [4 5 6])) = 3;
+    o34 = old; o34(ismember(o34, [4 5])) = 3; n34 = new; n34(ismember(n34, [4 5])) = 3; n34(n34 == 6) = 1; %class 6 = Euk (PE channels raised by preservation)
     either = old ~= 0 | new ~= 0;
     A = [A; table(string(cruisedir), string(fn), Fi.matdate_start(k), Fi.pro_measured(k), sum(either), ...
         sum(old == new & old ~= 0) / sum(either), sum(old == 0 & new ~= 0), sum(old ~= 0 & new == 0), sum(old ~= 0 & new ~= 0 & old ~= new), ...

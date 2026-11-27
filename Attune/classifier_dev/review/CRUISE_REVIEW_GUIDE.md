@@ -178,7 +178,7 @@ the class has too few events (50 for Syn and Euk, 20 for each crypto class).
 | Euk, Syn, Pro, unassigned counts | 0.12 (Pro 0.15) | Events in each class | A real patch or front; or a class taking or losing a population (check the frame) |
 | crypto dim + bright | 0.25 | Dim and bright crypto together | As above; crypto counts are small and noisy |
 | Euk with Syn, Syn on particle | 0.35 | Coincident Euk + Syn events, and Syn riding on a larger particle | Usually small numbers; worth a look when Syn counts also jump |
-| PE euk cluster | 0.35 | Class 6: one compact population with its own Syn-type PE (GL2:GL3 above Syn, PE in step with chl; identity uncertain). Blank on pages built before 26 Nov 2026 | Rare; seen so far only in preserved winter shelf samples. Check the frame: a tight brown group between the cryptos and the Euks |
+| Euk, PE shift (preserved) | 0.35 | Class 6: Euks whose PE channels are raised by preservation (GL2:GL3 above Syn, "PE" in step with chl; matched live samples show ordinary Euks). Counted as Euk. Blank on pages built before 26 Nov 2026 | Seen only in preserved samples. Check the frame: a tight brown group between the cryptos and the Euks |
 | flag: Syn-pigment particle | 0.3 | Unassigned events with Syn pigment and low chl (degraded cells, grazers, detritus) | Particle-rich water, or Syn boundary trouble |
 | flag: below Euk chl gap \* | 0.3 | Unassigned events below the Euk chl gap | Follows the Euk chl gap coming and going |
 | flag: chl-edge noise pile \* | 0.35 | Unassigned trigger-noise pile at the chl edge (flag 3; capped files, pre-2019). Pages built before 25 Nov 2026 call it "Pro tail" | Trigger or threshold settings changed; on EN727, set only in files without a Euk chl gap |

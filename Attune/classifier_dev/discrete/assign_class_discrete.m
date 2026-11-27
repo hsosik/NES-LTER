@@ -204,7 +204,8 @@ if dc.on && isfield(info, 'gmm') && ~isempty(info.gmm) && isfield(info, 'comp') 
             % BL2:GL3 at or above v2's crypto cut relative to Syn and GL2:GL3 well above
             % Syn. EN727 C20N02: the 860 events are the same population as v2's class 6
             % there (size 0.75 / 0.80, GL2:GL3 0.60 / 0.61, dB +0.05 / +0.03; the run's
-            % cryptos dB -0.7 to -0.8), split from it only by v2's PE:chl re-check cut
+            % cryptos dB -0.7 to -0.8), split from it only by v2's PE:chl re-check cut.
+            % Class 6 is Euks with PE channels raised by preservation (counted as Euk)
             to = 3; pcl = cfg.sig.peeuk_cluster; syn = class == 2;
             if pcl.on && isfield(info, 'crypto_dB_cut') && isfinite(info.crypto_dB_cut)
                 dBm = median(F.BL2(m) - F.GL3(m)) - median(F.BL2(syn) - F.GL3(syn));

@@ -62,7 +62,9 @@ cfg.sig.peeuk_spill_max_valley = 0.6; %... with the valley density at most this 
 % their own PE. PE:chl and GL2:GL3 robust SDs of the class-5 events (usable spectra) at
 % most max_sd_*; among those within win_sd of the centre (at least min_n) GL2 rising
 % with BL3 (robust slope within slope, correlation at least min_r) and median GL2:GL3
-% at least min_dGL2GL3_syn above the file's Syn: they take class (6)
+% at least min_dGL2GL3_syn above the file's Syn: they take class (6). Matched live
+% files show these are Euks whose PE channels are raised by preservation (27 Nov 2026):
+% tables and scoring count class 6 as Euk
 cfg.sig.peeuk_cluster = struct('on', true, 'class', 6, 'min_n', 50, 'max_sd_PEchl', 0.18, 'max_sd_GL2GL3', 0.06, ...
     'win_sd', 3, 'slope', [0.7 1.3], 'min_r', 0.7, 'min_dGL2GL3_syn', 0.15);
 cfg.sig.peeuk_sat_spectrum = true; %true: saturated events with a usable BL2:GL3 go by spectrum: GL2-saturated ones are crypto only with a crypto-type spectrum, and BL3-saturated ones (PE:chl overstated) with a Syn/spillover-like spectrum are not PE euks
@@ -73,7 +75,8 @@ cfg.sig.crypto_split_min_n = 40;    %... there are this many crypto-type events 
 cfg.sig.crypto_min_group_n = 15;    %... each group has this many,
 cfg.sig.crypto_max_sd_PE = 0.4;     %... both are compact in PE (SD, log10) ...
 cfg.sig.crypto_max_sd_dB = 0.2;     %... and in BL2:GL3 (EN727 / AR95 groups ~0.05-0.15),
-cfg.sig.crypto_min_sep = 3;         %... means are this many pooled SDs apart (Mahalanobis),
+cfg.sig.crypto_robust_compact = true; %compactness from each group's robust SD (1.4826 MAD of its members), not the Gaussian SD, so a few stragglers do not veto a split
+cfg.sig.crypto_min_sep = 3;        %... means are this many pooled SDs apart (Mahalanobis),
 cfg.sig.crypto_min_dB_offset = 0.1; %... and the dimmer group is the more red-shifted (EN727 -1.0 vs -0.6)
 cfg.sig.crypto_min_PE_above_syn = 1; %without an accepted per-file split, crypto-type events with PE < this above Syn (log10, ~10 Syn) are dim (3), brighter are bright (4); EN727 dim groups ~0.25-0.75, bright 1.2-2.2
 cfg.sig.crypto_outlier_sd = 4;     %single crypto group: events more than this many robust SDs below (above) its median PE are dim (bright)

@@ -68,8 +68,8 @@ for i = 1:numel(keys)
     r = add_group(r, 'syn', S, j, {'syn' 'syn_typeA' 'syn_typeB' 'syn_typeC' 'syn_typeD' 'syn_type_ambiguous' 'syn_type_unusable' 'syn_on_particle'}, {'syn'});
     % Euks
     j = iCHL; if isempty(j), j = iPE; end
-    r = add_group(r, 'euk', S, j, {'euk' 'euk_leq2um' 'euk_leq3um' 'euk_leq5um' 'euk_leq10um' 'euk_leq20um' 'crypto_dim' 'crypto_bright' 'euk_with_syn' 'pe_euk_cluster'}, ...
-        {'euk' 'euk_leq2um' 'euk_leq3um' 'euk_leq5um' 'euk_leq10um' 'euk_leq20um' 'crypto_dim' 'crypto_bright' 'euk_with_syn' 'pe_euk_cluster'});
+    r = add_group(r, 'euk', S, j, {'euk' 'euk_leq2um' 'euk_leq3um' 'euk_leq5um' 'euk_leq10um' 'euk_leq20um' 'crypto_dim' 'crypto_bright' 'euk_with_syn' 'euk_pe_shift'}, ...
+        {'euk' 'euk_leq2um' 'euk_leq3um' 'euk_leq5um' 'euk_leq10um' 'euk_leq20um' 'crypto_dim' 'crypto_bright' 'euk_with_syn' 'euk_pe_shift'});
     % Pro
     lbj = [];
     if ~isempty(iPRO), j = iPRO; src = "pro run";
@@ -98,7 +98,7 @@ if exist([p.outpath 'BottleMetadata.mat'], 'file'), T = preserved_join_metadata(
 table_metadata = {"process_cruise preserved table (preserved_table)"; string(datetime('now')); p.classpath; ...
     "cells_per_ml: cells per ml; biovolume_concentration: cubic microns per ml; carbon_concentration: micrograms per litre"; ...
     "counts from events in the time gate (last 80% of acquisition) / class_meta.vol_analyzed_ml"; ...
-    "syn_*: PE run (CHL if none); euk_*, crypto_*, euk_with_syn: CHL run (PE if none); euk = Euk without PE (class 1), all sizes; euk_leqXum: class 1 by ESD; crypto dim/bright = classes 3/4 (<= 20 um); euk_with_syn = class 5 (<= 20 um); pe_euk_cluster = class 6, one compact population with its own Syn-type PE, identity uncertain (<= 20 um)"; ...
+    "syn_*: PE run (CHL if none); euk_*, crypto_*, euk_with_syn: CHL run (PE if none); euk = Euk without PE (classes 1 and 6), all sizes; euk_leqXum: classes 1 and 6 by ESD; crypto dim/bright = classes 3/4 (<= 20 um); euk_with_syn = class 5 (<= 20 um); euk_pe_shift = class 6, Euks whose PE channels are raised by preservation (all sizes; included in euk)"; ...
     "pro_*: pro run, or CHL run where its Pro cluster is complete; otherwise NaN and pro_lower_bound_cells_per_ml from the CHL run"; ...
     "bacteria = heterotrophic bacteria (class 9) in the SYBR run; pro_sybr = Pro (7) in the SYBR run; bacteria_incl_pro = 7 + 9"; ...
     "bacteria_LNA / bacteria_HNA: class 9 split by bact_type (sum = bacteria); bacteria_hna_method 'valley' = cut at the run's SYBR density valley, 'fixed' = no valley (HNA and LNA merged), split nominal"; ...
@@ -114,14 +114,14 @@ function s = file_stats(cl, st, bt, v)
 esd = (v * 3 / 4 / pi).^(1/3) * 2;
 C = real(biovol2carbon(v, 0));
 grp = struct();
-grp.syn = cl == 2; grp.euk = cl == 1;
+grp.syn = cl == 2; grp.euk = cl == 1 | cl == 6; %class 6: Euks with PE channels raised by preservation (27 Nov 2026)
 grp.syn_typeA = cl == 2 & st == 1; grp.syn_typeB = cl == 2 & st == 2; grp.syn_typeC = cl == 2 & st == 3; grp.syn_typeD = cl == 2 & st == 4; grp.syn_type_ambiguous = cl == 2 & st == 5; grp.syn_type_unusable = cl == 2 & st == 9;
 grp.syn_on_particle = cl == 8;
 for e = [2 3 5 10 20]
-    grp.(sprintf('euk_leq%dum', e)) = cl == 1 & esd <= e;
+    grp.(sprintf('euk_leq%dum', e)) = (cl == 1 | cl == 6) & esd <= e;
 end
 grp.crypto_dim = cl == 3 & ~(esd > 20); grp.crypto_bright = cl == 4 & ~(esd > 20); grp.euk_with_syn = cl == 5 & ~(esd > 20);
-grp.pe_euk_cluster = cl == 6 & ~(esd > 20); %class 6: one compact population with its own Syn-type PE (identity uncertain)
+grp.euk_pe_shift = cl == 6; %class 6, all sizes: Euks whose PE channels are raised by preservation (matched live files show no PE); a subset of euk
 grp.pro = cl == 7; grp.bacteria = cl == 9;
 nobt = isempty(bt); if nobt, bt = zeros(size(cl), 'uint8'); end %class file without bact_type: LNA/HNA NaN
 grp.bacteria_LNA = cl == 9 & bt == 1; grp.bacteria_HNA = cl == 9 & bt == 2; grp.pro_sybr = cl == 7; grp.bacteria_incl_pro = cl == 7 | cl == 9;
