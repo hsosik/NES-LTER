@@ -173,7 +173,8 @@ end
 % C20N02 CHL: one component, size 0.78, BL3 2.25, PE:chl -1.40, GL2:GL3 0.60; 177 to
 % class 5, 683 to Euk; user: dim crypto). A Syn-named component that the Syn check mostly
 % rejected becomes crypto (3) as a whole when it is much larger than Syn, its PE:chl is
-% between the clear Euks' and Syn's, and its chl:size is Euk-like (Nov 2026)
+% between the clear Euks' and Syn's, and its chl:size is Euk-like (Nov 2026). Where its
+% PE spectrum is not crypto-type it is v2's class 6 population instead (see below)
 info.n_crypto_from_syn = 0; info.crypto_from_syn = [];
 dc = cfg.sig.dimcrypto;
 if dc.on && isfield(info, 'gmm') && ~isempty(info.gmm) && isfield(info, 'comp') && istable(info.comp) ...
@@ -199,7 +200,18 @@ if dc.on && isfield(info, 'gmm') && ~isempty(info.gmm) && isfield(info, 'comp') 
             & sdS < dc.max_sd_size & sdP < dc.max_sd_PEchl);
         if ~isempty(k)
             m = ismember(ci, k) & rej & ismember(class, [1 5]);
-            class(m) = 3; info.n_crypto_from_syn = sum(m); info.crypto_from_syn = k(:)';
+            % class 6 (PE euk cluster) where the group's PE spectrum is not crypto-type:
+            % BL2:GL3 at or above v2's crypto cut relative to Syn and GL2:GL3 well above
+            % Syn. EN727 C20N02: the 860 events are the same population as v2's class 6
+            % there (size 0.75 / 0.80, GL2:GL3 0.60 / 0.61, dB +0.05 / +0.03; the run's
+            % cryptos dB -0.7 to -0.8), split from it only by v2's PE:chl re-check cut
+            to = 3; pcl = cfg.sig.peeuk_cluster; syn = class == 2;
+            if pcl.on && isfield(info, 'crypto_dB_cut') && isfinite(info.crypto_dB_cut)
+                dBm = median(F.BL2(m) - F.GL3(m)) - median(F.BL2(syn) - F.GL3(syn));
+                dGm = median(F.GL2GL3(m)) - median(F.GL2GL3(syn));
+                if dBm >= info.crypto_dB_cut && dGm >= pcl.min_dGL2GL3_syn, to = pcl.class; end
+            end
+            class(m) = to; info.n_crypto_from_syn = sum(m); info.crypto_from_syn = k(:)'; info.crypto_from_syn_class = to;
         end
     end
 end
