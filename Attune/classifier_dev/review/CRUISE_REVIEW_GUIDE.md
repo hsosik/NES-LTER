@@ -265,3 +265,29 @@ process_cruise("AR29", Steps=["classify" "volume" "table" "metadata"])
 ```
 
 `archive_cruise_outputs` always carries the bead decisions forward.
+
+### Marking the bead review complete
+
+When you've finished a cruise's bead review, click **mark review complete** at the
+top right of the page. This works the same for live samples and for preserved
+samples (`preserved\bead_calibrated\bead_review\`). It saves one row in the
+decisions file (`file` = `__review_complete__`) with your name and the time. If
+unusual runs have no status yet, the page asks before marking.
+
+The review counts as complete only while nothing has changed since. It reverts to
+not complete if:
+
+- a run decision is changed afterwards, or
+- the bead table is rebuilt (new `beadstat.mat`).
+
+In either case the page says why, and you mark it complete again. **reopen** clears
+the mark.
+
+`process_cruise` checks this whenever it runs classify or volume. It prints
+`bead review complete (name, date)`, or warns
+(`process_cruise:bead_review_incomplete`) with the reason and the page to open.
+To check from MATLAB:
+
+```matlab
+bead_review_status('\\sosiknas1\lab_data\Attune\cruise_data\20250814_AR92\bead_calibrated')
+```

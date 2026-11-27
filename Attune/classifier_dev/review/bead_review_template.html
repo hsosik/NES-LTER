@@ -59,6 +59,10 @@ kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:3px; 
 .pill { color:#fff; border-radius:9px; padding:1px 8px; font-size:12px; }
 .old { color:#a05a00; }
 .help { color:var(--mut); font-size:12px; margin:6px 0 0; }
+#complete { margin-left:auto; }
+#complete .done { color:#2e8b57; font-weight:600; }
+#complete .stale { color:#a05a00; }
+#complete button.mark { background:#2e8b57; color:#fff; border-color:transparent; }
 .card { min-width:0; }
 .list, #cover { overflow-x:auto; }
 @media (max-width: 900px) { main { grid-template-columns:minmax(0,1fr); } }
@@ -76,6 +80,7 @@ kbd { border:1px solid var(--line); border-bottom-width:2px; border-radius:3px; 
   <span id="ftime"></span>
   <span id="fbadge"></span>
   <label title="n / p skip unusual runs that already have a review status"><input id="skiprev" type="checkbox" checked> skip reviewed</label>
+  <span id="complete"></span>
 </header>
 <main>
   <section class="card full">
@@ -619,7 +624,46 @@ function badge() {
   const f = F[cur], n = f.why.filter(w => !w.minor).length;
   $('fbadge').innerHTML = (f.unusual ? `<span class="badge">${n} unusual</span>` : '<span class="badge ok">ok</span>') + ' ' + pill(DEC[f.file]);
 }
-function decisionsChanged() { metrics(); review(); badge(); side(); list(); drawStrips(); drawHists(); } // exclusions change the cruise median
+function decisionsChanged() { metrics(); review(); badge(); side(); list(); drawStrips(); drawHists(); showComplete(); } // exclusions change the cruise median
+// ---------- review complete (cruise level) ----------
+// one row in the decisions file, file = COMPLETE_KEY, status 'complete' (or '' when
+// reopened). It counts only for these bead stats (build) and until a run decision
+// changes after it: bead_review_status.m applies the same rules for process_cruise
+const COMPLETE_KEY = '__review_complete__';
+function completeState() {
+  const c = DEC[COMPLETE_KEY];
+  if (!c || c.status !== 'complete') return { done: false, why: c && c.saved ? 'reopened' : '' };
+  if (c.build !== BUILD) return { done: false, why: `marked complete on older bead stats (${c.build})`, c };
+  const later = Object.values(DEC).filter(d => d.file !== COMPLETE_KEY && d.saved > c.saved).length;
+  if (later) return { done: false, why: `${later} run decision${later > 1 ? 's' : ''} changed after it was marked complete`, c };
+  return { done: true, c };
+}
+function showComplete() {
+  const s = completeState();
+  $('complete').innerHTML = s.done
+    ? `<span class="done" title="saved in ${esc(DEC_NAME)}">✓ review complete</span> <span class="mut">${esc(s.c.reviewer) || 'someone'}, ${when(s.c.saved)}</span> <button data-a="reopen">reopen</button>`
+    : (s.why ? `<span class="stale">${esc(s.why)}</span> ` : '') +
+      `<button class="mark" data-a="complete" title="record that this cruise's bead review is finished (process_cruise warns until it is)">mark review complete</button>`;
+}
+$('complete').addEventListener('click', e => {
+  const a = e.target.dataset.a;
+  if (!a) return;
+  flushNote();
+  if (a === 'complete') {
+    const open = F.filter(f => f.unusual && !(DEC[f.file] && ST[DEC[f.file].status])).length;
+    if (open && !confirm(`${open} unusual ${RUN}${open > 1 ? 's have' : ' has'} no review status yet. Mark the review complete anyway?`)) return;
+    if (!$('reviewer').value.trim()) {
+      const n = prompt('Your name (recorded with the completed review):', '');
+      if (n === null) return;
+      $('reviewer').value = n.trim(); lsSet(LSR, n.trim());
+    }
+  }
+  DEC[COMPLETE_KEY] = { file: COMPLETE_KEY, status: a === 'complete' ? 'complete' : '', note: '', reviewer: $('reviewer').value.trim(), saved: new Date().toISOString(), build: BUILD };
+  dirty = true;
+  if (canWrite() && !NETFILE && !dir && !asked) { asked = true; lsSet(LSK, JSON.stringify(Object.values(DEC))); connect(false); }
+  else save();
+  showComplete();
+});
 // ---------- navigation ----------
 let cur = 0;
 function go(i) {
@@ -658,7 +702,7 @@ mergeIn(arr(D.decisions));
 try { if (mergeIn(JSON.parse(lsGet(LSK, '[]')))) dirty = true; } catch (e) { }
 metrics(); coverage();
 go((parseInt(location.hash.slice(1)) || 1) - 1);
-showSave();
+showSave(); showComplete();
 (async () => {
   if (!canWrite()) return;
   known = await idbGet(DEC_PATH);

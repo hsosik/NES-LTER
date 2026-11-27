@@ -26,7 +26,10 @@ function p = process_cruise(cruise, opt)
 %             for PT transfer it shows the performance tests) unless Review is false.
 %             Runs or tests marked exclude there (bead_review_decisions.csv) are
 %             skipped by classify and volume (load_beadstat); after changing
-%             exclusions rerun from classify (without NewOnly).
+%             exclusions rerun from classify (without NewOnly). When the review is
+%             finished, use the page's "mark review complete" button; classify and
+%             volume warn (process_cruise:bead_review_incomplete) until it is marked
+%             complete for the bead table in place (bead_review_status).
 %   classify  assign_class_v2 on every sample file -> bead_calibrated\class\<file>.mat
 %             holding class, syn_type, flag, notes, class_meta (see below), and the
 %             classification review in bead_calibrated\review\ (unless Review is
@@ -208,6 +211,16 @@ elseif do("beads")
         catch ME
             warning('process_cruise:bead_review', 'bead review not built: %s', ME.message)
         end
+    end
+end
+% steps that use the bead references: warn unless the bead review is marked
+% complete for the bead table now in place (bead_review_status, page button)
+if do("classify") || do("volume")
+    br = bead_review_status(p.outpath);
+    if br.complete
+        fprintf('beads: %s\n', br.message)
+    else
+        warning('process_cruise:bead_review_incomplete', '%s: %s', p.cruise, br.message)
     end
 end
 
