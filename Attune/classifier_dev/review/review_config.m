@@ -40,10 +40,10 @@ R.format = 'png'; % 'png' (indexed colour) or 'jpg'
 R.ncolors = 128; % colours in an indexed PNG
 
 % classes: code, name, colour; abundant ones drawn as density, rare ones as points
-R.codes = [1 2 3 4 5 6 7 8 10];
-R.names = {'Euk' 'Syn' 'dim crypto' 'bright crypto' 'Euk with Syn' 'Euk, PE shift (preserved)' 'Pro' 'Syn on particle' 'low-chl Euk-like'};
-R.cols = [0 .6 0; 1 .55 0; 0 .75 .9; .95 0 .75; .45 .1 .75; .55 .3 .1; 0 .35 1; .85 0 0; .6 .75 .1]; % class 6 (Euk with PE channels raised by preservation) brown
-R.rare = [3 4 5 6 8];
+R.codes = [1 2 3 4 5 6 7 8 10 11];
+R.names = {'Euk' 'Syn' 'dim crypto' 'bright crypto' 'Euk with Syn' 'Euk, PE shift (preserved)' 'Pro' 'Syn on particle' 'low-chl Euk-like' 'Syn clump'};
+R.cols = [0 .6 0; 1 .55 0; 0 .75 .9; .95 0 .75; .45 .1 .75; .55 .3 .1; 0 .35 1; .85 0 0; .6 .75 .1; .55 .55 .55]; % class 6 (Euk with PE channels raised by preservation) brown, class 11 (Syn clump) dark grey
+R.rare = [3 4 5 6 8 11];
 R.col0 = [.45 .45 .45];                          % unassigned
 R.rare_rad = 1;          % rare-class points: (2*rad+1)^2 pixel squares
 R.rare_outline = false;  % dark outline round rare-class points

@@ -450,6 +450,44 @@ The old dim crypto class is known to be a mixture, so agreement with it is not a
 - **Storage time is not the cause.** Storage runs from 30 to 2,400 days, and the large-Euk shift does not track it (Spearman −0.04).
 - **The shift itself is everywhere.** Large preserved Euks sit about 0.1 above Syn in GL2:GL3 in nearly all runs (winter median 0.12, summer 0.09). Class 6 appears where one abundant Euk type shifts strongly and uniformly.
 
+## Cryptos: spectral dim/bright split, catch-all spectrum test, Syn clumps, Euk-with-Syn PE ceiling (27 Nov 2026)
+
+**Dim (3) / bright (4) by spectrum in live files** (`crypto_split_method = 'spectrum'`; preserved samples keep `'gmm'` in `discrete_config`).
+- **What changes.** Live crypto-type events with a usable BL2:GL3 are dim when BL2:GL3 is more than `crypto_red_dB` (−0.77) below the file's Syn, else bright. GL2-saturated cryptos are always bright. Events without a usable spectrum are split by the 10-Syn PE floor.
+- **Why.** In 60 live files each from EN727, AR77 and AR95, the crypto-type events form a red-shifted group (BL2:GL3 0.85–1.0 below Syn) and a main group (0.52–0.67 below). Each is compact in spectrum (robust SD 0.04–0.08) and flat across its PE range (slope with PE −0.08 to +0.04).
+  - In AR77 the two groups separate in 44 of 57 files.
+  - PE amount does not separate them. AR77's red group holds 2–6 Syn of PE, and its main group runs from 0.1 to 100 Syn without a gap. AR95 has a red group at about 5 Syn. The old PE-based split cut AR77's main group in two: two-thirds of its "dim" were the faint end of the main group.
+- **Saturated events.** GL2-saturated cryptos read low in BL2:GL3 as they brighten. In AR95 they spilled below −0.77, while the unsaturated main peak sat at −0.65, clear of the cut. They are bright regardless.
+- **Preserved samples.** The spectral gap mostly closes there (EN727 −0.91 vs −0.70; AR77 one group), and PE separates better. Hand low-/high-PE gates in 66 held-out runs follow PE (AUC 0.99) more than spectrum (0.85).
+- **Live scoring (7 cruises × 40 files).** Only dim/bright change; other classes change by at most 90 events in 40 files, through the catch-all.
+  - Dim (3): EN727 2,605 → 2,607, AR77 1,514 → 965, EN706 469 → 87, HRS2609 283 → 87.
+  - Agreement with the old (PE-split) classes falls by at most 0.0016.
+- **Per-file or pooled cut (code kept, off: `crypto_red_valley`).**
+  - A per-file cut from two Gaussian components on BL2:GL3 tracks EN727's drift (groups move by ~0.1 over the cruise). But it jumps between −0.70 and −0.90 file to file in AR77, and is rejected in 52 of 60 AR95 files, where the red group is small and often absent.
+  - Pooling over ±12 h smooths it (median jump 0.005). With saturated events kept bright, the fixed −0.77 falls in the gap in all three cruises, so no pooling pass was added to `process_cruise`.
+
+**Catch-all cryptos.** Unassigned events whose neighbours are cryptos now need a crypto-type spectrum (`catchall_crypto_spectrum`): BL2:GL3 below the crypto cut, GL2:GL3 below `peeuk_max_GL2GL3` only where BL2:GL3 is unusable, or GL2 saturated. They take dim/bright by the spectral rule, not their neighbours' label.
+- AR77 11Oct2023(12) Sample(43): 223 catch-all cryptos had a Syn spectrum (dB −0.13) and Syn PE:chl; 52 remain, with dB −0.61.
+- A BL3-saturated event with a Syn-like BL2:GL3 had passed on GL2:GL3 alone.
+
+**Class 11, Syn clump (`catchall_syn_clump_class = 11`).** Those catch-all events with a Syn-type spectrum and Syn PE:chl: PE and chl about 4–5 Syn's worth on the Syn line, about 1.5 log10 larger than Syn. They are not counted as Syn.
+- **Where it is carried:**
+  - `n11_syn_clump` in the class log;
+  - `Syn_clump` columns in `generate_attune_table`;
+  - `syn_clump` in `preserved_table` and the `merge_discrete_tables` extra;
+  - the review config, QC, viewer (grey) and guide.
+- **Effect:**
+  - Live: crypto counts fall 1–10% (AR77 9,341 → 8,694; AR95 12,237 → 11,573), with 31–735 class 11 per 40 files; most were unassigned in the old classes.
+  - Held-out: means change by at most 0.0001 (tuning 0.8889 → 0.8888, 2a 0.8920 → 0.8919, 2a′ and 2b unchanged); 16 of about 2,250 class-11 events were hand Syn.
+
+**Euk with Syn PE ceiling (`euksyn_max_syn_PE_prc`, not set: off).** Class 5 above the file's Syn GL2 99th percentile (BL2 against the Syn BL2 percentile where GL2 saturates) becomes Euk (1). It applies after class 6, Syn on particle and the catch-all.
+- **The `cryptokeep` fix.** Discrete `cryptokeep` now skips events moved by the ceiling. Their GL2:GL3 is compressed by GL2 saturation: MVCO MV418N01 would otherwise have turned 197 of them into dim crypto.
+- **Live held-out.** PE euk totals move onto the old classes: T 9,314 → 9,042 (old 9,071), L1 45,023 → 43,774 (43,818), L2 21,970 → 21,269 (21,228). Merged agreement changes by at most 0.0005; 1–2 files per set flip pass/fail near the ±20% limit.
+- **Preserved held-out.** Set means: tuning 0.8887 (unchanged), 2a 0.8918 → 0.8920, 2a′ 0.9230 (unchanged), 2b 0.9058 → 0.9060. The 3,319 moved events are hand Euk 1,099, PE euk 339, Syn 108 and none 1,773.
+- **Examples.**
+  - AR77 pro_C13N16: only 3 of 39 move. This pro run's Syn GL2 spread is wide (p99 0.9 above the median), and most of its class 5 sits at or below the Syn median.
+  - MVCO MV418N01: 201 of 427 move, 199 of them GL2-saturated and 197 hand-unlabelled.
+
 ## Syn spectral types across cruises (`syn_spectral_types.m`, Nov 2026)
 
 - **Method.** 148 files from 20 cruises (all those with `beadstat_2026`, up to 8 standard files each) were classified with v2. Syn with usable BL2, GL2 and GL3 (not saturated, at least 1 log above floor) were described by bead-normalized ratios:

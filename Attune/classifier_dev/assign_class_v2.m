@@ -9,11 +9,13 @@ function [class, info] = assign_class_v2(fcsdat, fcshdr, ref, cfg, pro_measured)
 %     the same across cruises and seasons (cfg.sig)
 %  5. events far from their component (Mahalanobis) are left as 0
 % Class codes match the existing class files:
-%  0 = not phytoplankton / unassigned, 1 = Euk without PE, 2 = Syn,
+%  0 = not           phytoplankton / unassigned, 1 = Euk without PE, 2 = Syn,
 %  3 = dim cryptophyte (less PE, more red-shifted PE spectrum), 4 = bright cryptophyte,
 %  5 = Euk with Syn (Syn-like PE, ~one Syn's worth; possible grazers), 7 = Pro
 %  8 = particle-associated Syn (new code: Syn on or inside a larger particle,
 %      ~1 Syn per event; count with Syn abundance, not Syn size or carbon)
+%  11 = Syn clump (new code, Nov 2026: Syn-type PE spectrum and Syn PE:chl, PE and chl
+%      several Syn's worth on the Syn line, much larger than Syn; from the catch-all)
 %
 % ref - from bead_reference; cfg - from classifier_config
 %
@@ -760,6 +762,38 @@ if any(pe3)
     cr = pe3 & crypto;
     class(pe3 & ~crypto) = 5;
     class(cr) = 4;
+    % dim (3) / bright (4) by spectrum (crypto_split_method 'spectrum', Nov 2026): in
+    % live files the stable distinction is spectral, not PE amount. Within files and
+    % across EN727, AR77 and AR95 the crypto-type events form a red-shifted group
+    % (BL2:GL3 0.85-1.0 below Syn) and a main group (0.55-0.67 below Syn), each
+    % compact in spectrum (robust SD 0.04-0.08) and flat in spectrum across its PE
+    % range. PE does not separate them: AR77's red group holds 2-6 Syn of PE and its
+    % main group runs from 0.1 to 100 Syn without a gap; AR95 has a red group at ~6
+    % Syn. Events with a usable BL2:GL3: red (below crypto_red_dB relative to Syn) =
+    % 3, else 4. GL2-saturated = 4; without a usable spectrum, by the PE floor.
+    % Preserved samples keep 'gmm' (discrete_config): there the spectral gap mostly
+    % closes (EN727 -0.91 vs -0.70; AR77 one group) and PE separates better
+    specsplit = isfield(sig, 'crypto_split_method') && strcmp(sig.crypto_split_method, 'spectrum') && sum(sy) >= 50;
+    if specsplit
+        % GL2-saturated cryptos are bright whatever their spectrum: their BL2:GL3 reads
+        % low as they brighten (AR95: the saturated main-group events spilled below the
+        % cut while the unsaturated main peak sat at -0.65, clear of it)
+        us = cr & okB & isfinite(dB) & ~satG2;
+        % cut per file (crypto_red_valley): the density valley between the red-shifted
+        % and main groups in BL2:GL3, within crypto_red_bounds; without two groups, the
+        % fixed crypto_red_dB, moved down to crypto_red_margin below a low main group
+        % (AR95: main group at -0.67 relative to Syn, its tail crossed a fixed -0.77)
+        rcut = sig.crypto_red_dB; rinfo = struct('valley', NaN, 'main_mode', NaN);
+        if isfield(sig, 'crypto_red_valley') && sig.crypto_red_valley && sum(us) >= sig.crypto_split_min_n
+            [rcut, rinfo] = red_valley(dB(us), sig);
+        end
+        info.crypto_red_cut = rcut;
+        red = us & dB < rcut;
+        class(red) = 3;
+        class(cr & ~us & ~satG2 & PEs < sig.crypto_min_PE_above_syn) = 3;
+        class(pe3 & satcr & ~us) = 4;
+        info.crypto_split = struct('n', sum(cr), 'accepted', false, 'method', "spectrum", 'n_red', sum(red), 'n_main', sum(us & ~red), 'n_nospec', sum(cr & ~us), 'red_cut', rcut, 'valley', rinfo.valley, 'main_mode', rinfo.main_mode);
+    else
     % two crypto groups? fit two components on [PE, spectrum] and accept only if
     % both are populated, compact, well separated, and the dimmer one is the more
     % red-shifted (as in EN727 / AR95)
@@ -830,6 +864,7 @@ if any(pe3)
     % saturation compresses their PE:chl and GL2:GL3 toward Syn-like values
     % (with peeuk_sat_spectrum, only those without a usable non-crypto spectrum)
     class(pe3 & satcr) = 4;
+    end
     % Euk-with-Syn events far below the Euks' chl-size line are not Euks carrying
     % a Syn but aggregates / detritus with a Syn and a little chl (two groups in
     % EN727 and AR92, ~1.2 and ~0.2 below the line): count them as Syn on a particle
@@ -932,7 +967,7 @@ end
 if ~isfield(info.trace, 'euksyn_lowchl'), info.trace.euksyn_lowchl = false(n, 1); end
 left = class == 0 & (cell_pe | cell_chl) & ~euk_below_gap & ~pile_ev & ~(info.trace.euksyn_lowchl & sig.euksyn_low_chl_class == 0);
 refset = ismember(class, [1 2 3 4 5 6 7 8]);
-info.n_catchall = 0;
+info.n_catchall = 0; info.n_catchall_syn_clump = 0;
 if any(left) && sum(refset) >= 50
     Z = [F.size F.BL3 F.GL2 F.BL2 F.GL3];
     zs = std(Z(refset, :)); zs(zs == 0) = 1;
@@ -972,6 +1007,43 @@ if any(left) && sum(refset) >= 50
     % ... with chl like a cell, as the main PE-euk rule (Nov 2026): faint PE on large detritus
     % (chl:size about -1) took PE-euk neighbours in EN661 06Feb(5) Sample(5)
     if sig.catchall_peeuk_det, ok(nl == 3 | nl == 4) = ok(nl == 3 | nl == 4) & fz.chlSSC(nl == 3 | nl == 4) > sig.detritus_max_chlSSC; end
+    % ... and a crypto-type spectrum, as the main crypto rule (Nov 2026): Syn clumps
+    % (Syn PE:chl and BL2:GL3, ~1.5 log10 larger than Syn) took crypto neighbours by
+    % size and brightness in AR77 11Oct2023(12) Sample(43) (223 events, dB -0.13 vs
+    % the crypto cut -0.46). Crypto-type: BL2:GL3 below this file's crypto cut relative
+    % to Syn, or GL2:GL3 below peeuk_max_GL2GL3; GL2-saturated events without a usable
+    % non-crypto spectrum (as peeuk_sat_spectrum)
+    clumpz = false(size(nl)); %Syn clumps (crypto neighbours, Syn spectrum and PE:chl): set below
+    if sig.catchall_crypto_spectrum && any(nl == 3 | nl == 4)
+        syC = class == 2 & okB & ~satG2;
+        dBc = nan(n, 1);
+        if sum(syC) >= 50, dBc = (F.BL2 - F.GL3) - median(F.BL2(syC) - F.GL3(syC)); end
+        % GL2:GL3 only where BL2:GL3 is unusable, as the main crypto rule (a BL3-saturated
+        % event with a Syn-like BL2:GL3 passed on GL2:GL3 alone in AR77 Sample(43))
+        cspec = (~okB & ~satG2 & F.GL2GL3 < sig.peeuk_max_GL2GL3) | (okB & dBc < info.crypto_dB_cut) | (satG2 & ~(okB & dBc >= info.crypto_dB_cut));
+        cz = cspec(left);
+        ok(nl == 3 | nl == 4) = ok(nl == 3 | nl == 4) & cz(nl == 3 | nl == 4);
+        % those with a Syn-type spectrum and Syn PE:chl are Syn clumps (PE and chl
+        % both ~4-5x a Syn, on the Syn line): catchall_syn_clump_class (11 = Syn
+        % clump; 0 leaves them unassigned)
+        dz = dBc(left);
+        okz = okB(left);
+        clumpz = (nl == 3 | nl == 4) & ~cz & okz & dz >= info.crypto_dB_cut & abs(fz.PEchl - syn_PEchl) < sig.syn_PEchl_tol;
+        % catch-all cryptos take dim/bright by the same rule as the main cryptos
+        % (crypto_split_method 'spectrum'), not their neighbours' label: red-shifted
+        % BL2:GL3 = 3, else 4; without a usable spectrum, GL2-saturated = 4, otherwise
+        % by the PE floor (GL2 above the Syn median, log10 Syn equivalents)
+        if isfield(sig, 'crypto_split_method') && strcmp(sig.crypto_split_method, 'spectrum') && sum(syC) >= 50
+            usz = okz & isfinite(dz) & ~satG2(left);
+            pez = fz.GL2 - median(F.GL2(syC));
+            lab = 4 * ones(size(nl));
+            rc = sig.crypto_red_dB; if isfield(info, 'crypto_red_cut') && isfinite(info.crypto_red_cut), rc = info.crypto_red_cut; end
+            lab(usz & dz < rc) = 3;
+            lab(~usz & ~satG2(left) & pez < sig.crypto_min_PE_above_syn) = 3;
+            relab = (nl == 3 | nl == 4) & ok;
+            nl(relab) = lab(relab);
+        end
+    end
     % the catch-all adds no Pro (Nov 2026): Pro come only from components named Pro.
     % Catch-all Pro were mostly faint events just above the chl trigger, smaller than
     % the file's Pro (8,153 in 77 underway Pro-setting files, 4% of them old-class Pro,
@@ -985,6 +1057,8 @@ if any(left) && sum(refset) >= 50
     % one Syn's chl, below the Syn chl trend); Euk with Syn: the PE-euk size and PE:chl rules
     if exist('synpart_rule', 'var'), sr = synpart_rule(left); ok(nl == 8) = ok(nl == 8) & sr(nl == 8); end
     ok(nl == 5) = ok(nl == 5) & fz.size(nl == 5) > syn_size + sig.peeuk_size_above_syn & fz.PEchl(nl == 5) < syn_PEchl - sig.peeuk_PEchl_below_syn;
+    nl(clumpz) = sig.catchall_syn_clump_class; ok(clumpz) = sig.catchall_syn_clump_class > 0;
+    info.n_catchall_syn_clump = sum(clumpz);
     nl(~ok) = 0;
     class(left) = nl;
     left(left) = ok;
@@ -1002,6 +1076,28 @@ if sig.euksyn_min_syn_PE_prc > 0 && sum(class == 2) >= 50
     info.euksyn_min_GL2 = prctile(F.GL2(class == 2), sig.euksyn_min_syn_PE_prc);
     weak = class == 5 & F.GL2 < info.euksyn_min_GL2;
     class(weak) = 1; info.n_euksyn_weak = sum(weak);
+end
+% ... and at most about one Syn's PE (Nov 2026): above the file's Syn
+% euksyn_max_syn_PE_prc percentile in GL2 (BL2 against the Syn BL2 percentile where
+% GL2 saturates and BL2 does not) it is a Euk with its own faint PE, not a Euk
+% carrying a Syn: Euk (1). The code had no upper limit, so any non-crypto-spectrum PE
+% euk became class 5 (AR77 pro_C13N16: 39 events with GL2 to 1.0, Syn median 0.2,
+% PE rising with chl). Held-out preserved runs: above Syn p99 the hand labels are
+% Euk 27%, PE euk 8%, none 62%. Applied after class 6 and Syn on particle (8) took
+% their events, and after the catch-all, so it covers every route into class 5
+info.euksyn_max_GL2 = NaN; info.euksyn_max_BL2 = NaN; info.n_euksyn_bright = 0;
+if isfield(sig, 'euksyn_max_syn_PE_prc') && sig.euksyn_max_syn_PE_prc > 0 && sum(class == 2 & ~satG2) >= 50
+    syP = class == 2 & ~satG2;
+    info.euksyn_max_GL2 = prctile(F.GL2(syP), sig.euksyn_max_syn_PE_prc);
+    over = F.GL2 > info.euksyn_max_GL2 & ~satG2;
+    syB2 = syP & ~satch('BL2');
+    if sum(syB2) >= 50
+        info.euksyn_max_BL2 = prctile(F.BL2(syB2), sig.euksyn_max_syn_PE_prc);
+        over = over | (satG2 & ~satch('BL2') & F.BL2 > info.euksyn_max_BL2);
+    end
+    over = over | (satG2 & satch('BL2')); %both saturated: far more than one Syn's PE
+    bright = class == 5 & over;
+    class(bright) = 1; info.n_euksyn_bright = sum(bright); info.trace.euksyn_bright = bright;
 end
 % Pro in runs without Pro settings (Nov 2026): their chl trigger cuts the Pro cluster,
 % and the part above it was left unassigned, by the Euk chl gap (flag 2: AE2426
@@ -1321,6 +1417,42 @@ w = [];
 if ~isempty(lo), w(end + 1) = c - g(lo); end
 if ~isempty(hi), w(end + 1) = g(hi) - c; end
 if isempty(w), sd = max(1.4826 * mad(x, 1), 0.05); else, sd = max(min(w) / 1.1774, 0.05); end
+end
+
+function [cut, ri] = red_valley(x, sig)
+% dim/bright crypto cut in BL2:GL3 relative to Syn (x: crypto-type events with a usable
+% spectrum). Two Gaussian components in 1-D (the red group is often a shoulder on the
+% main mode, not a separate density peak: AR77 11Oct2023(12) Sample(43)); accepted when
+% the means are at least crypto_red_min_sep apart, the groups separate (Ashman D at
+% least crypto_red_min_D), the smaller holds at least crypto_red_min_frac and the lower
+% centre is red (below crypto_red_dB); the cut is equally many robust SDs from both
+% centres, bounded to crypto_red_bounds. Otherwise crypto_red_dB, or crypto_red_margin below a
+% single main mode that lies within crypto_red_margin of crypto_red_dB
+ri = struct('valley', NaN, 'main_mode', NaN, 'D', NaN, 'mu', [NaN NaN], 'w', [NaN NaN]);
+cut = NaN;
+try
+    s0 = rng; rng(11, 'twister');
+    gm = fitgmdist(x(:), 2, 'Replicates', 3, 'RegularizationValue', 1e-4, 'Options', statset('MaxIter', 300));
+    rng(s0);
+    [~, o] = sort(gm.mu); [~, hard] = max(posterior(gm, x(:)), [], 2);
+    % centre and robust SD of each group's members (a few stragglers widen a Gaussian
+    % SD: EN727 27Jan2025(4) Sample(41) red group SD 0.24, robust ~0.05)
+    mu = zeros(2, 1); sd = zeros(2, 1); w = zeros(1, 2);
+    for j = 1:2, xj = x(hard == o(j)); mu(j) = median(xj); sd(j) = max(1.4826 * mad(xj, 1), 0.01); w(j) = numel(xj) / numel(x); end
+    ri.mu = mu'; ri.w = w; ri.D = sqrt(2) * (mu(2) - mu(1)) / sqrt(sd(1)^2 + sd(2)^2); ri.main_mode = mu(2);
+    if mu(2) - mu(1) >= sig.crypto_red_min_sep && ri.D >= sig.crypto_red_min_D && min(w) >= sig.crypto_red_min_frac && mu(1) < sig.crypto_red_dB
+        % the point an equal number of (robust) SDs from both centres: does not slide
+        % toward the smaller group as a posterior crossing does
+        ri.valley = mu(1) + (mu(2) - mu(1)) * sd(1) / (sd(1) + sd(2));
+        cut = min(max(ri.valley, sig.crypto_red_bounds(1)), sig.crypto_red_bounds(2));
+    end
+catch
+end
+if isnan(cut)
+    m = median(x); if isfinite(ri.main_mode) && ri.w(2) > 0.5, m = ri.main_mode; end
+    cut = sig.crypto_red_dB;
+    if m > sig.crypto_red_dB, cut = min(cut, m - sig.crypto_red_margin); end
+end
 end
 
 function cut = spill_valley(r, sig)

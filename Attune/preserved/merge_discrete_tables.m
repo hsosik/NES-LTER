@@ -43,6 +43,7 @@ function [M, E] = merge_discrete_tables(cruises, outpath, opt)
 %                                 preservation; all sizes, already in the redeuk columns)
 %               "redeuk_all"      redeuk_cells_per_ml etc.: class 1, all sizes
 %               "syn_on_particle" syn_on_particle_cells_per_ml (class 8)
+%               "syn_clump"       syn_clump_cells_per_ml (class 11: Syn clumps, not in syn)
 %               "syn_types"       syn_typeA/B/C/D/ambiguous/unusable_cells_per_ml
 %               "sybr"            pro_sybr_cells_per_ml and the other hetprok choice
 %                                 (hetprok_excl_pro_ or hetprok_incl_pro_cells_per_ml)
@@ -69,14 +70,14 @@ arguments
     outpath (1,1) string = ""
     opt.Root (1,1) string = string([char([92 92]) 'sosiknas1\Lab_data\Attune\cruise_data\'])
     opt.Hetprok (1,1) string {mustBeMember(opt.Hetprok, ["incl_pro" "heterotrophs"])} = "incl_pro"
-    opt.Extra string = ["pro" "crypto" "euk_with_syn" "euk_pe_shift" "redeuk_all" "syn_on_particle" "syn_types" ...
+    opt.Extra string = ["pro" "crypto" "euk_with_syn" "euk_pe_shift" "redeuk_all" "syn_on_particle" "syn_clump" "syn_types" ...
         "sybr" "hna" "storage_days" "runs" "sample" "processing"]
     opt.Legacy string = strings(0)
     opt.SampleLogQC (1,1) string = ""
     opt.CsvName (1,1) string = "attune-transect-discrete-samples.csv"
     opt.AllowNAS (1,1) logical = false
 end
-known = ["pro" "crypto" "euk_with_syn" "euk_pe_shift" "redeuk_all" "syn_on_particle" "syn_types" "sybr" "hna" ...
+known = ["pro" "crypto" "euk_with_syn" "euk_pe_shift" "redeuk_all" "syn_on_particle" "syn_clump" "syn_types" "sybr" "hna" ...
     "storage_days" "runs" "sample" "processing"];
 bad = setdiff(opt.Extra, known);
 if ~isempty(bad), error('merge_discrete_tables:extra', 'unknown Extra "%s"; known: %s', bad(1), strjoin(known, ', ')), end
@@ -219,6 +220,7 @@ for g = 1:size(grp, 1)
     end
 end
 if ismember("syn_on_particle", ex), E.syn_on_particle_cells_per_ml = col(M, 'syn_on_particle_cells_per_ml', n); end
+if ismember("syn_clump", ex), E.syn_clump_cells_per_ml = col(M, 'syn_clump_cells_per_ml', n); end
 if ismember("syn_types", ex)
     for t = ["A" "B" "C" "D" "_ambiguous" "_unusable"]
         E.("syn_type" + t + "_cells_per_ml") = col(M, "syn_type" + t + "_cells_per_ml", n);

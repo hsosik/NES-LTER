@@ -76,6 +76,14 @@ cfg.sig.crypto_min_group_n = 15;    %... each group has this many,
 cfg.sig.crypto_max_sd_PE = 0.4;     %... both are compact in PE (SD, log10) ...
 cfg.sig.crypto_max_sd_dB = 0.2;     %... and in BL2:GL3 (EN727 / AR95 groups ~0.05-0.15),
 cfg.sig.crypto_robust_compact = true; %compactness from each group's robust SD (1.4826 MAD of its members), not the Gaussian SD, so a few stragglers do not veto a split
+cfg.sig.crypto_split_method = 'spectrum'; %dim (3) vs bright (4) crypto: 'spectrum' = red-shifted BL2:GL3 (below crypto_red_dB relative to Syn) is 3, else 4 (live files: stable spectral groups in EN727, AR77, AR95); 'gmm' = per-file two-group fit on PE and spectrum with the PE-floor fallback (preserved samples, discrete_config)
+cfg.sig.crypto_red_dB = -0.77;     %'spectrum': BL2:GL3 cut relative to the file's Syn (red group -0.85 to -1.0, main group -0.55 to -0.67)
+cfg.sig.crypto_red_valley = false; %(off: per-file cuts too noisy in AR77, see README) 'spectrum': cut per file between the red and main groups, from two Gaussian components on BL2:GL3 (red_valley in assign_class_v2) ...
+cfg.sig.crypto_red_min_sep = 0.2;   %... means at least this far apart (red -0.85 to -1.0, main -0.52 to -0.67) ...
+cfg.sig.crypto_red_min_D = 2;       %... Ashman D at least this (AR77 live median 4.3, EN727 6.0) ...
+cfg.sig.crypto_red_min_frac = 0.05; %... the smaller group at least this fraction (AR77 red group ~14% of cryptos) ...
+cfg.sig.crypto_red_bounds = [-0.9 -0.7]; %... and the cut (equally many robust SDs from both centres) kept within these bounds
+cfg.sig.crypto_red_margin = 0.15;   %one group only: cut at least this far below a main mode (else crypto_red_dB)
 cfg.sig.crypto_min_sep = 3;        %... means are this many pooled SDs apart (Mahalanobis),
 cfg.sig.crypto_min_dB_offset = 0.1; %... and the dimmer group is the more red-shifted (EN727 -1.0 vs -0.6)
 cfg.sig.crypto_min_PE_above_syn = 1; %without an accepted per-file split, crypto-type events with PE < this above Syn (log10, ~10 Syn) are dim (3), brighter are bright (4); EN727 dim groups ~0.25-0.75, bright 1.2-2.2
@@ -83,6 +91,7 @@ cfg.sig.crypto_outlier_sd = 4;     %single crypto group: events more than this m
 cfg.sig.euksyn_max_chl_below_euk = 0.5; %Euk-with-Syn (5) more than this below the Euk chl-size line (log10, ~3x) are Syn on a particle (8)
 cfg.sig.euksyn_low_chl_class = 0;   %class for Euk-with-Syn events below that: 0 = leave unassigned (they match neither Euk with Syn nor Syn on particle; the main Syn-on-particle rule can still take those that fit it), 8 = Syn on particle
 cfg.sig.euksyn_min_syn_PE_prc = 1;   %Euk with Syn (5) needs GL2 at least this percentile of the file's Syn GL2 (one Syn's PE); below -> Euk (1). 0 = off
+cfg.sig.euksyn_max_syn_PE_prc = 0;   %Euk with Syn (5) above this percentile of the file's Syn GL2 (BL2 where GL2 saturates) -> Euk (1); 0 = off (99 tested, see README)
 cfg.sig.euksyn_min_PEchl_above_euk = 1; %Syn-check rejects re-checked as Euks carry Syn PE if PE:chl is this far above the file's Euks (log10)
 cfg.sig.syn_PEchl_tol = 0.7;       %Syn events within this of the file's Syn PE:chl ...
 cfg.sig.syn_size_tol = 1;          %... and no more than this larger than its Syn ...
@@ -164,6 +173,8 @@ cfg.sig.syn_ref_max_size = -0.5;    %file's Syn reference from Syn-named events 
 cfg.sig.syn_ref_min_n = 20;         %... when there are at least this many (else all Syn-named events)
 cfg.sig.syn_ref_above_edge = true;  %... from those clearly above the chl trigger edge (edge_pro_band) when there are that many (PE+chl trigger files)
 cfg.sig.catchall_peeuk_det = true;  %catch-all PE euks need chl:size above detritus_max_chlSSC, as main-rule PE euks
+cfg.sig.catchall_crypto_spectrum = true; %catch-all cryptos (3, 4) need a crypto-type spectrum, as the main crypto rule (Syn clumps took crypto neighbours in AR77 11Oct2023(12) Sample(43))
+cfg.sig.catchall_syn_clump_class = 11; %catch-all events with crypto neighbours but a Syn-type spectrum and Syn PE:chl (Syn clumps: PE and chl ~4-5x a Syn on the Syn line, ~1.5 log10 larger): 11 = Syn clump, 0 = leave unassigned
 cfg.sig.noblue_on = true;           %split Syn (laser dropout): pairs merged (green part flag 6); unpaired green parts flag 7 (Syn-like, separate Syn count) / 9; unpaired blue parts flag 8 ...
 cfg.sig.noblue_min_GL2BL2 = 1.5;    %... raw log10 GL2-A minus BL2-A above this (Syn 0.4-0.9; EN661/EN649 dropouts 1.5-3.5; other held-out files: 0 at the 95th percentile, at most 282)
 cfg.sig.noblue_max_SSCW = 30;       %... and SSC-W below this (raw; Syn ~200) ...

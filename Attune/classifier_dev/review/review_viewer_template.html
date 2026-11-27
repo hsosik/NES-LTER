@@ -131,6 +131,7 @@ const METRICS_PH = [
   { key: 'c6', label: 'Euk, PE shift (log)', f: q => q.n6 === undefined ? NaN : lg(q.n6), floor: .35 }, // class 6 (blank on pages built before it existed)
   { key: 'sp', label: 'Syn on particle (log)', f: q => lg(q.n8), floor: .35 },
   { key: 'c10', label: 'low-chl Euk-like (log)', f: q => q.n10 === undefined ? NaN : lg(q.n10), floor: .35 }, // class 10 (blank on pages built before it existed)
+  { key: 'c11', label: 'Syn clump (log)', f: q => q.n11 === undefined ? NaN : lg(q.n11), floor: .35 }, // class 11 (blank on pages built before it existed)
   { key: 'un', label: 'unassigned (log)', f: q => lg(q.n0), floor: .12 },
   { key: 'flag1', label: 'flag: Syn-pigment particle (log)', f: q => lg(q.flag1), floor: .3 },
   { key: 'flag2', label: 'flag: below Euk chl gap (log)', f: q => lg(q.flag2), floor: .3, minor: true }, // follows the Euk chl gap on/off
@@ -178,6 +179,7 @@ const METRICS_HB = [
   { key: 'syn', label: 'Syn count (log)', f: q => lg(q.n2), floor: .15 },
   { key: 'pro', label: 'Pro count (log)', f: q => lg(q.n7), floor: .2 },
   { key: 'euk', label: 'Euk count (log)', f: q => lg(q.n1), floor: .15 },
+  { key: 'c11', label: 'Syn clump (log)', f: q => q.n11 === undefined ? NaN : lg(q.n11), floor: .35 }, // class 11 (blank on pages built before it existed)
   { key: 'un', label: 'unassigned (log)', f: q => lg(q.n0), floor: .12 },
   { key: 'cut', label: 'HNA / LNA cut (tilted SYBR)', f: q => q.hna_cut, floor: .05 },
   { key: 'dip', label: 'HNA / LNA valley dip ratio', f: q => q.hna_dip, floor: .1, minor: true },

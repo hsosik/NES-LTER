@@ -25,13 +25,13 @@ pn = {fcshdr.par.name};
 eb = [NaN NaN];
 if sum(new == 1) >= 50, eb = robustfit(F.size(new == 1), F.BL3(new == 1))'; end
 F.dEuk = F.BL3 - (eb(1) + eb(2) * F.size);
-old(~ismember(old, [0 1 2 3 4 5 6 7 8 10])) = 0;
-codes = [1 2 3 4 5 6 7 8 10];
-names = {'Euk' 'Syn' 'dim crypto' 'bright crypto' 'Euk with Syn' 'Euk, PE shift (preserved)' 'Pro' 'Syn on particle' 'low-chl Euk-like'};
-cols = [0 .6 0; 1 .55 0; 0 .75 .9; .95 0 .75; .45 .1 .75; .55 .3 .1; 0 .35 1; .85 0 0; .6 .75 .1]; %Euk green, Syn orange, dim crypto cyan, bright crypto magenta, Euk with Syn purple, Euk with preservation PE shift (class 6) brown, Pro blue, Syn-on-particle red, low-chl Euk-like (class 10) olive
+old(~ismember(old, [0 1 2 3 4 5 6 7 8 10 11])) = 0;
+codes = [1 2 3 4 5 6 7 8 10 11];
+names = {'Euk' 'Syn' 'dim crypto' 'bright crypto' 'Euk with Syn' 'Euk, PE shift (preserved)' 'Pro' 'Syn on particle' 'low-chl Euk-like' 'Syn clump'};
+cols = [0 .6 0; 1 .55 0; 0 .75 .9; .95 0 .75; .45 .1 .75; .55 .3 .1; 0 .35 1; .85 0 0; .6 .75 .1; .55 .55 .55]; %Euk green, Syn orange, dim crypto cyan, bright crypto magenta, Euk with Syn purple, Euk with preservation PE shift (class 6) brown, Pro blue, Syn-on-particle red, low-chl Euk-like (class 10) olive, Syn clump (class 11) dark grey
 % rare classes are drawn last, larger, opaque and outlined so they stand out
 % over the abundant ones; unassigned events are drawn in mid grey beneath
-rare = ismember(codes, [3 4 5 6 8]);
+rare = ismember(codes, [3 4 5 6 8 11]);
 views = {'size' 'BL3' 'log10 side scatter rel. 1 um bead (SSC; GL1 when large)' 'chl (BL3)'; 'BL3' 'GL2' 'chl (BL3)' 'PE (GL2)'; 'GL3' 'GL2' 'GL3' 'PE (GL2)'; ...
     'size' 'PEchl' 'log10 side scatter rel. 1 um bead (SSC; GL1 when large)' 'PE:chl (GL2-BL3)'; 'BL3' 'BL2' 'chl (BL3)' 'BL2 (green fl., blue laser)'; 'GL3' 'BL2' 'GL3' 'BL2 (PE, blue laser)'; 'size' 'dEuk' 'log10 side scatter rel. 1 um bead (SSC; GL1 when large)' 'chl minus Euk chl-size line'; ...
     'GL2' 'BL2' 'PE (GL2, green laser)' 'PE (BL2, blue laser)'};

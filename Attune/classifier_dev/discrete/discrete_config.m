@@ -26,6 +26,7 @@ cfg.sig.euk_af_min_n = 200;        %... with at least this many cell-like events
 cfg.sig.euk_af_min_size = -1.0;    %... pro and PE runs: among events larger than this (SSC; Pro -1.3 to -1.8, Syn ~ -1.3), all cell-like events if no mode there
 % PE euks bright in PE: above preserved Euk GL2 (95th percentile 0.29); live -1
 cfg.sig.peeuk_min_GL2 = 0.35;
+cfg.sig.crypto_split_method = 'gmm'; %preserved: the dim/bright spectral gap mostly closes (EN727 -0.91 vs -0.70 relative to Syn, AR77 one group); PE separates better
 % Autofluorescent non-cell particles: preserved samples have a cloud with PE:chl
 % ~ -1 and little chl for their size (chl:size ~ 0.3), which v2 named Syn
 % (EN715 C10N02, EN661 C14N07); with that "Syn" as the file's reference the

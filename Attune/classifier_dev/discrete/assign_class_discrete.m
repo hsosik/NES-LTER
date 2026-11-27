@@ -230,7 +230,11 @@ if ck.on && all(isfield(info.trace, {'after_pro_pe'})) && isfield(info.trigger_e
     core = class == 1 & F.BL3 > info.trigger_edges.BL3 + cfg.sig.euk_chl.core_above_edge & isfinite(F.chlSSC);
     if sum(core) >= cfg.sig.euk_chl.core_min_n
         syn_size = median(F.size(class == 2));
-        m = info.trace.after_pro_pe == 3 & ~ismember(class, [3 4 5 6]) & F.GL2GL3 < cfg.sig.peeuk_max_GL2GL3 ...
+        % not the Euk-with-Syn events v2 moved to Euk by its class-5 PE ceiling: v2 read
+        % their spectrum as Syn-type (BL2:GL3), and their GL2:GL3 is compressed by GL2
+        % saturation (MVCO MV418N01: 197 such events would become dim crypto)
+        bright5 = false(size(class)); if isfield(info.trace, 'euksyn_bright'), bright5 = info.trace.euksyn_bright(:); end
+        m = info.trace.after_pro_pe == 3 & ~ismember(class, [3 4 5 6]) & ~bright5 & F.GL2GL3 < cfg.sig.peeuk_max_GL2GL3 ...
             & F.size > syn_size + cfg.sig.peeuk_size_above_syn & F.PEchl > median(F.PEchl(core)) + ck.PEchl_above_euk ...
             & F.chlSSC > cfg.sig.detritus_max_chlSSC;
         class(m) = 3; info.n_crypto_kept = sum(m);
