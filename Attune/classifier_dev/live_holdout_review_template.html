@@ -243,7 +243,8 @@ function draw() {
   const lab = w => blind && !done ? w : (w === r.auto_is ? 'v2' : 'old classes');
   const rowA = r.auto_is === 'A' ? 'a' : 'h', rowB = r.auto_is === 'A' ? 'h' : 'a';
   $('info').innerHTML = `<b>${esc(r.file)}</b><br><span class="mut">run ${cur + 1} of ${R.length} · ${esc(r.cruise)} · ${esc(r.runtype)} file · ${esc(r.when)} · ${r.n} events · set ${esc(r.set)}</span>` +
-    (show ? `<br><span class="mut">${r.control ? 'control (inside the pass range)' : 'outside the pass range: ' + esc(r.why)}<br>${esc(r.flags)}</span>` : '') +
+    (show ? `<br><span class="mut">${r.control ? 'control (inside the pass range)' : 'outside the pass range: ' + esc(r.why)}<br>${esc(r.flags)}</span>` +
+      ` · <a href="class_view/index.html#f=${encodeURIComponent(r.file)}" target="classview" title="this file with the cruise review's panels and all classes (holdout_class_view)">class view</a>` : '') +
     `<table class="cnt"><tr><th>class</th><th>${lab('A')}</th><th>${lab('B')}</th></tr>` +
     CLS.filter(c => r.counts[c[0]][0] + r.counts[c[0]][1] > 0).map(c => {
       const h = r.counts[c[0]][0], a = r.counts[c[0]][1], A = r.auto_is === 'A' ? a : h, B = r.auto_is === 'A' ? h : a;

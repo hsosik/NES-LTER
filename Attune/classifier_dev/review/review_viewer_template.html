@@ -118,7 +118,7 @@ const HB = R.mode === 'hbac'; // SYBR-stained bacteria runs (preserved samples):
 const CK = HB ? [91, 92, 2, 7, 1, 0] : [1, 2, 7, 3, 4, 5, 8, 0]; // class keys for toggles and counts
 $('title').textContent = HB ? `${D.cruise} SYBR run review` : `${D.cruise} class review`;
 document.title = HB ? `${D.cruise} SYBR review` : `${D.cruise} review`;
-if (R.link) $('title').insertAdjacentHTML('afterend', `<a href="${R.link.href}" style="margin:0 6px;font-size:12px">${R.link.text} →</a>`);
+if (R.link) [].concat(R.link).reverse().forEach(l => $('title').insertAdjacentHTML('afterend', `<a href="${l.href}" style="margin:0 6px;font-size:12px">${l.text} →</a>`));
 
 // ---------- QC metrics and unusual-file detection ----------
 const lg = v => Math.log10((v || 0) + 1);
@@ -783,12 +783,18 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Home') go(V[0]); else if (e.key === 'End') go(V[V.length - 1]);
 });
 window.addEventListener('resize', drawStrips);
-window.addEventListener('hashchange', () => { const i = (parseInt(location.hash.slice(1)) || 1) - 1; if (i !== cur) go(i); });
+// #12 opens file 12; #f=<file name> opens that file (links from the held-out A/B pages)
+const hashIdx = () => {
+  const h = decodeURIComponent(location.hash.slice(1));
+  if (h.startsWith('f=')) { const i = F.findIndex(f => f.file === h.slice(2)); return i >= 0 ? i : null; }
+  const n = parseInt(h); return n ? n - 1 : null;
+};
+window.addEventListener('hashchange', () => { const i = hashIdx() ?? 0; if (i !== cur) go(i); });
 // decisions: from the last build, then this browser's copy (newest change per file wins)
 mergeIn(D.decisions);
 try { if (mergeIn(JSON.parse(lsGet(LSK, '[]')))) dirty = true; } catch (e) { }
 stats(); legend(); list();
-{ const i0 = parseInt(location.hash.slice(1)); go(i0 ? i0 - 1 : V[0]); } // a link to a file opens it even if the view hides it
+{ const i0 = hashIdx(); go(i0 ?? V[0]); } // a link to a file opens it even if the view hides it
 showSave();
 // reconnect to the remembered folder without asking, if the browser still allows it
 (async () => {

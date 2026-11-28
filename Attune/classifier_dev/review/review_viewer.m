@@ -10,6 +10,9 @@ function review_viewer(outdir, Q, R, cruise, decfile, build)
 % copied into review_data.js so earlier decisions show after a rebuild, and the viewer
 % saves new decisions straight to it (Chrome or Edge; see review_decisions).
 % build: label of the classification run shown (default: now); decisions record it.
+% R.keep_order true: files stay in the order of Q (default: sorted by time), e.g. the
+% held-out class views (holdout_class_view), which follow their A/B page's order.
+% R.link (optional): {href, text} link shown next to the title.
 %
 % Nov 2026, classification review prototype
 
@@ -17,8 +20,10 @@ if nargin < 3 || isempty(R), R = review_config(); end
 outdir = regexprep(char(outdir), '[\/]+$', '');
 if nargin < 5 || isempty(decfile), decfile = fullfile(fileparts(outdir), 'review_decisions.csv'); end
 if nargin < 6 || isempty(build), build = char(datetime('now', 'Format', 'yyyy-MM-dd HH:mm')); end
-t = cellfun(@(q) q.time, Q);
-[~, o] = sort(t); Q = Q(o);
+if ~(isfield(R, 'keep_order') && R.keep_order)
+    t = cellfun(@(q) q.time, Q);
+    [~, o] = sort(t); Q = Q(o);
+end
 for i = 1:numel(Q)
     Q{i}.time = char(datetime(Q{i}.time, 'ConvertFrom', 'datenum', 'Format', 'yyyy-MM-dd''T''HH:mm:ss'));
 end
