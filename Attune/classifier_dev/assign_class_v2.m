@@ -787,8 +787,26 @@ if any(pe3)
         if isfield(sig, 'crypto_red_valley') && sig.crypto_red_valley && sum(us) >= sig.crypto_split_min_n
             [rcut, rinfo] = red_valley(dB(us), sig);
         end
+        % red/main split against one Syn type (crypto_syn_ref_window, Nov 2026): Syn in a
+        % fixed BL2-GL2 window, not all Syn. The all-Syn median BL2:GL3 moves with the
+        % file's Syn type mix (5-95% 0.09-0.75 over 598 live files in 20 cruises); the
+        % window [-0.40 -0.10] Syn is in every file (>=100 in 99.3%) with a steadier
+        % spectrum (robust SD 0.047 vs 0.119). Against it the per-file red crypto peaks
+        % spread 0.022 (all-Syn 0.059) and the event valley is deeper (0.12 of the
+        % smaller peak, all-Syn 0.31) at -0.70 (crypto_red_dB_ref). Fewer than
+        % crypto_syn_ref_min_n such Syn: all-Syn reference and crypto_red_dB
+        info.crypto_ref_offset = 0; info.crypto_ref_n = NaN;
+        if isfield(sig, 'crypto_syn_ref_window') && ~isempty(sig.crypto_syn_ref_window)
+            exS = F.BL2 - F.GL2; rw = sy & exS >= sig.crypto_syn_ref_window(1) & exS < sig.crypto_syn_ref_window(2);
+            info.crypto_ref_n = sum(rw);
+            if sum(rw) >= sig.crypto_syn_ref_min_n
+                info.crypto_ref_offset = median(F.BL2(rw) - F.GL3(rw)) - median(F.BL2(sy) - F.GL3(sy));
+                rcut = sig.crypto_red_dB_ref;
+            end
+        end
+        dBr = dB - info.crypto_ref_offset;   %BL2:GL3 relative to the reference Syn
         info.crypto_red_cut = rcut;
-        red = us & dB < rcut;
+        red = us & dBr < rcut;
         class(red) = 3;
         class(cr & ~us & ~satG2 & PEs < sig.crypto_min_PE_above_syn) = 3;
         class(pe3 & satcr & ~us) = 4;
@@ -833,6 +851,34 @@ if any(pe3)
                     end
                 catch
                 end
+            end
+        end
+        % GL2-saturated cryptos follow the red group (crypto_sat_follow, Nov 2026; off since
+        % crypto_syn_ref_window: AR70B was the all-Syn reference artifact, see README) when
+        % the file's unsaturated red group reaches GL2 saturation and its main group
+        % does not: AR70B 17Nov2022(53) Sample(50) and (37) Sample(28) have one red
+        % crypto group (BL2:GL3 ~-0.93 relative to Syn, no main group) whose top 17
+        % events saturate GL2 and sat on the same BL2-GL3 line as the dim ones. BL2:GL3
+        % stays valid where only GL2 saturates. In EN727, AR77 and AR95 the red group sits
+        % well below GL2 saturation and the saturated cryptos are the bright end of the
+        % main group, whose wider spectral tail crosses the red cut: those stay bright
+        info.crypto_split.n_sat_red = 0;
+        if isfield(sig, 'crypto_sat_follow') && sig.crypto_sat_follow && any(satG2)
+            satlev = min(F.GL2(satG2)) - median(F.GL2(sy));   %PE (log10 Syn) where GL2 saturates
+            redU = red; mainU = us & ~red;
+            reachR = sum(redU) >= sig.crypto_sat_min_n && prctile(PEs(redU), 90) >= satlev - sig.crypto_sat_reach;
+            reachM = sum(mainU) >= sig.crypto_sat_min_n && prctile(PEs(mainU), 90) >= satlev - sig.crypto_sat_reach;
+            % ... and the saturated cryptos as a whole have a red spectrum (median below the
+            % cut; AR70B -0.93). Preserved GL2 saturates at less PE, so the red group can
+            % reach it where the saturated events are the main group's tail (EN727
+            % preserved: saturated median -0.71)
+            sv = cr & satG2 & okB & isfinite(dB);
+            satred = sum(sv) >= 3 && median(dBr(sv)) < rcut;
+            reachR = reachR && satred;
+            info.crypto_split.sat_level = satlev; info.crypto_split.sat_reach_red = reachR; info.crypto_split.sat_reach_main = reachM;
+            if reachR && ~reachM
+                sr = cr & satG2 & okB & isfinite(dB) & dBr < rcut;
+                class(sr) = 3; info.crypto_split.n_sat_red = sum(sr);
             end
         end
     else
@@ -1079,6 +1125,7 @@ if any(left) && sum(refset) >= 50
             usz = okz & isfinite(dz) & ~satG2(left);
             pez = fz.GL2 - median(F.GL2(syC));
             lab = 4 * ones(size(nl));
+            if isfield(info, 'crypto_ref_offset'), dz = dz - info.crypto_ref_offset; end %relative to the reference Syn (crypto_syn_ref_window)
             rc = sig.crypto_red_dB; if isfield(info, 'crypto_red_cut') && isfinite(info.crypto_red_cut), rc = info.crypto_red_cut; end
             lab(usz & dz < rc) = 3;
             if isfield(info, 'crypto_pe_gmm') && isfield(info.crypto_split, 'pe_split') && info.crypto_split.pe_split
@@ -1087,6 +1134,9 @@ if any(left) && sum(refset) >= 50
                 lab(usz & dz >= rc & pz(:, oz(1)) > 0.5) = 3;
             end
             lab(~usz & ~satG2(left) & pez < sig.crypto_min_PE_above_syn) = 3;
+            if isfield(info.crypto_split, 'sat_reach_red') && info.crypto_split.sat_reach_red && ~info.crypto_split.sat_reach_main
+                lab(satG2(left) & okz & isfinite(dz) & dz < rc) = 3; %saturated, red group reaches saturation (crypto_sat_follow)
+            end
             relab = (nl == 3 | nl == 4) & ok;
             nl(relab) = lab(relab);
         end
