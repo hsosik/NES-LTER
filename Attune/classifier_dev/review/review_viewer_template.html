@@ -513,7 +513,7 @@ function list() {
       h += `<tr ${on ? `data-i="${i}"` : ''} class="${i === cur ? 'cur' : ''}"><td>${on ? i + 1 : '–'}</td><td style="text-align:left">${esc(d.file)}${on ? '' : ' <span class="mut">(not in this build)</span>'}</td><td style="text-align:left">${pill(d)}</td><td style="text-align:left">${esc(d.note)}</td><td style="text-align:left">${esc(d.reviewer)}</td><td>${when(d.saved)}${d.build && d.build !== BUILD ? ` <span class="old" title="decided while viewing build ${esc(d.build)}; this is build ${esc(BUILD)}">older build</span>` : ''}</td></tr>`;
     }
     h += '</table>';
-  } else h += `<div class="mut">none yet; they are saved to <code>${esc(DEC_PATH)}</code></div>`;
+  } else h += `<div class="mut">none yet; they are saved to <code>${esc(NP(DEC_PATH))}</code></div>`;
   $('list').innerHTML = h;
 }
 $('list').addEventListener('click', e => { const tr = e.target.closest('tr[data-i]'); if (tr) go(+tr.dataset.i); });
@@ -534,6 +534,11 @@ const DEC_NAME = D.decisions_name || 'review_decisions.csv', DEC_PATH = D.decisi
 const LSK = 'attune-review:' + DEC_PATH, LSR = 'attune-review:reviewer';
 const DEC = {};
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// NAS drive: the letter this computer maps \\sosiknas1\Lab_data to (default Z; kept in this
+// browser under the same key as the cruise console's browser copy). Paths shown and copied use
+// it: Chrome lets the page save only when it is opened through the mapped drive
+let DRV = (lsGet('nas_drive', 'Z') || 'Z').toUpperCase();
+const NP = s => String(s ?? '').replace(/^\\\\sosiknas1\\Lab_data\\/i, DRV + ':\\').replace(/^[A-Za-z]:\\(?=Attune\\)/, DRV + ':\\');
 const when = s => { const t = new Date(s); return s && !isNaN(t) ? t.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : esc(s); };
 const pill = d => d && ST[d.status] ? `<span class="pill" style="background:${ST[d.status].col}">${ST[d.status].label}</span>` + (d.note ? ' ✎' : '') : (d && d.note ? '✎ note' : '');
 function mergeIn(rows) {
@@ -613,7 +618,7 @@ async function connect(pick) {
     const h = await window.showDirectoryPicker(opt);
     console.log('[review-save] folder chosen:', h.name);
     if (D.decisions_dir_name && h.name !== D.decisions_dir_name &&
-      !confirm(`You chose the folder "${h.name}", but this cruise's review decisions belong in\n${D.decisions_dir}\n\nSave ${DEC_NAME} in "${h.name}" anyway?`)) return showSave();
+      !confirm(`You chose the folder "${h.name}", but this cruise's review decisions belong in\n${NP(D.decisions_dir)}\n\nSave ${DEC_NAME} in "${h.name}" anyway?`)) return showSave();
     known = h; await idbPut(DEC_PATH, h);
     step = 'reading and writing ' + DEC_NAME;
     await attach(h);
@@ -654,25 +659,32 @@ function showSave() {
   let h;
   if (dir && saveErr) h = `<span class="err">Could not save to <code>${esc(dir.name)}\\${esc(DEC_NAME)}</code>: ${esc(saveErr)}</span> <button data-a="retry">retry</button>`;
   else if (dir) h = `<span style="color:#2e8b57">✓</span> ${saving || dirty ? 'saving…' : esc(saveMsg || 'connected')}: <code>${esc(dir.name)}\\${esc(DEC_NAME)}</code>`;
-  else if (!canWrite()) h = `This browser can't save files (use Chrome or Edge): decisions are kept in this browser only. <button data-a="dl">Download CSV</button> and put it at <code>${esc(DEC_PATH)}</code>`;
+  else if (!canWrite()) h = `This browser can't save files (use Chrome or Edge): decisions are kept in this browser only. <button data-a="dl">Download CSV</button> and put it at <code>${esc(NP(DEC_PATH))}</code>`;
   // Chrome refuses folder access to pages opened from a network path (file://server/...):
   // the picker aborts even for read access. Opened through a mapped drive letter it works
   else if (NETFILE) h = `<b>Can't save from a page opened at <code>\\\\${esc(location.host)}\\…</code></b>: Chrome blocks folder access for pages opened from a network path. ` +
-    `Map the share to a drive letter (e.g. <code>net use Z: \\\\${esc(location.host)}\\lab_data</code>) and open this page through it (<code>Z:\\…\\review\\index.html</code>). ` +
+    `Map the share to a drive letter (e.g. <code>net use ${DRV}: \\\\${esc(location.host)}\\lab_data</code>) and open this page through it (<code>${DRV}:\\…\\review\\index.html</code>). ` +
     `Until then decisions are kept in this browser only.`;
   else h = (saveErr ? `<span class="err">${esc(saveErr)}</span><br>` : '') + (dirty ? '<b>Not saved to the file yet</b> (kept in this browser). ' : '') +
-    `Decisions save to <code>${esc(DEC_PATH)}</code> <button data-a="connect">${known ? 'Reconnect' : 'Choose folder'}</button>` +
+    `Decisions save to <code>${esc(NP(DEC_PATH))}</code> <button data-a="connect">${known ? 'Reconnect' : 'Choose folder'}</button>` +
     (D.decisions_dir ? ` <button data-a="copy" title="copy the folder path, then paste it into the folder picker's address bar">copy folder path</button>` : '');
   if (canWrite()) h += ` <button data-a="dl" title="download the decisions as a CSV">CSV</button>`;
   if (dir) h += ` <button data-a="pick" title="save to a different folder">change folder</button>`;
+  else h += ` <label title="drive letter this computer maps \\\\sosiknas1\\Lab_data to; paths above use it (kept in this browser)">NAS drive <input id="drv" size="2" maxlength="3" value="${DRV}" aria-label="NAS drive letter">:</label>`;
   $('savestate').innerHTML = h;
 }
+$('savestate').addEventListener('change', e => {
+  if (e.target.id !== 'drv') return;
+  const v = e.target.value.trim().toUpperCase().replace(/[:\\/]+$/, '');
+  if (/^[A-Z]$/.test(v)) { DRV = v; lsSet('nas_drive', v); }
+  showSave();
+});
 $('savestate').addEventListener('click', e => {
   const a = e.target.dataset.a;
   if (a === 'connect') connect(false); else if (a === 'pick') connect(true); else if (a === 'dl') download(); else if (a === 'retry') save();
   else if (a === 'copy') {
     const ok = () => { e.target.textContent = 'copied – paste it into the picker'; setTimeout(showSave, 4000); };
-    navigator.clipboard.writeText(D.decisions_dir).then(ok, () => prompt('Copy this folder path:', D.decisions_dir));
+    navigator.clipboard.writeText(NP(D.decisions_dir)).then(ok, () => prompt('Copy this folder path:', NP(D.decisions_dir)));
   }
 });
 function setDec(patch, i = cur) {
