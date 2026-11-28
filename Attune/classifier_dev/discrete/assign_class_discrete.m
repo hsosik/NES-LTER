@@ -292,6 +292,25 @@ if cfg.sig.pro_floor.on && isfield(info.trigger_edges, 'BL3') && sum(class == 7)
         class(f) = 0; info.pro_floor = struct('valley', v, 'n_removed', sum(f));
     end
 end
+% Syn with little chl for their size and no Syn-like PE: faint particles on the chl
+% trigger floor named Syn (AR77 pro_C13N16: 694 events at the BL3 edge, chl:size 0.17 vs
+% Syn 1.51, GL2 1.1 below Syn). Pulse shape, spectrum and FSC/SSC do not separate them
+% from hand-gated low-chl Syn (AUC 0.5); PE does: low-chl hand Syn keep their PE (PE:chl
+% above the run's Syn), the particles have PE:chl at or below Syn or much less PE. Syn
+% with chl:size more than floor_syn.dchl below the run's Syn median and (PE:chl below
+% the Syn median or GL2 more than floor_syn.dGL2 below it) are unassigned (needs
+% floor_syn.min_syn Syn), in floor_syn.runtypes (pro, CHL: in PE runs the net gain was ~0
+% and AR43 PE C05N24 lost 822 hand Syn; held-out sets, 28 Nov 2026). EN644 pro_C23N13:
+% 969 removed, none hand Syn (the dim end of the Syn diagonal below the hand gate).
+% info.floor_syn.mask marks them whether or not the rule is applied
+info.floor_syn = struct('on', false, 'n', 0, 'mask', false(size(class)));
+if isfield(cfg.sig, 'floor_syn') && sum(class == 2) >= cfg.sig.floor_syn.min_syn
+    F = info.features; fs = cfg.sig.floor_syn; sy = class == 2;
+    m = sy & F.chlSSC < median(F.chlSSC(sy)) - fs.dchl & (F.PEchl < median(F.PEchl(sy)) | F.GL2 < median(F.GL2(sy)) - fs.dGL2);
+    apply = fs.on && (~isfield(fs, 'runtypes') || ismember(runtype, fs.runtypes));
+    info.floor_syn = struct('on', apply, 'n', sum(m), 'mask', m);
+    if apply, class(m) = 0; end
+end
 info.pro = pro_completeness(info, class, cfg);
 info.discrete_cfg = cfg.sig;
 end
