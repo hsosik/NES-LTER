@@ -1168,9 +1168,25 @@ info.trace.catchall = left;
 % not Euk with Syn (Nov 2026: AR92, half the Euk with Syn sat below 99% of the file's
 % Syn in PE). Applied after every route into class 5 (Syn-check rejects, PE euks,
 % catch-all) and before the Euk chl:size cut, which then also checks these Euks
-info.euksyn_min_GL2 = NaN; info.n_euksyn_weak = 0;
+% The floor is also kept within euksyn_min_core_sd robust SDs of the main Syn cluster
+% (Nov 2026): where a file's Syn include a dim group, the percentile falls in it (AR43
+% 11Mar2020a Sample(112): 18% of Syn ~2 log dimmer in PE and chl, 1st percentile GL2
+% -1.77 against a main mode of 0.39) and Euk with far less PE than a typical Syn pass.
+% Main cluster: mode of Syn GL2 (kernel density, bandwidth 0.1), robust SD of the Syn
+% within 0.5 of it. Held-out check at 3 SDs (euksyn_floor_test): preserved 445 of 8,476
+% class 5 moved, hand Euk 54% / PE euk 2% (all class 5: 41% / 10%); live 112 of 36,674
+info.euksyn_min_GL2 = NaN; info.n_euksyn_weak = 0; info.euksyn_syn_mode = NaN; info.euksyn_syn_sd = NaN;
 if sig.euksyn_min_syn_PE_prc > 0 && sum(class == 2) >= 50
     info.euksyn_min_GL2 = prctile(F.GL2(class == 2), sig.euksyn_min_syn_PE_prc);
+    if isfield(sig, 'euksyn_min_core_sd') && sig.euksyn_min_core_sd > 0
+        g = F.GL2(class == 2); g = g(isfinite(g));
+        [dg, xg] = ksdensity(g, 'Bandwidth', 0.1);
+        [~, ig] = max(dg); gm = xg(ig);
+        gc = g(abs(g - gm) < 0.5);
+        gs = 1.4826 * median(abs(gc - median(gc)));
+        info.euksyn_syn_mode = gm; info.euksyn_syn_sd = gs;
+        if isfinite(gs), info.euksyn_min_GL2 = max(info.euksyn_min_GL2, gm - sig.euksyn_min_core_sd * gs); end
+    end
     weak = class == 5 & F.GL2 < info.euksyn_min_GL2;
     class(weak) = 1; info.n_euksyn_weak = sum(weak);
 end

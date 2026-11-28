@@ -1022,3 +1022,20 @@ Found while following an AR77 low-chl Euk branch (shared notes: `ar77_dim_euk.md
 - **Downstream:** class 10 is in `generate_attune_table` (Euk_like_low_chl count, biovolume and carbon; not in the Euk columns), `process_cruise` (codes and the class log), the review config, QC and viewer, and `plot_class_cytograms`. Pro_lower_bound_count in files without Pro settings is class 7 + flag 4.
 - **Preserved runs:** `discrete_config` turns both switches off. The discrete wrapper assigns Pro in CHL runs itself, and class 10 is not yet tested against the hand gates.
 - **Class files written before this change** (e.g. AR77, classified 25 Nov) are out of step with v2 until classified again with `process_cruise`.
+
+### Euk with Syn PE floor tied to the main Syn cluster (28 Nov 2026)
+
+Found in AR43 11Mar2020a Sample(112), where 99 of 244 Euk with Syn sat below the Syn median PE.
+
+- **The problem:** the class 5 floor (`euksyn_min_syn_PE_prc`, the 1st percentile of the file's Syn GL2) is meant as "at least one Syn's PE". In that file 18% of the Syn form a dim group, about 2 log below the main Syn in both PE and chl. The 1st percentile (GL2 −1.77) fell inside it, against a main Syn mode of 0.39, so Euk with Syn down to 2 log below a typical Syn passed. Their spectrum is Syn-like (GL2:GL3 0.39 against Syn 0.42 and Euk −0.55).
+- **The rule** (`euksyn_min_core_sd` = 3): the floor is also at least the main Syn mode minus 3 robust SDs. The mode is the peak of a kernel density of Syn GL2 (bandwidth 0.1); the SD is from the Syn within 0.5 of it. The higher of the two floors applies, so files with one Syn cluster are unchanged. `info.euksyn_syn_mode` and `info.euksyn_syn_sd` record them. AR43 Sample(112): floor −0.17, 31 events move to Euk.
+- **Held-out check** (`euksyn_floor_test.m`, applied to final classes):
+
+  | | class 5 moved | hand Euk | hand PE euk | hand none |
+  |---|---|---|---|---|
+  | preserved, all class 5 (8,476) | | 41% | 10% | 47% |
+  | preserved, 3 SDs | 445 (5.3%) in 22 runs | 54% | 2% | 24% |
+  | preserved, 2 SDs | 899 (10.6%) in 84 runs | 47% | 2.8% | 29% |
+
+  MVCO 2019 MV418N02 and MV418N01 hold over half of the 3-SD total. Live (240 files, 36,674 class 5): 3 SDs moves 112 in 15 files (mostly AR43 11Mar2020a and HRS2609); the old classes called 41% of them Euk, against 2% of all class 5. 2 SDs moves 800 in 133 files, two thirds of them crypto in the old classes, so 3 SDs was chosen.
+- Preserved runs use the same setting (`discrete_config` starts from `classifier_config`). `classifier_version` tags for v2 and discrete are now 2026-11-28a.

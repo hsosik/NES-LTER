@@ -97,6 +97,7 @@ cfg.sig.crypto_outlier_sd = 4;     %single crypto group: events more than this m
 cfg.sig.euksyn_max_chl_below_euk = 0.5; %Euk-with-Syn (5) more than this below the Euk chl-size line (log10, ~3x) are Syn on a particle (8)
 cfg.sig.euksyn_low_chl_class = 0;   %class for Euk-with-Syn events below that: 0 = leave unassigned (they match neither Euk with Syn nor Syn on particle; the main Syn-on-particle rule can still take those that fit it), 8 = Syn on particle
 cfg.sig.euksyn_min_syn_PE_prc = 1;   %Euk with Syn (5) needs GL2 at least this percentile of the file's Syn GL2 (one Syn's PE); below -> Euk (1). 0 = off
+cfg.sig.euksyn_min_core_sd = 3;      %... and at least the main Syn GL2 mode minus this many robust SDs of the Syn near it (a dim Syn group pulls the percentile down); 0 = percentile only
 cfg.sig.euksyn_max_syn_PE_prc = 0;   %Euk with Syn (5) above this percentile of the file's Syn GL2 (BL2 where GL2 saturates) -> Euk (1); 0 = off (99 tested, see README)
 cfg.sig.euksyn_min_PEchl_above_euk = 1; %Syn-check rejects re-checked as Euks carry Syn PE if PE:chl is this far above the file's Euks (log10)
 cfg.sig.syn_PEchl_tol = 0.7;       %Syn events within this of the file's Syn PE:chl ...
