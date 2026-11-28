@@ -773,7 +773,7 @@ if any(pe3)
     % 3, else 4. GL2-saturated = 4; without a usable spectrum, by the PE floor.
     % Preserved samples keep 'gmm' (discrete_config): there the spectral gap mostly
     % closes (EN727 -0.91 vs -0.70; AR77 one group) and PE separates better
-    specsplit = isfield(sig, 'crypto_split_method') && strcmp(sig.crypto_split_method, 'spectrum') && sum(sy) >= 50;
+    specsplit = isfield(sig, 'crypto_split_method') && any(strcmp(sig.crypto_split_method, {'spectrum' 'gmm2d'})) && sum(sy) >= 50;
     if specsplit
         % GL2-saturated cryptos are bright whatever their spectrum: their BL2:GL3 reads
         % low as they brighten (AR95: the saturated main-group events spilled below the
@@ -793,6 +793,48 @@ if any(pe3)
         class(cr & ~us & ~satG2 & PEs < sig.crypto_min_PE_above_syn) = 3;
         class(pe3 & satcr & ~us) = 4;
         info.crypto_split = struct('n', sum(cr), 'accepted', false, 'method', "spectrum", 'n_red', sum(red), 'n_main', sum(us & ~red), 'n_nospec', sum(cr & ~us), 'red_cut', rcut, 'valley', rinfo.valley, 'main_mode', rinfo.main_mode);
+        % 'gmm2d' (Nov 2026): dim cryptos are either red-shifted (spectral rule above) or
+        % the low-PE group of a main-spectrum population that splits in PE. Dim and
+        % bright differ by spectrum in some files (AR77, AR95 live and AR77 preserved:
+        % red group ~0.3 below the main one, no PE gap) and by PE alone in others
+        % (preserved EN668 C001N01, AR92 C25N02, MVCO MV428N03: a low-PE group at ~1.5
+        % Syn with a main-group spectrum, a gap at 4-6 Syn). A single two-group fit in
+        % [PE, spectrum] picks one of the two and can miss the other (AR77 Sample(43):
+        % it split off 15 faint events and called the red group bright), so: red group
+        % first, then two groups in PE among the unsaturated main-spectrum events with a
+        % usable spectrum, accepted when both are populated, compact (robust SD) and
+        % well separated; the lower one is dim. Events without a usable spectrum go by
+        % the nearer PE centre; GL2-saturated ones stay bright
+        if strcmp(sig.crypto_split_method, 'gmm2d')
+            mainsp = us & ~red;
+            info.crypto_split.pe_split = false;
+            if sum(mainsp) >= sig.crypto_split_min_n
+                x = PEs(mainsp);
+                try
+                    rng(sd + 7, 'twister')
+                    gc = fitgmdist(x, 2, 'Replicates', 3, 'RegularizationValue', 1e-3, 'Options', opts);
+                    [~, o] = sort(gc.mu); [~, hard] = max(posterior(gc, x), [], 2);
+                    cen = zeros(1, 2); sdc = zeros(1, 2); nm = zeros(1, 2);
+                    for j = 1:2
+                        xj = x(hard == o(j)); nm(j) = numel(xj);
+                        if nm(j) >= 5, cen(j) = median(xj); sdc(j) = max(1.4826 * mad(xj, 1), 0.01); else, cen(j) = gc.mu(o(j)); sdc(j) = Inf; end
+                    end
+                    sep = abs(cen(2) - cen(1)) / sqrt((sdc(1)^2 + sdc(2)^2) / 2);
+                    ok2 = min(nm) >= sig.crypto_min_group_n && all(sdc <= sig.crypto_max_sd_PE) && sep >= sig.crypto_min_sep;
+                    info.crypto_split.method = "gmm2d"; info.crypto_split.pe_split = ok2; info.crypto_split.accepted = ok2;
+                    info.crypto_split.pe_sep = sep; info.crypto_split.pe_centres = cen; info.crypto_split.pe_sd = sdc; info.crypto_split.pe_n = nm;
+                    if ok2
+                        info.crypto_pe_gmm = gc; info.crypto_pe_order = o;
+                        post = posterior(gc, PEs(mainsp)); low = false(n, 1); low(mainsp) = post(:, o(1)) > 0.5;
+                        class(low) = 3;
+                        nos = cr & ~us & ~satG2;
+                        class(nos & abs(PEs - cen(1)) < abs(PEs - cen(2))) = 3;
+                        info.crypto_split.n_pe_dim = sum(low);
+                    end
+                catch
+                end
+            end
+        end
     else
     % two crypto groups? fit two components on [PE, spectrum] and accept only if
     % both are populated, compact, well separated, and the dimmer one is the more
@@ -1033,12 +1075,17 @@ if any(left) && sum(refset) >= 50
         % (crypto_split_method 'spectrum'), not their neighbours' label: red-shifted
         % BL2:GL3 = 3, else 4; without a usable spectrum, GL2-saturated = 4, otherwise
         % by the PE floor (GL2 above the Syn median, log10 Syn equivalents)
-        if isfield(sig, 'crypto_split_method') && strcmp(sig.crypto_split_method, 'spectrum') && sum(syC) >= 50
+        if isfield(sig, 'crypto_split_method') && any(strcmp(sig.crypto_split_method, {'spectrum' 'gmm2d'})) && sum(syC) >= 50
             usz = okz & isfinite(dz) & ~satG2(left);
             pez = fz.GL2 - median(F.GL2(syC));
             lab = 4 * ones(size(nl));
             rc = sig.crypto_red_dB; if isfield(info, 'crypto_red_cut') && isfinite(info.crypto_red_cut), rc = info.crypto_red_cut; end
             lab(usz & dz < rc) = 3;
+            if isfield(info, 'crypto_pe_gmm') && isfield(info.crypto_split, 'pe_split') && info.crypto_split.pe_split
+                % main-spectrum catch-all cryptos in the low-PE group are dim too
+                pz = posterior(info.crypto_pe_gmm, pez); oz = info.crypto_pe_order;
+                lab(usz & dz >= rc & pz(:, oz(1)) > 0.5) = 3;
+            end
             lab(~usz & ~satG2(left) & pez < sig.crypto_min_PE_above_syn) = 3;
             relab = (nl == 3 | nl == 4) & ok;
             nl(relab) = lab(relab);

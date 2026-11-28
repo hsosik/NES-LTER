@@ -452,19 +452,29 @@ The old dim crypto class is known to be a mixture, so agreement with it is not a
 
 ## Cryptos: spectral dim/bright split, catch-all spectrum test, Syn clumps, Euk-with-Syn PE ceiling (27 Nov 2026)
 
-**Dim (3) / bright (4) by spectrum in live files** (`crypto_split_method = 'spectrum'`; preserved samples keep `'gmm'` in `discrete_config`).
+**Dim (3) / bright (4) by spectrum in live files** (`crypto_split_method = 'spectrum'`, since replaced by `'gmm2d'` for live and preserved: see the two-step rule below).
 - **What changes.** Live crypto-type events with a usable BL2:GL3 are dim when BL2:GL3 is more than `crypto_red_dB` (−0.77) below the file's Syn, else bright. GL2-saturated cryptos are always bright. Events without a usable spectrum are split by the 10-Syn PE floor.
 - **Why.** In 60 live files each from EN727, AR77 and AR95, the crypto-type events form a red-shifted group (BL2:GL3 0.85–1.0 below Syn) and a main group (0.52–0.67 below). Each is compact in spectrum (robust SD 0.04–0.08) and flat across its PE range (slope with PE −0.08 to +0.04).
   - In AR77 the two groups separate in 44 of 57 files.
   - PE amount does not separate them. AR77's red group holds 2–6 Syn of PE, and its main group runs from 0.1 to 100 Syn without a gap. AR95 has a red group at about 5 Syn. The old PE-based split cut AR77's main group in two: two-thirds of its "dim" were the faint end of the main group.
 - **Saturated events.** GL2-saturated cryptos read low in BL2:GL3 as they brighten. In AR95 they spilled below −0.77, while the unsaturated main peak sat at −0.65, clear of the cut. They are bright regardless.
-- **Preserved samples.** The spectral gap mostly closes there (EN727 −0.91 vs −0.70; AR77 one group), and PE separates better. Hand low-/high-PE gates in 66 held-out runs follow PE (AUC 0.99) more than spectrum (0.85).
+- **Preserved samples (first reading, corrected below).** The spectral gap seemed to close there, and hand low-/high-PE gates in 66 held-out runs follow PE (AUC 0.99) more than spectrum (0.85). The closed gap came from GL2-saturated events.
 - **Live scoring (7 cruises × 40 files).** Only dim/bright change; other classes change by at most 90 events in 40 files, through the catch-all.
   - Dim (3): EN727 2,605 → 2,607, AR77 1,514 → 965, EN706 469 → 87, HRS2609 283 → 87.
   - Agreement with the old (PE-split) classes falls by at most 0.0016.
 - **Per-file or pooled cut (code kept, off: `crypto_red_valley`).**
   - A per-file cut from two Gaussian components on BL2:GL3 tracks EN727's drift (groups move by ~0.1 over the cruise). But it jumps between −0.70 and −0.90 file to file in AR77, and is rejected in 52 of 60 AR95 files, where the red group is small and often absent.
   - Pooling over ±12 h smooths it (median jump 0.005). With saturated events kept bright, the fixed −0.77 falls in the gap in all three cruises, so no pooling pass was added to `process_cruise`.
+
+**Two-step rule, live and preserved (`crypto_split_method = 'gmm2d'`, 28 Nov 2026).** One rule for both; `discrete_config` no longer keeps `'gmm'`.
+1. GL2-saturated cryptos are bright.
+2. A red-shifted spectrum is dim: BL2:GL3 more than `crypto_red_dB` (−0.77) below the file's Syn.
+3. Among the unsaturated main-spectrum events, a two-component fit on PE is accepted when each group has at least `crypto_min_group_n` events, both are compact (robust SD ≤ `crypto_max_sd_PE`) and their means are at least `crypto_min_sep` pooled SDs apart. The lower-PE group is then dim. Events without a usable spectrum take the nearer PE centre.
+4. Catch-all cryptos follow the same steps (`info.crypto_pe_gmm`). The split is recorded in `info.crypto_split` (`pe_split`, `pe_sep`, `pe_centres`, `pe_sd`, `pe_n`, `n_pe_dim`).
+- **Why preserved changed.** Without GL2-saturated events the preserved spectra show the same red (−0.91) and main (−0.61 to −0.64) groups as live. The per-file `'gmm'` fit split AR77's single main group by PE. Spectrum alone missed preserved runs with a clear low-PE group in the main spectrum (EN668 C001N01, MV428N03, AR92 C25N02), hence step 3. A one-step 2-D fit on [PE, spectrum] mis-split AR77 Sample(43) live (15 main-group events dim), hence the order.
+- **Live (7 cruises × 40 files).** Step 3 fires in 3 AR95 files (dim 721 → 872) and 1 EN706 file (87 → 108); all else matches the spectral rule. Agreement with the old classes moves by at most 0.0001.
+- **Preserved held-out, hand low-/high-PE match** (old per-file fit / spectral only / two-step): tuning 0.932 / 0.816 / 0.910; 2a 0.948 / 0.780 / 0.911; 2a′ 0.798 / 0.963 / 0.963; 2b 0.824 / 0.760 / 0.855; all 0.913 / 0.794 / 0.900. Merged crypto agreement is identical for all three. The two-step rule sits slightly below the old fit because it does not split a single gap-free spectral group by PE (mainly AR77); the hand gates do.
+- **Examples.** EN668 C001N01: 426 of 483 hand low-PE are dim. MV428N03: 269 of 314. AR92 C25N02: 146 of 227.
 
 **Catch-all cryptos.** Unassigned events whose neighbours are cryptos now need a crypto-type spectrum (`catchall_crypto_spectrum`): BL2:GL3 below the crypto cut, GL2:GL3 below `peeuk_max_GL2GL3` only where BL2:GL3 is unusable, or GL2 saturated. They take dim/bright by the spectral rule, not their neighbours' label.
 - AR77 11Oct2023(12) Sample(43): 223 catch-all cryptos had a Syn spectrum (dB −0.13) and Syn PE:chl; 52 remain, with dB −0.61.
