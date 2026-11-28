@@ -29,21 +29,23 @@ if isfield(info, 'syn_mix')
     if strcmp(info.syn_mix.method, 'mixture'), q.syn_mix_mu = info.syn_mix.mu; end % NaN for dropped types
 end
 q.n_catchall = fieldor(info, 'n_catchall', NaN);
-% catch-all additions by class (classes 1 2 3 4 5 7 8). Shares are of the class's
+% catch-all additions by class (classes 1 2 3 4 5 7 8 11; 11 = Syn clump). Shares are of the class's
 % final count; the total is mostly Syn in Syn-rich files, so it is not divided by
 % the Euk count. Counted from the final classes of the catch-all
 % events (info.trace.catchall): later steps, e.g. the per-file Euk chl:size cut, can
 % unassign catch-all Euks, which info.catchall_classes (taken at the catch-all step)
 % still counts (AR92 15Aug(9) Sample(32): 202 there, 3 left as Euk)
-cc = nan(1, 7);
+cc = nan(1, 8);
 if isfield(info, 'trace') && isfield(info.trace, 'catchall') && numel(info.trace.catchall) == numel(cls)
-    ca = info.trace.catchall(:); cc = arrayfun(@(x) sum(ca & cls == x), [1 2 3 4 5 7 8]);
+    ca = info.trace.catchall(:); cc = arrayfun(@(x) sum(ca & cls == x), [1 2 3 4 5 7 8 11]);
 elseif isfield(info, 'catchall_classes') && numel(info.catchall_classes) == 7
-    cc = double(info.catchall_classes(:)');
+    cc(1:7) = double(info.catchall_classes(:)'); % classes 1-8 only; Syn clump not counted there
+    cc(8) = fieldor(info, 'n_catchall_syn_clump', NaN);
 end
-if q.n_catchall == 0, cc = zeros(1, 7); end
+if q.n_catchall == 0, cc = zeros(1, 8); end
 q.n_catchall_euk = cc(1);
 q.n_catchall_syn = cc(2);
+q.n_catchall_syn_clump = cc(8);
 q.catchall_euk_share = q.n_catchall_euk / max(1, q.n1);
 q.catchall_syn_share = q.n_catchall_syn / max(1, q.n2);
 q.euk_chl_gap = finite_or_nan(fieldor(info, 'euk_chl_gap', NaN));

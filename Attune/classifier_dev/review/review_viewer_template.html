@@ -485,7 +485,7 @@ function side() {
     $('sideinfo').innerHTML = h;
     return;
   }
-  const rows = [['agreement with old', f.agreement, 3], ['catch-all total', f.n_catchall], ['catch-all Euk (share of Euk)', `${fmt(f.n_catchall_euk)} (${fmt(f.catchall_euk_share)})`], ['catch-all Syn (share of Syn)', `${fmt(f.n_catchall_syn)} (${fmt(f.catchall_syn_share)})`], ['Euk chl gap', f.euk_chl_gap], ['Syn PE gap', f.syn_PE_gap], ['Syn PE floor', f.syn_PE_floor],
+  const rows = [['agreement with old', f.agreement, 3], ['catch-all total', f.n_catchall], ['catch-all Euk (share of Euk)', `${fmt(f.n_catchall_euk)} (${fmt(f.catchall_euk_share)})`], ['catch-all Syn (share of Syn)', `${fmt(f.n_catchall_syn)} (${fmt(f.catchall_syn_share)})`], ['catch-all Syn clump', f.n_catchall_syn_clump],['Euk chl gap', f.euk_chl_gap], ['Syn PE gap', f.syn_PE_gap], ['Syn PE floor', f.syn_PE_floor],
     ['Syn ref size / chl', `${fmt(f.syn_ref_size)} / ${fmt(f.syn_ref_BL3)}`], ['Syn ref PE:chl / GL2:GL3', `${fmt(f.syn_ref_PEchl)} / ${fmt(f.syn_ref_GL2GL3)}`],
     ['Syn types A / B / C / D', `${fmt(f.syn_type1)} / ${fmt(f.syn_type2)} / ${fmt(f.syn_type3)} / ${fmt(f.syn_type4)}`], ['untyped Syn (share)', `${fmt(f.syn_untyped)} (${fmt(f.syn_untyped_share)})`],
     ['Syn typing', f.syn_mix_method ? `${f.syn_mix_method}, types ${f.syn_mix_keep}` + (f.syn_mix_method === 'mixture' ? `; ambiguous ${fmt(f.syn_ambiguous)} (${fmt(f.syn_ambiguous_share)})` : '') : '–'],
